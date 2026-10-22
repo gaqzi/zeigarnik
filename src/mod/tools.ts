@@ -58,7 +58,7 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: HANDOFF_TOOL,
     description:
-      "Writes the handoff once nothing is open and returns it; call again to revise. next: the next session's one goal. decisions: what it must respect (lasting: beyond it too). references: only the few files, tickets or docs it needs.",
+      "Writes the handoff once nothing is open and returns it; call again to revise. Written as the human's message to the next session: 'I' is the human, 'you' is Claude. next: the next session's one goal. decisions: what it must respect (lasting: beyond it too). references: only the few files, tickets or docs it needs.",
     inputSchema: {
       type: 'object',
       properties: {

@@ -38,5 +38,12 @@ graders:
       After cancelling, Claude's last message proposes a handoff whose next
       session's goal opens a conversation about what to do instead of the
       offsite plan (for example, deciding how to start over), and asks the
-      human before writing it. A next goal of "none", "not set", or empty
-      fails.
+      human before writing it. Only a proposed next goal that is itself
+      "none", "not set", or empty fails; Claude offering to change or drop
+      the next goal when asking ("or the next goal could be nothing at all")
+      is fine, as long as what it proposes opens that conversation.
+      The proposed next goal and decisions are pasted into the next
+      session as the human's own message, so they must be in the human's
+      voice: if either refers to "the user" or "the human" in the third
+      person (for example "cancelled because the user changed their mind"),
+      it fails. Claude's own words around the proposal may say either.

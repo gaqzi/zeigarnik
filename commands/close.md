@@ -15,5 +15,6 @@ The human is closing this zg session. $ARGUMENTS
 3. Always propose the handoff, also when the goal failed or was cancelled: the
    next session's one goal (after such an end it can be a conversation about
    what to do instead), the decisions it must respect (lasting or not), and
-   the few references it needs. Once they agree, write it with
-   mcp__zg__handoff and show what it returns verbatim.
+   the few references it needs. Propose it as they'll paste it, their message
+   to the next session: "I" is them, "you" is Claude. Once they agree, write
+   it with mcp__zg__handoff and show what it returns verbatim.
