@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Usage: script/update-vendor-deps
+#
+# Replaces the mod API declarations in vendor/ with the ones the installed
+# Claude Code writes. It writes them beside a plugin it loads from a watched
+# folder, so this loads a copy of zg headless for one short haiku turn.
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+copy=$(mktemp -d "${TMPDIR:-/tmp}/zg-vendor.XXXXXX")
+trap 'rm -rf "$copy"' EXIT
+
+cp -R .claude-plugin hooks src "$copy/"
+rm -rf "$copy/.claude-plugin/types"
+
+(cd "$copy" && CLAUDE_CODE_PLUGIN_DIR_WATCH=1 claude -p --model haiku \
+  --plugin-dir "$copy" "Reply with just: ok" >/dev/null)
+
+types="$copy/.claude-plugin/types"
+for module in claude-code claude-code-tools; do
+  [ -f "$types/$module/index.d.ts" ] || {
+    echo "update-vendor-deps: Claude Code wrote no $module types" >&2
+    exit 1
+  }
+  mkdir -p "vendor/$module"
+  cp "$types/$module/index.d.ts" "vendor/$module/index.d.ts"
+done
+
+head -n 1 vendor/claude-code/index.d.ts

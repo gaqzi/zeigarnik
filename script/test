@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Usage: script/test [unit|wiring|eval|all]
+#
+# With no layer, runs the free tests: typecheck, lint, the domain core and
+# the mod wiring. Formats the code first, or on CI (CI set) checks the
+# formatting instead. `eval` costs tokens and takes minutes; `all` runs every
+# layer, cheapest first, and stops at the first that fails (zg-564).
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+usage() {
+  echo "usage: script/test [unit|wiring|eval|all]" >&2
+  exit 2
+}
+
+layer=${1:-free}
+[ $# -le 1 ] || usage
+
+step() {
+  printf '\n━━ %s\n\n' "$1"
+}
+
+# claude plugin test runs every test under a plugin folder, and follows no
+# symbolic links, so one layer runs from a copy holding only its tests.
+tree=$(mktemp -d "${TMPDIR:-/tmp}/zg-test.XXXXXX")
+trap 'rm -rf "$tree"' EXIT
+
+new_tree() {
+  rm -rf "${tree:?}"/* "$tree"/.claude-plugin
+  mkdir -p "$tree/.claude-plugin"
+  cp .claude-plugin/plugin.json "$tree/.claude-plugin/"
+}
+
+unit() {
+  step "Domain core"
+  new_tree
+  mkdir -p "$tree/hooks" "$tree/src"
+  echo '{ "modules": ["./register.ts"] }' >"$tree/hooks/hooks.json"
+  echo 'export const register = () => {}' >"$tree/hooks/register.ts"
+  cp -R src/core "$tree/src/core"
+  claude plugin test "$tree"
+}
+
+wiring() {
+  step "Mod wiring"
+  new_tree
+  cp -R hooks src "$tree/"
+  find "$tree/src/core" -name '*.test.ts*' -delete
+  claude plugin test "$tree"
+}
+
+static() {
+  if [ -n "${CI:-}" ]; then
+    step "Formatting"
+    node_modules/.bin/biome format .
+  else
+    step "Format"
+    script/fmt
+  fi
+  step "Typecheck"
+  vendored=$(head -n 1 vendor/claude-code/index.d.ts | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+  installed=$(claude --version | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+  if [ "$vendored" != "$installed" ]; then
+    echo "warning: vendor/ has Claude Code $vendored's mod API, $installed is installed: run script/update-vendor-deps"
+  fi
+  node_modules/.bin/tsc -p .
+  echo "ok"
+  step "Lint"
+  node_modules/.bin/biome lint .
+}
+
+eval_layer() {
+  step "Evals (costs tokens)"
+  # A case lists the tools it needs; zg's own still need granting here.
+  claude plugin eval . --trust-plugin --no-publish --allow-tools 'mcp__zg__*'
+}
+
+case "$layer" in
+  free) static; unit; wiring ;;
+  unit) unit ;;
+  wiring) wiring ;;
+  eval) eval_layer ;;
+  all) static; unit; wiring; eval_layer ;;
+  *) usage ;;
+esac

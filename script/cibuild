@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Usage: script/cibuild
+#
+# What CI runs: the free tests, checking formatting instead of fixing it.
+# Evals cost tokens, so CI doesn't run them (zg-564).
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+script/bootstrap
+CI=${CI:-true} script/test

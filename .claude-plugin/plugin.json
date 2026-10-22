@@ -1,0 +1,5 @@
+{
+  "name": "zg",
+  "version": "0.1.0",
+  "description": "Gives a chat session a goal and numbered open items, and drives it to a close with a handoff"
+}

@@ -5,3 +5,12 @@
 .beads-credential-key
 .beads/proxieddb/
 *.gate.lock*
+
+# Node
+node_modules/
+
+# Written by Claude Code when it loads the plugin from this folder
+.claude-plugin/types/
+
+# claude plugin eval results
+evals/results/

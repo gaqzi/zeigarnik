@@ -38,7 +38,7 @@ The [Ovsiankina effect](https://en.wikipedia.org/wiki/Ovsiankina_effect), the
 urge to get back to something that got interrupted, is probably a more
 accurate fit. But Zeigarnik is easier to spell and work with :P
 
-`zg` for short: `/zg:goal`, `/zg:close`, and bead IDs like `zg-12`.
+`zg` for short: `/zg:open`, `/zg:close`, and bead IDs like `zg-a1b`.
 
 ## What a session looks like
 
@@ -84,7 +84,7 @@ adds.
 **Open.**
 
 ```
-> /goal Pick our end-of-May beach holiday. Family wants: Europe, sea at
+> /zg:open Pick our end-of-May beach holiday. Family wants: Europe, sea at
   least 18°C, sunny, good bars nearby.
 ```
 
@@ -159,7 +159,7 @@ changed since T2 (C5 added); the Greek village fails C5. Pending: your pick."
 **Close.**
 
 ```
-> /close
+> /zg:close
 ```
 
 Claude confirms that G is achieved and lists anything still open for you to
@@ -196,11 +196,11 @@ Copy, `/clear`, paste, and the next session starts focused.
                                  it needs
 ```
 
-1. **Open**: state the goal (`/goal`), or let Claude propose one from your
+1. **Open**: state the goal (`/zg:open`), or let Claude propose one from your
    first message and confirm it.
 2. **Iterate**: each exchange moves several threads toward closing: deciding,
    clarifying, exploring. Claude tracks them; you steer.
-3. **Close**: `/close`. Confirm the goal's outcome, close every open item, and
+3. **Close**: `/zg:close`. Confirm the goal's outcome, close every open item, and
    capture actions, decisions and findings in your tracking system.
 4. **Handoff**: the smallest message that starts the next session well. Copy
    it, `/clear`, paste.
@@ -224,9 +224,9 @@ at a glance what kind of thing it is.
 
 ### Session
 
-One Claude Code conversation from `/goal` to `/close`. Everything below lives
-inside a session. Only the handoff and what was captured into your tracking
-carry over to the next one.
+One Claude Code conversation from `/zg:open` to `/zg:close`. Everything below
+lives inside a session. Only the handoff and what was captured into your
+tracking carry over to the next one.
 
 ### Goal
 
@@ -248,7 +248,7 @@ reach it descends from it, so each goal has its own tree.
   - **at close**: the origin is updated with the result: closed if the goal
     was achieved, otherwise updated with what happened and why
   - **at capture**: new items created in your tracking link back to the
-    origin ("discovered from zg-12"), where the tracker supports links
+    origin ("discovered from zg-a1b"), where the tracker supports links
 - **One open goal at a time.** That is the target that keeps a session on
   track, but goals change as you learn:
   - **Revised**: the goal is reworded as understanding improves. Like
@@ -271,8 +271,9 @@ An ongoing conversation that we are looking to close. It might be a yes/no
 question, a long exploration, or a sub-topic of one.
 
 - Has exactly one **parent** (the goal, or another thread).
-- Has a **history**: the messages that belong to it, so you can reread the
-  details later.
+- Has a **history**: what you and Claude said about it, word for word, so you
+  can reread later how it was settled. Claude's side is the part of each reply
+  that addresses the thread.
 - Closes with an **outcome**: a short summary of what was learned or settled,
   which rolls up into the parent.
 - States:
@@ -328,13 +329,18 @@ exploring, not a failure.
 ### Decision
 
 A recorded choice: what was decided, why (citing criteria where there are
-any), and what it replaces.
+any), and what it replaces. It keeps your words of agreement as you said
+them, hedges included ("fine for now, we can change it later").
 
 - Usually the answer to a question. It can also stand alone, as a realization
   along the way ("transfers must be short").
 - States: `decided` | `superseded` (a later decision replaced it) |
   `reopened`.
 - Belongs to the thread where it was made.
+- Scope: `session` (it only guides the rest of this session's work) or
+  `lasting` (later work must respect it). You choose with Claude at close:
+  lasting decisions are captured into your tracking, session ones go only in
+  the handoff.
 
 ### Action
 
@@ -373,21 +379,23 @@ session-local ones.
 ## Rules
 
 These always hold. The plugin enforces them, and they are the backbone of the
-tests.
+tests. Anything that would break one is refused, with the reason and how to
+fix it.
 
-1. Every item except a goal has exactly one parent. Parents form a tree
-   rooted at a goal.
-2. A thread can only be `resolved` once all of its children are `resolved` or
-   `cancelled`.
-3. `resolved` requires an outcome. `cancelled` keeps its reason, if one was
-   given.
-4. Every decision belongs to a thread. A decision on a question resolves it.
-5. Criteria apply to the thread they are attached to and all of its
-   descendants.
-6. Anything exported (an action, a decision, a finding) carries its external
-   reference.
-7. Only one goal is `open` at a time.
-8. A session can only close when no goal, thread or action is `open`.
+- **One parent.** Every item except a goal has exactly one parent. Parents
+  form a tree rooted at a goal.
+- **Children close first.** A thread can only be `resolved` once all of its
+  children are `resolved` or `cancelled`.
+- **Closing says how.** `resolved` requires an outcome. `cancelled` keeps its
+  reason, if one was given.
+- **Decisions belong to a thread.** A decision on a question resolves it.
+- **Criteria flow down.** Criteria apply to the thread they are attached to
+  and all of its descendants.
+- **Exports keep their reference.** Anything exported (an action, a decision,
+  a finding) carries its external reference.
+- **One open goal.** Only one goal is `open` at a time.
+- **Close only when nothing is open.** A session can only close when no goal,
+  thread or action is `open`.
 
 ## How Claude behaves
 
@@ -449,22 +457,24 @@ goal. Nothing is left hanging.
 
 | You want to | Do |
 |---|---|
-| Start a session | `/goal <text>`, or accept Claude's proposed goal |
+| Start a session | `/zg:open <text>`, or accept Claude's proposed goal |
 | See the structure | the pane (toggle with `/threads`) |
 | Reply to a thread | `T4: …` in chat, or type in the pane |
 | Reply to several | several `T4:` blocks in one message |
 | Merge, nest or cancel threads | in the pane, or `T4–T7 merge T5`, `T5 under T2`, `T4 cancel` in chat |
-| Change the goal | `/goal <text>` again; Claude asks whether it's a revision or a replacement |
+| Change the goal | `/zg:open <text>` again; Claude asks whether it's a revision or a replacement |
 | Revisit a thread | select it in the pane, or `T4` alone; Claude recaps |
 | See a thread's history | expand it in the pane |
 | See what's new | ✦ marks threads created since your last reply |
-| Close the session | `/close` |
+| Close the session | `/zg:close` |
 
 ## Configuration
 
 | Option | Default | What it does |
 |---|---|---|
-| `sink` | none | How to talk to your tracking: a command template or the name of a skill. It captures actions, decisions and findings at close, linking them to the goal's origin, and marks the origin in progress at open and updates it at close. Without one, everything is listed in the handoff for you to file yourself. |
+| `sink` | the handoff | Where captured items go, in plain words: "issues and lasting decisions go to bd as beads". At close, Claude files each item with the tools it already uses for your tracker, and zg records the reference it gets back. The sink also says how to mark the goal's origin in progress at open and update it at close. With no sink, the handoff lists everything for you to file yourself. |
+| `nudge_at` | 100k tokens | Session size at which Claude suggests closing |
+| `push_at` | 150k tokens | Session size at which Claude presses to close |
 
 ## Experiments
 
@@ -499,144 +509,13 @@ deliberately.
 - **Replacing Claude's own todo list.** Claude still plans its own work steps
   there. Actions are commitments, not steps.
 
-## Open questions
+## How it's built
 
-- **Compaction.** After compaction, how much of the structure is re-injected
-  into Claude's context so it keeps tagging correctly? Probably the open
-  threads, the criteria, and recent decisions.
-- **A session file.** Should the tool write the structure to a file beside the
-  session as it goes, in one well-defined format (XML, JSON, Markdown)? The
-  same file could be what is re-injected after compaction, what a "files on
-  disk" sink exports, and a way to review a session without Claude's
-  transcript around it. If the design is event-sourced (see
-  [Design questions](#design-questions)), this file is the event log.
-- **Recognising replies.** Is `T4:` at the start of a line enough, or do we
-  need a fenced or quoted form for multi-paragraph replies?
-- **Display surfaces.** Terminal first; how much of the pane do we promise on
-  Desktop?
-- **What gets captured.** Actions, clearly. Which decisions and findings go to
-  the sink, and in what shape, so your tracking keeps the important context
-  without becoming a transcript dump?
+zeigarnik is a Claude Code mod written in TypeScript. How it works inside,
+and how to work on it, is in [docs/](docs/): [the design](docs/design.md),
+[development](docs/development.md) and [the decisions](docs/decisions.md)
+behind them.
 
-## Development
-
-This is a Claude Code mod (a plugin with a hooks module) written in
-TypeScript.
-
-### Testing
-
-There are three layers. Most of the logic should live in the first.
-
-| Layer | What it covers | How |
-|---|---|---|
-| **Domain core** | State machines, the [rules](#rules), propagation candidates, building the handoff | Pure TypeScript functions. Plain unit tests, TDD. No Claude involved. |
-| **Mod wiring** | Tool calls updating state, the pane rendering, buttons and inputs, parsing `T4:` replies on submit | `claude plugin test` runs `*.test.ts` against the real engine. It fakes tool calls and prompt submits, mounts the pane on the terminal and desktop surfaces, presses buttons, types input and reads state. |
-| **Model behaviour** | Whether Claude actually opens threads at the right grain, propagates (each direction on its own), recaps, checks the goal and steers | Not unit-testable. Evals: scripted conversations run headless and scored against a rubric. This is where tool descriptions and standing instructions are tuned. `claude plugin eval` may fit; not yet investigated. |
-
-### Design questions
-
-To settle before or during slice 1, in the question format from
-[Thread](#thread).
-
-```
-Question: Should the domain core be event-sourced?
-   Decision: open; settle before slice 1
-   Criteria:
-     - replay: rebuild any session, or any point in it, from its record
-     - views: the conclusions alone (pane, handoff, re-injection after
-       compaction) and the full story (history, review) from the same data
-     - testability: rules expressed as given these events, when this
-       command, then these events (or a refusal)
-     - simplicity: as little machinery as the plugin needs
-   Options:
-     1. Event-sourced, CQRS-style
-        Every change is an event: a reply touching a thread, a thread
-        created, merged, nested or resolved, a criterion revised, a
-        decision made. Current state is a projection of the events. The
-        pane, the handoff and the re-injection after compaction are other
-        projections. Tool calls and replies are the commands.
-        + history comes for free; only the full view has to care about it
-        + replay comes for free: debugging, review, and eval fixtures
-        + given/when/then tests fit the rules directly
-        - more machinery: an event schema, projections, schema versioning
-        - the aggregate boundary needs thought: rule 2 spans a parent and
-          its children, and propagation crosses threads, so the aggregate
-          is probably the goal's tree, not a single thread
-     2. Current state plus a history list
-        Store the tree as it is now, and append to each thread's history.
-        + simplest to start with
-        - replay and point-in-time views have to be added later
-        - history and state can drift apart
-   Leaning: option 1, if the event schema stays small. Pure functions from
-   events to state are also the cheapest thing to TDD.
-```
-
-### Slices
-
-Rough slices, in build order. Each one should be usable on its own and come
-with tests at every layer it touches.
-
-0. **Test harness.** All three layers run, each with one trivial test: a unit
-   test runner for the domain core, `claude plugin test` against an empty mod,
-   and an eval runner that plays one scripted conversation headless and scores
-   it. Nothing else gets built before this works.
-1. **Walking skeleton.** `/goal`, actions recorded through a tool and shown in
-   the pane, `/close` with its checklist, and a handoff printed at the end.
-2. **Threads.** Creating, merging, nesting, resolving and
-   cancelling; the parent tree; outcomes; parsing `T4:` replies; the thread tree
-   in the pane; re-injecting the structure after compaction.
-3. **Questions, criteria and decisions.** Options, criteria with revisions,
-   standalone decisions, and the question overview.
-4. **Propagation and recaps.** All three propagation directions, recap on
-   return, goal checks, steering toward closing. Mostly model behaviour, so
-   mostly evals.
-5. **Capture.** The configurable sink, exported references, and which
-   decisions and findings get captured.
-6. **Experiments.** Related links, reviewed after real use.
-
-## Later
-
-### Next goals
-
-Goals for the sessions after this one, in order. Each one becomes the goal of
-a session of its own.
-
-1. **Create the slice beads.** Turn [Slices](#slices) and the testing setup
-   into beads: an epic, with one bead per slice. Reference: this README.
-
-### Questions
-
-These need evidence from the slices above before they can be decided. They
-use the question format from [Thread](#thread).
-
-```
-Question: Should propagation checks run outside the main conversation?
-   Decision: open; decide after the slice 4 evals
-   Criteria:
-     - misses: how many up/down/across effects go unnoticed
-     - cost: tokens and latency per check
-     - freshness: whether the check sees the conversation as it is now
-     - context: how much it adds to the main conversation
-   Options:
-     1. Inline (the slice 4 default)
-        Claude does the checks itself, within its normal replies.
-        + no extra calls; always current
-        - competes for attention with the reply; grows the context
-     2. Forked checks
-        Each check is one question over the session's own transcript
-        ($.model.fork), e.g. "given new criterion C5, which open threads
-        and decisions does it affect?" The answer goes to the plugin, not
-        into the conversation, and the plugin turns it into proposals in
-        the pane.
-        + cheap: reuses the conversation's prompt cache
-        + focused; adds nothing to the main context
-        - no tools: can only judge from what has already been said
-     3. Subagents per exploration
-        Each exploration lives in its own subagent, so a change flowing
-        down re-runs the exploration instead of only flagging it.
-        + may catch more than a fork; can use tools
-        - far more expensive
-        - each subagent's view falls behind the main conversation
-   How to decide: run the slice 4 evals with each option and compare
-   misses against cost.
-```
+It isn't released yet, and does little so far: a pane that says there is no
+goal yet. To try it from a clone, run `script/bootstrap`, then start Claude Code
+with `claude --plugin-dir .` in the clone.

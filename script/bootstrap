@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Usage: script/bootstrap
+#
+# Installs what zg's scripts and tests need: bd and jq (Homebrew), Node
+# (asdf, from .tool-versions) and the npm dependencies (zg-4nn).
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+BD_MIN=1.3.1
+JQ_MIN=1.7
+
+fail() {
+  echo "bootstrap: $*" >&2
+  exit 1
+}
+
+# True when version $1 is at least $2.
+at_least() {
+  [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -n 1)" = "$2" ]
+}
+
+need() {
+  local tool=$1 min=$2 version
+  if ! command -v "$tool" >/dev/null; then
+    command -v brew >/dev/null ||
+      fail "$tool is missing and Homebrew isn't available to install it: see https://brew.sh"
+    echo "Installing $tool with Homebrew"
+    brew install "$tool"
+  fi
+  version=$("$tool" --version | grep -Eo '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n 1)
+  at_least "$version" "$min" ||
+    fail "$tool $version is installed, zg needs $min or newer: brew upgrade $tool"
+}
+
+need bd "$BD_MIN"
+need jq "$JQ_MIN"
+
+command -v asdf >/dev/null ||
+  fail "asdf is missing; zg installs Node with it: see https://asdf-vm.com"
+command -v claude >/dev/null ||
+  fail "claude is missing; tests run with claude plugin test: see https://code.claude.com"
+
+asdf plugin list | grep -qx nodejs || asdf plugin add nodejs
+asdf install
+
+npm ci

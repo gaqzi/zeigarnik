@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Usage: script/fmt
+#
+# Formats the code and JSON with Biome; biome.json says which files.
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+node_modules/.bin/biome format --write .
