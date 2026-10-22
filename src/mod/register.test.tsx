@@ -67,12 +67,15 @@ test('the next prompt adds the origin to the title, once', async ($, on) => {
   expect(answers).toEqual([{ sessionTitle: 'zg-abc Pick a holiday' }, {}])
 })
 
+// The kit can't list commands ($.command.list is undefined), so
+// commands/copy-handoff.md is checked only by hand.
 const COPY = {
-  command: 'zg-copy-handoff',
+  command: 'zg:copy-handoff',
   args: '',
   origin: { kind: 'composer' },
   presentation: { isFullscreen: true, columns: 120 },
 } as const
+
 const CLEAR = {
   reason: 'clear',
   sessionId: 's1',
@@ -128,7 +131,7 @@ test('a refused command goes back as an error and is added to the trace', async 
   })
 })
 
-test('the handoff is returned to Claude, and /zg-copy-handoff copies it', async ($, on) => {
+test('the handoff is returned to Claude, and /zg:copy-handoff copies it', async ($, on) => {
   const world = host(on, { [LOG]: log(finished) })
   await $.session.start(START)
 
@@ -138,30 +141,32 @@ test('the handoff is returned to Claude, and /zg-copy-handoff copies it', async 
     decisions: [],
     references: [],
   })
-  const { text: copy } = await $.command.run(COPY)
+  const copy = await $.command.run(COPY)
 
   expect({ written, copy, copied: world.copied }).toEqual({
     written: {
       result:
-        'Goal: Book the flights\nTo file by hand:\n  - Action: Check school dates\n\nShow the human this handoff verbatim. /zg-copy-handoff copies it, to paste after /clear.',
+        'Goal: Book the flights\nTo file by hand:\n  - Action: Check school dates\n\nShow the human this handoff verbatim. /zg:copy-handoff copies it, to paste after /clear.',
     },
-    copy: 'Copied the handoff: /clear, then paste it.',
+    copy: { text: 'Copied the handoff: /clear, then paste it.' },
     copied: [
       'Goal: Book the flights\nTo file by hand:\n  - Action: Check school dates',
     ],
   })
 })
 
-test('/zg-copy-handoff says how to write one when there is none', async ($, on) => {
+test('/zg:copy-handoff says how to write one when there is none', async ($, on) => {
   host(on, { [LOG]: log(finished) })
   await $.session.start(START)
 
-  const { text } = await $.command.run(COPY)
+  const answer = await $.command.run(COPY)
 
-  expect(text).toBe('No handoff yet: /zg:close closes the goal and writes it.')
+  expect(answer).toEqual({
+    text: 'No handoff yet: /zg:close closes the goal and writes it.',
+  })
 })
 
-test('/zg-copy-handoff shows the handoff when it cannot copy', async ($, on) => {
+test('/zg:copy-handoff shows the handoff when it cannot copy', async ($, on) => {
   host(
     on,
     { [LOG]: log([...finished, a.handoffWritten()]) },
@@ -172,11 +177,11 @@ test('/zg-copy-handoff shows the handoff when it cannot copy', async ($, on) => 
   )
   await $.session.start(START)
 
-  const { text } = await $.command.run(COPY)
+  const answer = await $.command.run(COPY)
 
-  expect(text).toBe(
-    "Couldn't copy the handoff (no-clipboard). Here it is:\n\nGoal: Book the flights\nTo file by hand:\n  - Action: Check school dates",
-  )
+  expect(answer).toEqual({
+    text: "Couldn't copy the handoff (no-clipboard). Here it is:\n\nGoal: Book the flights\nTo file by hand:\n  - Action: Check school dates",
+  })
 })
 
 const BRIEF =

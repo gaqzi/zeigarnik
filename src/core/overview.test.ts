@@ -36,7 +36,7 @@ test('the full view ends with the handoff once it is written', () => {
   expect(fullView(state)).toBe(
     [
       '✗ G Pick a holiday · failed: nowhere meets every criterion',
-      'Handoff written: /zg-copy-handoff copies it.',
+      'Handoff written: /zg:copy-handoff copies it.',
       '',
       'Goal: Book the flights',
     ].join('\n'),

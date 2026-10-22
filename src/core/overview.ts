@@ -59,7 +59,7 @@ export const overview = (state: State): Line[] => {
       : [
           {
             text: state.handoffStands
-              ? 'Handoff written: /zg-copy-handoff copies it.'
+              ? 'Handoff written: /zg:copy-handoff copies it.'
               : 'Handoff out of date: write it again.',
             isOpen: false,
           },

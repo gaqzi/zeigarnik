@@ -11,7 +11,7 @@ import { HANDOFF_TOOL, SHOW, specs, toCommand } from './tools.ts'
 // passes a refusal back to whoever sent it (zg-su8).
 
 const PANE = 'zg'
-const COPY = 'zg-copy-handoff'
+const COPY = 'zg:copy-handoff'
 
 const OPENING = /^\/zg:open\s+(\S[\s\S]*)$/
 const titled = { plugin: 'zg', key: 'titled' } as const
@@ -23,10 +23,6 @@ export const register: Register = on => {
     for (const spec of specs) {
       await $.tool.register({ ...spec, isDeferred: false })
     }
-    await $.command.register({
-      name: COPY,
-      description: "Copies zg's handoff, to paste after /clear",
-    })
     await show($, await current($, await $.session.id()))
     void $.ui.open({ id: PANE, title: 'zg' })
 
@@ -47,7 +43,7 @@ export const register: Register = on => {
     }
     if (tool === HANDOFF_TOOL) {
       return {
-        result: `${handoff(ran.state)}\n\nShow the human this handoff verbatim. /zg-copy-handoff copies it, to paste after /clear.`,
+        result: `${handoff(ran.state)}\n\nShow the human this handoff verbatim. /zg:copy-handoff copies it, to paste after /clear.`,
       }
     }
 

@@ -203,7 +203,7 @@ Copy, `/clear`, paste, and the next session starts focused.
 3. **Close**: `/zg:close`. Confirm the goal's outcome, close every open item, and
    capture actions, decisions and findings in your tracking system.
 4. **Handoff**: the smallest message that starts the next session well.
-   `/zg-copy-handoff` copies it; `/clear`, paste. The session counts as closed
+   `/zg:copy-handoff` copies it; `/clear`, paste. The session counts as closed
    once it is cleared after its handoff; quitting part-way leaves it open to
    resume.
 
@@ -470,7 +470,7 @@ goal. Nothing is left hanging.
 | See a thread's history | expand it in the pane |
 | See what's new | ✦ marks threads created since your last reply |
 | Close the session | `/zg:close` |
-| Copy the handoff, to paste after `/clear` | `/zg-copy-handoff` |
+| Copy the handoff, to paste after `/clear` | `/zg:copy-handoff` |
 
 ## Configuration
 

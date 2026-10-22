@@ -50,8 +50,10 @@ press in the pane  ┘                │
   overview from `$.state`, which only mirrors the log.
 - `/zg:open` and `/zg:close` are prompt commands (`commands/`), so Claude
   records through the tools; `/zg:open`'s typed line also reaches
-  UserPromptSubmit, where the session is renamed. `/zg-copy-handoff` is
-  answered by zg itself and costs no model turn.
+  UserPromptSubmit, where the session is renamed. `/zg:copy-handoff` is a
+  plugin command file answered by zg's command.run hook, so it costs no
+  model turn and, hidden from the model (`disable-model-invocation`), no
+  fixed context.
 - The handoff can be written again until it's right. The session closes
   (SessionClosed) on a `/clear` while a handoff stands; quitting leaves it
   open to resume.
