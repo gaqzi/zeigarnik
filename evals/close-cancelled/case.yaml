@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: close-cancelled
-description: The human cancels the goal and its action without giving a reason. Claude records their words only, invents no reason, writes the handoff right away in the human's voice, and shows it.
+description: The human cancels the goal and its action in chat and declines to say why. Claude records the goal's cancellation with source chat and their words as the reason, invents no reason of its own, writes no agreement, writes the handoff right away in the human's voice, and shows it.
 tags: [guardrail, close]
 runs: 5
 context:
@@ -12,20 +12,25 @@ execution:
   allowed_tools:
     [mcp__zg__close_goal, mcp__zg__action, mcp__zg__handoff, mcp__zg__show]
 graders:
-  - name: goal-cancelled-with-the-humans-words
+  - name: goal-cancelled-from-chat-with-the-humans-words-as-the-reason
     type: regex
     target: {source: file, path: .zg/sessions/84484670-58dd-40e4-b4e5-f49aca88d32b.jsonl}
-    pattern: '"type":"GoalCancelled"[^\n]*"agreement":"[^"]*(Cancel it|[Rr]ather not say why)'
+    pattern: '"type":"GoalCancelled"(?=[^\n]*"source":"chat")(?=[^\n]*"reason":"(Cancel it, and the venue too\.( I''d rather not say why\.)?|I''d rather not say why\.|Cancel it)")'
     match: contains
+  - name: no-agreement
+    type: regex
+    target: {source: file, path: .zg/sessions/84484670-58dd-40e4-b4e5-f49aca88d32b.jsonl}
+    pattern: '"agreement"'
+    match: not_contains
   - name: action-cancelled
     type: regex
     target: {source: file, path: .zg/sessions/84484670-58dd-40e4-b4e5-f49aca88d32b.jsonl}
-    pattern: '"type":"ActionCancelled"[^\n]*"action":"A1"'
+    pattern: '"type":"ActionCancelled"(?=[^\n]*"action":"A1")(?=[^\n]*"source":"chat")'
     match: contains
-  - name: cancels-carry-no-reason
+  - name: cancel-reasons-are-the-humans-words-never-invented
     type: regex
     target: {source: file, path: .zg/sessions/84484670-58dd-40e4-b4e5-f49aca88d32b.jsonl}
-    pattern: '"type":"(GoalCancelled|ActionCancelled)"[^\n]*"reason"'
+    pattern: '"type":"(GoalCancelled|ActionCancelled)"[^\n]*"reason":"(?!(Cancel it, and the venue too\.( I''d rather not say why\.)?|I''d rather not say why\.|Cancel it)")'
     match: not_contains
   - name: handoff-written
     type: regex

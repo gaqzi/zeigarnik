@@ -1,7 +1,7 @@
 import type { RegisteredToolSpec } from 'claude-code'
 
 import type { Command } from '../core/commands.ts'
-import { HANDOFF } from '../core/events.ts'
+import { HANDOFF, type Source } from '../core/events.ts'
 
 // The tools Claude records the session through. Each call becomes one
 // command (zg-kux); what the descriptions say reaches the model on every
@@ -11,6 +11,8 @@ export const HANDOFF_TOOL = 'handoff'
 export const SHOW = 'show'
 
 const text = { type: 'string' } as const
+
+const SOURCES: Source[] = ['chat', 'dialog']
 
 export const specs: RegisteredToolSpec[] = [
   {
@@ -26,7 +28,7 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: 'action',
     description:
-      "Records an action: something that must happen for the work to count as finished, not a step of yours. add one as soon as it comes up, from either side. done or cancel only when the human says so; ask why when cancelling, but don't insist. reason: their own words, never yours; none for a bare pick. export lists it in the handoff for the human to file, or records ref where you filed it.",
+      "Records an action: something that must happen for the work to count as finished, not a step of yours. add one as soon as it comes up, from either side. done or cancel only when the human says so; ask why when cancelling, but don't insist. source (not for add): where the human's answer came from, dialog if picked in the dialog, chat if typed. reason: whatever words they gave about how it ended, verbatim (a dialog note, or what they typed, even 'drop it'), never yours; leave it out only for a bare pick. export lists it in the handoff for the human to file, or records ref where you filed it.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -35,6 +37,7 @@ export const specs: RegisteredToolSpec[] = [
         text: { ...text, description: 'add: the action' },
         owner: { enum: ['human', 'claude'] },
         quote: { ...text, description: 'add: the words it came from' },
+        source: { enum: SOURCES },
         reason: text,
         ref: text,
       },
@@ -44,15 +47,15 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: 'close_goal',
     description:
-      "Closes the open goal once the human says how it ended: achieved, failed (with why) or cancelled. agreement: their own words verbatim, or 'picked: <label>' for a bare dialog pick (' — <note>' after it when they added one). reason: their own words, never yours; none for a bare pick.",
+      "Closes the open goal once the human says how it ended: achieved, failed (with why) or cancelled. source: where the human's answer came from, dialog if picked in the dialog, chat if typed. reason: whatever words they gave about how it ended, verbatim (a dialog note, or what they typed, even 'drop it' or 'I'd rather not say'), never yours; leave it out only for a bare pick.",
     inputSchema: {
       type: 'object',
       properties: {
         as: { enum: ['achieved', 'failed', 'cancelled'] },
-        agreement: text,
+        source: { enum: SOURCES },
         reason: text,
       },
-      required: ['as', 'agreement'],
+      required: ['as', 'source'],
     },
   },
   {
@@ -94,6 +97,9 @@ const str = (input: Input, key: string) =>
 const optional = (key: string, value: string | undefined) =>
   value === undefined ? {} : { [key]: value }
 
+const sourceOf = (input: Input) =>
+  SOURCES.find(source => source === input.source)
+
 const ACTION_OPS = ['add', 'done', 'cancel', 'export']
 const GOAL_ENDS = ['achieved', 'failed', 'cancelled'] as const
 
@@ -134,38 +140,42 @@ export const toCommand = (
       }
       const id = str(input, 'id')
       if (id === undefined) return { missing: `${op} needs the id.` }
-      if (op === 'done') return { type: 'CompleteAction', at, action: id }
+      const source = sourceOf(input)
+      if (source === undefined) {
+        return { missing: `${op} needs source: chat or dialog.` }
+      }
+      const reason = optional('reason', str(input, 'reason'))
+      if (op === 'done') {
+        return { type: 'CompleteAction', at, action: id, source, ...reason }
+      }
       if (op === 'cancel') {
-        return {
-          type: 'CancelAction',
-          at,
-          action: id,
-          ...optional('reason', str(input, 'reason')),
-        }
+        return { type: 'CancelAction', at, action: id, source, ...reason }
       }
       return {
         type: 'ExportAction',
         at,
         action: id,
         ref: str(input, 'ref') ?? HANDOFF,
+        source,
+        ...reason,
       }
     }
     case 'close_goal': {
       const as = GOAL_ENDS.find(end => end === input.as)
-      const agreement = str(input, 'agreement')
+      const source = sourceOf(input)
       if (as === undefined) {
         return {
           missing: 'close_goal needs as: achieved, failed or cancelled.',
         }
       }
-      if (agreement === undefined) {
-        return { missing: "close_goal needs the human's words as agreement." }
+      if (source === undefined) {
+        return { missing: 'close_goal needs source: chat or dialog.' }
       }
       return {
         type: 'CloseGoal',
         at,
         as,
-        agreement,
+        source,
         ...optional('reason', str(input, 'reason')),
       }
     }

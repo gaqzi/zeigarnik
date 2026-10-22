@@ -59,6 +59,9 @@ const onAction = (
   return 'refusal' in found ? found : { events: [event(found.action)] }
 }
 
+const ofReason = (reason: string | undefined) =>
+  reason === undefined ? {} : { reason }
+
 const decideOpen = (state: State, command: Command & { type: 'OpenGoal' }) => {
   const open = openGoal(state)
   if (open !== undefined) {
@@ -117,11 +120,19 @@ const decideCloseGoal = (
       'Nothing to close: write the handoff, or the human opens a goal with /zg:open.',
     )
   }
-  const { at, agreement, reason } = command
+  const { at, source, reason } = command
   switch (command.as) {
     case 'achieved':
       return {
-        events: [{ type: 'GoalAchieved', at, goal: goal.id, agreement }],
+        events: [
+          {
+            type: 'GoalAchieved',
+            at,
+            goal: goal.id,
+            source,
+            ...ofReason(reason),
+          },
+        ],
       }
     case 'failed':
       if (reason === undefined || reason.trim() === '') {
@@ -131,7 +142,7 @@ const decideCloseGoal = (
         )
       }
       return {
-        events: [{ type: 'GoalFailed', at, goal: goal.id, agreement, reason }],
+        events: [{ type: 'GoalFailed', at, goal: goal.id, source, reason }],
       }
     case 'cancelled':
       return {
@@ -140,8 +151,8 @@ const decideCloseGoal = (
             type: 'GoalCancelled',
             at,
             goal: goal.id,
-            agreement,
-            ...(reason === undefined ? {} : { reason }),
+            source,
+            ...ofReason(reason),
           },
         ],
       }
@@ -205,13 +216,16 @@ export const decide = (state: State, command: Command): Decided => {
         type: 'ActionDone',
         at,
         action: action.id,
+        source: command.source,
+        ...ofReason(command.reason),
       }))
     case 'CancelAction':
       return onAction(state, command.action, action => ({
         type: 'ActionCancelled',
         at,
         action: action.id,
-        ...(command.reason === undefined ? {} : { reason: command.reason }),
+        source: command.source,
+        ...ofReason(command.reason),
       }))
     case 'ExportAction':
       if (command.ref.trim() === '') {
@@ -225,6 +239,8 @@ export const decide = (state: State, command: Command): Decided => {
         at,
         action: action.id,
         ref: command.ref,
+        source: command.source,
+        ...ofReason(command.reason),
       }))
     case 'CloseGoal':
       return decideCloseGoal(state, command)

@@ -1,0 +1,39 @@
+schema_version: "1.1"
+name: close-dialog-pick
+description: /zg:close's dialog was answered G Failed with a note, A1 Done with none. A headless run can't answer a dialog, so history.jsonl ends at the dialog's answer, spliced in as Claude Code writes an answered AskUserQuestion (zg-bam.14 says how), and the prompt only lets Claude go on. Claude records the pick as the event's type, the note verbatim as the reason with source dialog, no reason for the bare pick, and writes the handoff.
+tags: [guardrail, close]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: Continue.
+  max_turns: 8
+  allowed_tools:
+    [mcp__zg__close_goal, mcp__zg__action, mcp__zg__handoff, mcp__zg__show]
+graders:
+  - name: goal-failed-with-the-note-from-the-dialog
+    type: regex
+    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    pattern: '"type":"GoalFailed"(?=[^\n]*"source":"dialog")(?=[^\n]*"reason":"captain hammer threw a car at my head")'
+    match: contains
+  - name: action-done-from-the-dialog
+    type: regex
+    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    pattern: '"type":"ActionDone"(?=[^\n]*"action":"A1")(?=[^\n]*"source":"dialog")'
+    match: contains
+  - name: a-bare-pick-carries-no-reason
+    type: regex
+    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    pattern: '"type":"ActionDone"[^\n]*"reason"'
+    match: not_contains
+  - name: no-agreement
+    type: regex
+    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    pattern: '"agreement"'
+    match: not_contains
+  - name: handoff-written
+    type: regex
+    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    pattern: '"type":"HandoffWritten"'
+    match: contains

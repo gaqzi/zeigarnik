@@ -92,7 +92,10 @@ const happened = (state: State, event: Event): State => {
         ],
       }
     case 'ActionDone':
-      return setAction(state, event.action, { status: 'done' })
+      return setAction(state, event.action, {
+        status: 'done',
+        ...ofReason(event.reason),
+      })
     case 'ActionCancelled':
       return setAction(state, event.action, {
         status: 'cancelled',
@@ -102,9 +105,13 @@ const happened = (state: State, event: Event): State => {
       return setAction(state, event.action, {
         status: 'exported',
         ref: event.ref,
+        ...ofReason(event.reason),
       })
     case 'GoalAchieved':
-      return setGoal(state, event.goal, { status: 'achieved' })
+      return setGoal(state, event.goal, {
+        status: 'achieved',
+        ...ofReason(event.reason),
+      })
     case 'GoalFailed':
       return setGoal(state, event.goal, {
         status: 'failed',

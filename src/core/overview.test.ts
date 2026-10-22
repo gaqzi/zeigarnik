@@ -30,6 +30,27 @@ test('shows each goal and action with how it stands', () => {
   ])
 })
 
+test('shows the reason after any outcome that has one', () => {
+  const state = fold([
+    a.goalOpened(),
+    a.actionAdded({ action: 'A2', text: 'Book flights', owner: 'claude' }),
+    a.actionAdded({ action: 'A4', text: 'Pack' }),
+    a.actionDone({ action: 'A2', reason: 'shipped' }),
+    a.actionExported({ action: 'A4', reason: 'for the next trip' }),
+    a.goalAchieved({ reason: 'good enough' }),
+  ])
+
+  expect(overview(state)).toEqual([
+    { text: '✓ G Pick a holiday · achieved: good enough', isOpen: false },
+    { text: 'Actions', isOpen: false },
+    { text: '✓ A2 Book flights (claude) · shipped', isOpen: false },
+    {
+      text: '→ A4 Pack (human) → handoff · for the next trip',
+      isOpen: false,
+    },
+  ])
+})
+
 test('the full view ends with the handoff once it is written', () => {
   const state = fold([a.goalOpened(), a.goalFailed(), a.handoffWritten()])
 

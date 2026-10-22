@@ -4,6 +4,9 @@
 
 export type Owner = 'human' | 'claude'
 
+// Where the human's words came from: picked in the dialog, or typed in chat.
+export type Source = 'chat' | 'dialog'
+
 export type Decision = { text: string; lasting: boolean }
 
 // The default sink: an action exported here is listed in the handoff for the
@@ -26,22 +29,47 @@ export type Event =
       owner: Owner
       quote?: string
     }
-  | { type: 'ActionDone'; at: string; action: string }
-  | { type: 'ActionCancelled'; at: string; action: string; reason?: string }
-  | { type: 'ActionExported'; at: string; action: string; ref: string }
-  | { type: 'GoalAchieved'; at: string; goal: string; agreement: string }
+  | {
+      type: 'ActionDone'
+      at: string
+      action: string
+      source: Source
+      reason?: string
+    }
+  | {
+      type: 'ActionCancelled'
+      at: string
+      action: string
+      source: Source
+      reason?: string
+    }
+  | {
+      type: 'ActionExported'
+      at: string
+      action: string
+      ref: string
+      source: Source
+      reason?: string
+    }
+  | {
+      type: 'GoalAchieved'
+      at: string
+      goal: string
+      source: Source
+      reason?: string
+    }
   | {
       type: 'GoalFailed'
       at: string
       goal: string
-      agreement: string
+      source: Source
       reason: string
     }
   | {
       type: 'GoalCancelled'
       at: string
       goal: string
-      agreement: string
+      source: Source
       reason?: string
     }
   | {

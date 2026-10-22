@@ -14,12 +14,12 @@ execution:
 graders:
   - name: handoff-written-again
     type: regex
-    target: {source: file, path: .zg/sessions/84484670-58dd-40e4-b4e5-f49aca88d32b.jsonl}
+    target: {source: file, path: .zg/sessions/f203c932-501d-406b-bbb8-16278dbec18e.jsonl}
     pattern: '"type":"HandoffWritten"'
     match: count:2
   - name: a-rewritten-handoff-has-the-new-next-goal
     type: regex
-    target: {source: file, path: .zg/sessions/84484670-58dd-40e4-b4e5-f49aca88d32b.jsonl}
+    target: {source: file, path: .zg/sessions/f203c932-501d-406b-bbb8-16278dbec18e.jsonl}
     pattern: '"type":"HandoffWritten"[^\n]*"next":"[^"]*[Dd]inner'
     match: contains
   - name: rewritten-handoff-is-shown

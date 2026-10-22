@@ -1,0 +1,34 @@
+schema_version: "1.1"
+name: close-dialog-bare-failed
+description: /zg:close's dialog was answered G Failed and A1 Done, both without a note. A headless run can't answer a dialog, so history.jsonl ends at the dialog's answer, spliced in as Claude Code writes an answered AskUserQuestion (zg-bam.14 says how). The human's next message says why the goal failed, and Claude records it verbatim as the reason with source chat. The step where Claude asks why in chat is not exercised, since the prompt is the reason itself; that step is left to the human's check of the spliced transcripts.
+tags: [guardrail, close]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: the venue fell through and nothing else fits the dates
+  max_turns: 8
+  allowed_tools:
+    [mcp__zg__close_goal, mcp__zg__action, mcp__zg__handoff, mcp__zg__show]
+graders:
+  - name: goal-failed-with-their-words-from-chat
+    type: regex
+    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    pattern: '"type":"GoalFailed"(?=[^\n]*"source":"chat")(?=[^\n]*"reason":"the venue fell through and nothing else fits the dates")'
+    match: contains
+  - name: action-done-from-the-dialog
+    type: regex
+    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    pattern: '"type":"ActionDone"(?=[^\n]*"action":"A1")(?=[^\n]*"source":"dialog")'
+    match: contains
+  - name: failed-goal-is-not-recorded-from-the-dialog
+    type: regex
+    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    pattern: '"type":"GoalFailed"[^\n]*"source":"dialog"'
+    match: not_contains
+  - name: no-agreement
+    type: regex
+    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    pattern: '"agreement"'
+    match: not_contains

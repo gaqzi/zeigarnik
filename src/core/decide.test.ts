@@ -79,31 +79,38 @@ describe('one parent', () => {
 })
 
 describe('an open action', () => {
-  test('is done when the human says so', () => {
-    expect(when(goalAndAction, a.completeAction())).toEqual({
-      events: [a.actionDone()],
-    })
-  })
-
-  test('is cancelled with the reason, when one was given', () => {
-    expect(
-      when(goalAndAction, a.cancelAction({ reason: 'school decides' })),
-    ).toEqual({
-      events: [a.actionCancelled({ reason: 'school decides' })],
-    })
-  })
-
-  test('is cancelled without a reason, when none was given', () => {
-    expect(when(goalAndAction, a.cancelAction())).toEqual({
+  const ends: { name: string; command: Command; events: Event[] }[] = [
+    {
+      name: 'is done from a dialog pick, with no words',
+      command: a.completeAction({ source: 'dialog' }),
+      events: [a.actionDone({ source: 'dialog' })],
+    },
+    {
+      name: 'is done in chat, with the human’s words as the reason',
+      command: a.completeAction({ reason: 'shipped' }),
+      events: [a.actionDone({ reason: 'shipped' })],
+    },
+    {
+      name: 'is cancelled from a dialog note, which is the reason',
+      command: a.cancelAction({ source: 'dialog', reason: 'moot' }),
+      events: [a.actionCancelled({ source: 'dialog', reason: 'moot' })],
+    },
+    {
+      name: 'is cancelled without a reason, when none was given',
+      command: a.cancelAction(),
       events: [a.actionCancelled()],
+    },
+    {
+      name: 'is exported to the handoff from a dialog pick',
+      command: a.exportAction({ source: 'dialog' }),
+      events: [a.actionExported({ source: 'dialog' })],
+    },
+  ]
+  for (const { name, command, events } of ends) {
+    test(name, () => {
+      expect(when(goalAndAction, command)).toEqual({ events })
     })
-  })
-
-  test('is exported to the handoff for the human to file', () => {
-    expect(when(goalAndAction, a.exportAction())).toEqual({
-      events: [a.actionExported()],
-    })
-  })
+  }
 
   const refused: {
     name: string
@@ -144,19 +151,29 @@ describe('an open action', () => {
 describe('closing says how', () => {
   const closes: { name: string; command: Command; events: Event[] }[] = [
     {
-      name: 'an achieved goal keeps the human’s words',
-      command: a.closeGoal(),
-      events: [a.goalAchieved()],
+      name: 'an achieved goal records a dialog pick, with no words',
+      command: a.closeGoal({ source: 'dialog' }),
+      events: [a.goalAchieved({ source: 'dialog' })],
+    },
+    {
+      name: 'an achieved goal keeps a dialog note as the reason',
+      command: a.closeGoal({ source: 'dialog', reason: 'good enough' }),
+      events: [a.goalAchieved({ source: 'dialog', reason: 'good enough' })],
     },
     {
       name: 'a failed goal keeps why',
-      command: a.failGoal(),
-      events: [a.goalFailed()],
+      command: a.failGoal({ reason: 'no venue fits' }),
+      events: [a.goalFailed({ reason: 'no venue fits' })],
     },
     {
-      name: 'a cancelled goal keeps its reason, when one was given',
-      command: a.cancelGoal({ reason: 'too early' }),
-      events: [a.goalCancelled({ reason: 'too early' })],
+      name: 'a cancelled goal keeps the words typed in chat',
+      command: a.cancelGoal({ reason: 'Cancel it' }),
+      events: [a.goalCancelled({ reason: 'Cancel it' })],
+    },
+    {
+      name: 'a cancelled goal has no reason when none was given',
+      command: a.cancelGoal(),
+      events: [a.goalCancelled()],
     },
   ]
   for (const { name, command, events } of closes) {
@@ -177,6 +194,15 @@ describe('closing says how', () => {
     expect(when([a.goalOpened()], a.failGoal({ reason: undefined }))).toEqual(
       failedWithout,
     )
+  })
+
+  test('refuses a failed goal picked in a dialog without the human’s words', () => {
+    expect(
+      when(
+        [a.goalOpened()],
+        a.failGoal({ source: 'dialog', reason: undefined }),
+      ),
+    ).toEqual(failedWithout)
   })
 
   test('refuses a failed goal with a blank reason', () => {

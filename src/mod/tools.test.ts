@@ -17,11 +17,12 @@ const open = (overrides: Input = {}) => ({
 const action = (overrides: Input = {}) => ({
   op: 'done',
   id: 'A1',
+  source: 'chat',
   ...overrides,
 })
 const closeGoal = (overrides: Input = {}) => ({
   as: 'achieved',
-  agreement: 'yes, done',
+  source: 'chat',
   ...overrides,
 })
 const handoff = (overrides: Input = {}) => ({
@@ -74,10 +75,28 @@ describe('a tool call becomes', () => {
       command: a.completeAction(),
     },
     {
-      name: 'an action cancelled, with its reason',
+      name: 'an action completed from a dialog pick, with no reason',
       tool: 'action',
-      input: action({ op: 'cancel', reason: 'school decides' }),
-      command: a.cancelAction({ reason: 'school decides' }),
+      input: action({ source: 'dialog' }),
+      command: a.completeAction({ source: 'dialog' }),
+    },
+    {
+      name: 'an action completed in chat, with the human’s words as the reason',
+      tool: 'action',
+      input: action({ reason: 'shipped' }),
+      command: a.completeAction({ reason: 'shipped' }),
+    },
+    {
+      name: 'an action completed, a blank reason counting as none',
+      tool: 'action',
+      input: action({ reason: '  ' }),
+      command: a.completeAction(),
+    },
+    {
+      name: 'an action cancelled, with its source and reason',
+      tool: 'action',
+      input: action({ op: 'cancel', source: 'dialog', reason: 'moot' }),
+      command: a.cancelAction({ source: 'dialog', reason: 'moot' }),
     },
     {
       name: 'an action exported to the handoff when no ref is given',
@@ -86,16 +105,40 @@ describe('a tool call becomes', () => {
       command: a.exportAction(),
     },
     {
+      name: 'an action exported to the handoff from a dialog pick',
+      tool: 'action',
+      input: action({ op: 'export', source: 'dialog' }),
+      command: a.exportAction({ source: 'dialog' }),
+    },
+    {
       name: 'an action exported to where Claude filed it',
       tool: 'action',
       input: action({ op: 'export', ref: 'zg-x1y' }),
       command: a.exportAction({ ref: 'zg-x1y' }),
     },
     {
-      name: 'a goal closed',
+      name: 'a goal closed from a dialog pick, with no reason',
       tool: 'close_goal',
-      input: closeGoal({ as: 'failed', reason: 'too late' }),
-      command: a.closeGoal({ as: 'failed', reason: 'too late' }),
+      input: closeGoal({ source: 'dialog' }),
+      command: a.closeGoal({ source: 'dialog' }),
+    },
+    {
+      name: 'a goal closed from a dialog note, which is the reason',
+      tool: 'close_goal',
+      input: closeGoal({ source: 'dialog', reason: 'good enough' }),
+      command: a.closeGoal({ source: 'dialog', reason: 'good enough' }),
+    },
+    {
+      name: 'a goal closed with the words typed in chat',
+      tool: 'close_goal',
+      input: closeGoal({ as: 'cancelled', reason: 'Cancel it' }),
+      command: a.cancelGoal({ reason: 'Cancel it' }),
+    },
+    {
+      name: 'a goal failed with why',
+      tool: 'close_goal',
+      input: closeGoal({ as: 'failed', reason: 'no venue fits' }),
+      command: a.failGoal({ reason: 'no venue fits' }),
     },
     {
       name: 'a handoff written',
@@ -145,12 +188,6 @@ describe('a tool call missing what it needs is refused', () => {
         missing: 'close_goal needs as: achieved, failed or cancelled.',
       },
       {
-        name: "a goal closed without the human's words",
-        tool: 'close_goal',
-        input: closeGoal({ agreement: '' }),
-        missing: "close_goal needs the human's words as agreement.",
-      },
-      {
         name: 'a handoff without the next goal',
         tool: 'handoff',
         input: handoff({ next: '' }),
@@ -167,5 +204,50 @@ describe('a tool call missing what it needs is refused', () => {
     test(name, () => {
       expect(toCommand(tool, input, AT)).toEqual({ missing })
     })
+  }
+})
+
+describe('a tool call whose source is absent or not chat or dialog is refused', () => {
+  const calls: {
+    name: string
+    tool: string
+    input: (source: unknown) => Input
+    missing: string
+  }[] = [
+    {
+      name: 'a goal closed',
+      tool: 'close_goal',
+      input: source => closeGoal({ source }),
+      missing: 'close_goal needs source: chat or dialog.',
+    },
+    {
+      name: 'an action done',
+      tool: 'action',
+      input: source => action({ op: 'done', source }),
+      missing: 'done needs source: chat or dialog.',
+    },
+    {
+      name: 'an action cancelled',
+      tool: 'action',
+      input: source => action({ op: 'cancel', source }),
+      missing: 'cancel needs source: chat or dialog.',
+    },
+    {
+      name: 'an action exported',
+      tool: 'action',
+      input: source => action({ op: 'export', source }),
+      missing: 'export needs source: chat or dialog.',
+    },
+  ]
+  const sources = [
+    { how: 'absent', source: undefined },
+    { how: 'pane', source: 'pane' },
+  ]
+  for (const { name, tool, input, missing } of calls) {
+    for (const { how, source } of sources) {
+      test(`${name} with its source ${how}`, () => {
+        expect(toCommand(tool, input(source), AT)).toEqual({ missing })
+      })
+    }
   }
 })

@@ -1,4 +1,4 @@
-import type { Decision, Owner } from './events.ts'
+import type { Decision, Owner, Source } from './events.ts'
 
 // Every input becomes one of these, and decide checks it (zg-kux). What the
 // core needs from outside, such as the time, comes in the command.
@@ -14,14 +14,33 @@ export type Command =
       owner: Owner
       quote?: string
     }
-  | { type: 'CompleteAction'; at: string; action: string }
-  | { type: 'CancelAction'; at: string; action: string; reason?: string }
-  | { type: 'ExportAction'; at: string; action: string; ref: string }
+  | {
+      type: 'CompleteAction'
+      at: string
+      action: string
+      source: Source
+      reason?: string
+    }
+  | {
+      type: 'CancelAction'
+      at: string
+      action: string
+      source: Source
+      reason?: string
+    }
+  | {
+      type: 'ExportAction'
+      at: string
+      action: string
+      ref: string
+      source: Source
+      reason?: string
+    }
   | {
       type: 'CloseGoal'
       at: string
       as: GoalEnd
-      agreement: string
+      source: Source
       reason?: string
     }
   | {

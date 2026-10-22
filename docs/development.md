@@ -42,12 +42,28 @@ there. Scaffold scripts only run with `--scaffold`, which `script/test eval`
 passes since the cases are ours. A history holding a command's expansion
 goes stale when that command changes: re-record it then.
 
-To record one, in a scratch dir run
+To record one, make the directory fresh with
+`rm -rf /tmp/zg-eval && mkdir /tmp/zg-eval`, so nothing planted there (hooks,
+`.mcp.json`, `CLAUDE.md`) shapes a headless run, which skips the trust
+prompt. In it run
 `claude --plugin-dir <repo> -p --output-format json --allowedTools='mcp__zg__*' -- "<prompt>"`,
 and `--resume <session_id>` for each later turn. Copy
 `~/.claude/projects/<dir>/<id>.jsonl` to `history.jsonl`, keeping only the
-`user`, `assistant` and `custom-title` lines, and the scratch dir's
-`.zg/sessions/<id>.jsonl` to `log.jsonl`.
+`user`, `assistant` and `custom-title` lines, and `/tmp/zg-eval`'s
+`.zg/sessions/<id>.jsonl` to `log.jsonl`. Each transcript line keeps the
+directory as its `cwd`, on macOS as `/private/tmp/zg-eval`: rewrite it to
+`/tmp/zg-eval` before committing, so no local path or username lands in the
+repo.
+
+A headless run never offers AskUserQuestion, so a dialog's answer is spliced
+in (zg-bam.14): record up to the command that asks, cut `history.jsonl` after
+that command's expansion, and append an `assistant` line holding the
+AskUserQuestion `tool_use` and a `user` line holding its answered
+`tool_result`, written as Claude Code writes one: content `The user answered:
+"<question>"="<label>" selected preview:\n<preview> notes: <note>, …` plus its
+closing sentence, and `toolUseResult` with `questions`, `answers` and
+`annotations`. Copy the format from a real answered dialog under
+`~/.claude/projects`. The case's prompt then lets Claude go on.
 
 ### Eval pass bars
 

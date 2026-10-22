@@ -35,11 +35,8 @@ const goalLine = (goal: Goal): Line => {
 
 const actionLine = (action: Action): Line => {
   const end =
-    action.status === 'exported'
-      ? ` → ${action.ref}`
-      : action.reason === undefined
-        ? ''
-        : ` · ${action.reason}`
+    (action.status === 'exported' ? ` → ${action.ref}` : '') +
+    (action.reason === undefined ? '' : ` · ${action.reason}`)
 
   return {
     text: `${ACTION_MARK[action.status]} ${action.id} ${action.text} (${action.owner})${end}`,
