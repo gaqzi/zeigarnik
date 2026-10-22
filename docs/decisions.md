@@ -586,8 +586,6 @@ The main context stays small and on coordination; each piece of work runs narrow
 
 Agreed in chat on 2026-10-22, closing slice 1 (zg-bam.2). The human: 'when it comes to code I want this main session to drive the work but hand off creating tests (to ensure red), writing code (to go green), and then review the whole thing to subagents. I want to use the model that's reasonable for the task at hand (haiku, sonnet, opus). The final review you should review in turn and suggest what is worth taking in and not ... The whole goal is to try and keep the test/code pieces outside of the main loop and really narrow, and to then keep us focused on coordinating.' Then, on the drafted wording and model split: 'the workflow decision sounds good'.
 
-## To decide
-
 ### zg-tjb: Every event that decides or ends something keeps the human's words verbatim as its reason, with their source
 
 Areas: core
