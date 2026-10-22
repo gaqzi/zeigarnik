@@ -26,6 +26,7 @@ zg-pvk.
 | zg-8ex | Events grow without breaking: old logs always replay, a changed event gets a frozen version, and every event change needs the human's sign-off | core, storage |
 | zg-n27 | zg's context budget: 3k fixed (cap 5k), checked by a test that counts what zg registers; a small per-turn index, 2k for re-injection; meter thresholds are configurable | evals, mod |
 | zg-51d | Code work: the main session coordinates; subagents write the tests (red), write the code (green) and review | project |
+| zg-tjb | Every event that decides or ends something keeps the human's words verbatim as its reason, with their source | core |
 
 ## Accepted
 
@@ -584,6 +585,57 @@ The main context stays small and on coordination; each piece of work runs narrow
 #### How it was decided
 
 Agreed in chat on 2026-10-22, closing slice 1 (zg-bam.2). The human: 'when it comes to code I want this main session to drive the work but hand off creating tests (to ensure red), writing code (to go green), and then review the whole thing to subagents. I want to use the model that's reasonable for the task at hand (haiku, sonnet, opus). The final review you should review in turn and suggest what is worth taking in and not ... The whole goal is to try and keep the test/code pieces outside of the main loop and really narrow, and to then keep us focused on coordinating.' Then, on the drafted wording and model split: 'the workflow decision sounds good'.
+
+## To decide
+
+### zg-tjb: Every event that decides or ends something keeps the human's words verbatim as its reason, with their source
+
+Areas: core
+
+#### Context
+
+Understanding a session later means seeing why the human decided or ended
+something, in their words (zg-tjz). The close dialog showed the gap: a pick
+from options Claude wrote was logged as `picked: <label>`, repeating the
+event type, and the human's note was copied into both agreement and reason.
+Picks will also come from the pane, and decisions on threads will arrive the
+same ways.
+
+#### Decision
+
+Every event that records a decision or an end (a goal, action or thread
+closing; a decision made) keeps the human's words verbatim as its `reason`
+when they gave any, and `source`, where the words came from: `chat`,
+`dialog`, later `pane`. One field for the words, whatever the channel.
+
+Options Claude wrote add nothing of their own: the outcome picked is the
+event's type, the label is not recorded, and a note on a pick is the reason.
+A bare pick records the source alone.
+
+Every outcome may carry words, success included: the human is never
+constrained. Where a rule needs a why (a failed goal), it is checked on the
+presence of a reason.
+
+#### Rationale
+
+The words are what explain the decision, so they appear once, unedited, in
+the same place on every such event. The type already says what was decided.
+The source tells a reader how much context surrounds the words: a dialog note
+is all there was, chat words have the conversation around them.
+
+#### Alternatives Considered
+
+- Recording the picked label (`picked: <label>`): repeats the type, and the
+  note appeared twice.
+- Two fields, a quote for the words and a reason for the why: the same words
+  land twice, or Claude edits the sentence to split them.
+- A dialog raised by zg's own code via `$.ui.ask`: deterministic and
+  wiring-testable, but the API returns only a label or free text, so the
+  human's note is lost.
+
+#### How it was decided
+
+Agreed in chat on 2026-10-22, defining zg-bam.14 after zg-bam.11's manual check. The human: 'I want the option that is the types that we have decided on to be set as the type of decision, and then the reason'; 'in most cases it's covered by the event type so it's not really helpful. in those cases, we only really care about the reason given (if any)'; 'it doesn't hurt to have a reason for successes either ... don't constrain the human if they want it'; on a separate quote and reason: 'if we end up having two fields for a very similar thing, then I'd rather have one field and a type, or source (source: picker|chat, for example)'; on the name: 'I prefer reason over quote ... because reason is why we ended up with this event'. Still version 0: 'we haven't even shipped this thing'. Scope: 'keep it open to let the user express themselves as much as possible', dialog and pane alike. Open until the human accepts it.
 
 ## Superseded or withdrawn
 
