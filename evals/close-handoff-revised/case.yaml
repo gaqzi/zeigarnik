@@ -1,0 +1,29 @@
+schema_version: "1.1"
+name: close-handoff-revised
+description: /zg:close has written the handoff after a cancelled goal. The human pushes back with a different next goal, and Claude writes the handoff again with it, once (the log count is exact, so count:2 means exactly one new write and catches stray extras).
+tags: [guardrail, close]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: Make the next goal planning a team dinner in April instead.
+  max_turns: 8
+  allowed_tools:
+    [mcp__zg__close_goal, mcp__zg__action, mcp__zg__handoff, mcp__zg__show]
+graders:
+  - name: handoff-written-again
+    type: regex
+    target: {source: file, path: .zg/sessions/84484670-58dd-40e4-b4e5-f49aca88d32b.jsonl}
+    pattern: '"type":"HandoffWritten"'
+    match: count:2
+  - name: a-rewritten-handoff-has-the-new-next-goal
+    type: regex
+    target: {source: file, path: .zg/sessions/84484670-58dd-40e4-b4e5-f49aca88d32b.jsonl}
+    pattern: '"type":"HandoffWritten"[^\n]*"next":"[^"]*[Dd]inner'
+    match: contains
+  - name: rewritten-handoff-is-shown
+    type: regex
+    target: last_message
+    pattern: '[Dd]inner'
+    match: contains

@@ -162,8 +162,8 @@ changed since T2 (C5 added); the Greek village fails C5. Pending: your pick."
 > /zg:close
 ```
 
-Claude confirms that G is achieved and lists anything still open for you to
-resolve or cancel. Then it captures what needs to outlive the session:
+Claude asks, in one dialog, how G ended and what becomes of each item still
+open. Then it captures what needs to outlive the session:
 
 ```
 Capture (sink: reminders)

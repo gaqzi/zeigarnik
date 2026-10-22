@@ -16,9 +16,10 @@ The human is closing this zg session. $ARGUMENTS
    A bare pick of failed has no reason yet: before recording the goal, ask
    why in chat and record their answer as the reason. Their words are any
    reason, never an option's label or description.
-3. Always propose the handoff, also when the goal failed or was cancelled: the
-   next session's one goal (after such an end it can be a conversation about
-   what to do instead), the decisions it must respect (lasting or not), and
-   the few references it needs. Propose it as they'll paste it, their message
-   to the next session: "I" is them, "you" is Claude. Once they agree, write
-   it with mcp__zg__handoff and show what it returns verbatim.
+3. Then write the handoff with mcp__zg__handoff right away, also when the
+   goal failed or was cancelled, without asking first: the next session's one
+   goal (after such an end it can be a conversation about what to do
+   instead), the decisions it must respect (lasting or not), and the few
+   references it needs. Write it as they'll paste it, their message to the
+   next session: "I" is them, "you" is Claude. Show what it returns verbatim;
+   when they want changes, write it again.
