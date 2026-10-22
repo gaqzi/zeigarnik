@@ -104,7 +104,7 @@ The repo follows
 | `script/bootstrap` | Install the toolchain (asdf), bd and jq (Homebrew), and dependencies |
 | `script/fmt` | Format the code |
 | `script/test` | The free tests: typecheck, lint, domain core and mod wiring. Runs `script/fmt` first unless `CI` is set; on CI it checks formatting instead |
-| `script/test unit` / `wiring` / `eval` | One layer. `eval` costs tokens and takes minutes, so it's run on big changes and before closing a slice. It grants zg's own tools (`--allow-tools 'mcp__zg__*'`) and keeps the report local |
+| `script/test unit` / `wiring` / `eval` | One layer. `eval` costs tokens and takes minutes, so it's run on big changes and before closing a slice. It grants zg's own tools (`--allow-tools 'mcp__zg__*'`), judges with sonnet (haiku failed correct answers) and keeps the report local |
 | `script/test all` | Every layer, cheapest and fastest first, stopping at the first gate that fails |
 | `script/cibuild` | What CI runs |
 | `script/update-vendor-deps` | Replace the mod API declarations in `vendor/` with the installed Claude Code's. Spends one short haiku turn |

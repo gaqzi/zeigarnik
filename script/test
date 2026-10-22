@@ -77,7 +77,9 @@ eval_layer() {
   rm -f evals/*/????????-????-????-????-????????????.jsonl
   # A case lists the tools it needs; zg's own still need granting here.
   # --scaffold: cases seed a recorded session's log; they are ours, so trusted.
-  claude plugin eval . --trust-plugin --scaffold --no-publish --allow-tools 'mcp__zg__*'
+  # A haiku judge failed correct handoff proposals; sonnet didn't, in 10 runs.
+  claude plugin eval . --trust-plugin --scaffold --judge-model sonnet --no-publish \
+    --allow-tools 'mcp__zg__*'
 }
 
 case "$layer" in
