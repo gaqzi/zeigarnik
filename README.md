@@ -1,4 +1,4 @@
-# threaded
+# zeigarnik
 
 A Claude Code plugin that gives a chat session structure and drives it to a
 conclusion.
@@ -22,9 +22,23 @@ in a transcript, and each session ends with a clean start for the next.
 
 In a long session you are often juggling five conversations in one message.
 It's easy to lose one, hard to remember the details after lunch, and the
-default is to keep chatting in an ever-growing context. `threaded` makes the
+default is to keep chatting in an ever-growing context. `zeigarnik` makes the
 open loops visible, keeps the reasoning behind each decision, and makes "we're
 done here" an explicit, checkable step.
+
+## The name
+
+It's named after the [Zeigarnik effect](https://en.wikipedia.org/wiki/Zeigarnik_effect),
+which says, roughly, that the things you've started but not finished keep
+putting pressure on your mind. That's what this is about: dealing with all
+those open things, so they get closed and stop nagging. I don't claim it does
+anything clever with the effect, I just liked the name.
+
+The [Ovsiankina effect](https://en.wikipedia.org/wiki/Ovsiankina_effect), the
+urge to get back to something that got interrupted, is probably a more
+accurate fit. But Zeigarnik is easier to spell and work with :P
+
+`zg` for short: `/zg:goal`, `/zg:close`, and bead IDs like `zg-12`.
 
 ## What a session looks like
 
@@ -77,7 +91,7 @@ adds.
 Claude records the goal and its criteria, and the pane opens beside the chat:
 
 ```
-┌ threaded ─────────────────────────────┐
+┌ zg ───────────────────────────────────┐
 │ G  Pick our end-of-May beach holiday  │
 │    threads 0 open · 0 closed          │
 │    C1 Europe  C2 sea≥18°C  C3 sunny   │
@@ -114,7 +128,7 @@ and two Spanish options fail C5. It proposes updating T2 and T3 in one batch.
 You confirm once.
 
 ```
-┌ threaded ─────────────────────────────┐
+┌ zg ───────────────────────────────────┐
 │ G  Pick our end-of-May beach holiday  │
 │    threads 4 open · 2 closed          │
 │    C1 Europe  C2 sea≥18°C  C3 sunny   │
@@ -234,7 +248,7 @@ reach it descends from it, so each goal has its own tree.
   - **at close**: the origin is updated with the result: closed if the goal
     was achieved, otherwise updated with what happened and why
   - **at capture**: new items created in your tracking link back to the
-    origin ("discovered from th-12"), where the tracker supports links
+    origin ("discovered from zg-12"), where the tracker supports links
 - **One open goal at a time.** That is the target that keeps a session on
   track, but goals change as you learn:
   - **Revised**: the goal is reworded as understanding improves. Like
@@ -587,12 +601,7 @@ with tests at every layer it touches.
 Goals for the sessions after this one, in order. Each one becomes the goal of
 a session of its own.
 
-1. **Name the project.** "threaded" was a working title from before we knew
-   what this is: a session driver toward a goal, more than a thread tracker.
-   The name goes into the plugin manifest, the repository and the bead
-   prefix, so it comes first. Reference: this README, for what the project
-   does.
-2. **Create the slice beads.** Turn [Slices](#slices) and the testing setup
+1. **Create the slice beads.** Turn [Slices](#slices) and the testing setup
    into beads: an epic, with one bead per slice. Reference: this README.
 
 ### Questions
