@@ -25,6 +25,7 @@ zg-pvk.
 | zg-t5d | The README describes the tool for its users; docs/ explains how it's built | docs |
 | zg-8ex | Events grow without breaking: old logs always replay, a changed event gets a frozen version, and every event change needs the human's sign-off | core, storage |
 | zg-n27 | zg's context budget: 3k fixed (cap 5k), checked by a test that counts what zg registers; a small per-turn index, 2k for re-injection; meter thresholds are configurable | evals, mod |
+| zg-51d | Code work: the main session coordinates; subagents write the tests (red), write the code (green) and review | project |
 
 ## Accepted
 
@@ -553,6 +554,36 @@ enough for a budget with a hard cap well above it.
 #### How it was decided
 
 Agreed in chat on 2026-10-22, closing slice 0 (zg-bam.1), after it found claude plugin details can't see runtime-registered tools. The human: 'sure, put that in, if I understand it correct we're at 31 tokens which is significantly less than 3k then by default when loaded right now? (and I guess it'll grow a bit as we then add functionality?)'. The budget itself is unchanged from zg-o17.
+
+### zg-51d: Code work: the main session coordinates; subagents write the tests (red), write the code (green) and review
+
+Areas: project
+
+#### Context
+
+Writing tests and code in the main session fills its context with file dumps and test runs, and pulls it away from the design and the conversation with the human. A review written by the code's author is anchored on it.
+
+#### Decision
+
+For code work, the main session coordinates and doesn't write code or tests itself. It hands each step to a subagent with a narrow brief, at a model that fits the task:
+- Red: the test-writer agent (sonnet) loads /workflow:test-design and writes failing tests for the behaviour and rules named in the brief. The main session checks they fail for the right reason.
+- Green: the implementer agent (sonnet, or haiku for mechanical changes) makes those tests pass without changing them.
+- Review: the reviewer agent (opus) reads the whole change without the main session's conclusions. The main session sorts its findings into what is worth taking and what isn't, with why, and the human decides.
+The agents are defined in .claude/agents/, with their models in the frontmatter.
+
+#### Rationale
+
+The main context stays small and on coordination; each piece of work runs narrow and with fresh context; a review not anchored on the author finds more (slice 1's review found an untested pure function and a fallback that recorded an outcome the human never agreed to).
+
+#### Alternatives Considered
+
+- The main session writes tests and code: its context fills with detail, and it reviews its own work.
+- One subagent does red, green and review together: it grades its own work, and the main session sees only the end result.
+- Choosing the model per task each time: drifts; pinning it in the agent definitions makes it part of the setup.
+
+#### How it was decided
+
+Agreed in chat on 2026-10-22, closing slice 1 (zg-bam.2). The human: 'when it comes to code I want this main session to drive the work but hand off creating tests (to ensure red), writing code (to go green), and then review the whole thing to subagents. I want to use the model that's reasonable for the task at hand (haiku, sonnet, opus). The final review you should review in turn and suggest what is worth taking in and not ... The whole goal is to try and keep the test/code pieces outside of the main loop and really narrow, and to then keep us focused on coordinating.' Then, on the drafted wording and model split: 'the workflow decision sounds good'.
 
 ## Superseded or withdrawn
 

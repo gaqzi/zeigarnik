@@ -39,6 +39,8 @@ decision beads, rendered in [docs/decisions.md](docs/decisions.md).
   (zg-t5d).
 - Label a bead with the areas its work is about, not every directory it
   touches or reads (zg-nti).
+- For code, coordinate: `test-writer`, `implementer` and `reviewer` agents do
+  red, green and review (zg-51d).
 
 ## Conventions & Patterns
 
