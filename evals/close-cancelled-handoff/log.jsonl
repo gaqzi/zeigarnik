@@ -1,4 +1,4 @@
 {"type":"GoalOpened","at":"2026-10-22T18:54:16.739Z","goal":"G","text":"Plan our team offsite in March."}
 {"type":"ActionAdded","at":"2026-10-22T18:54:17.611Z","action":"A1","text":"Book the venue before Friday (2026-10-23) or lose the offer","owner":"human","quote":"I must book the venue before Friday or we lose the offer"}
-{"type":"GoalCancelled","at":"2026-10-22T20:24:10.793Z","goal":"G","agreement":"Cancel it, and the venue too. I'd rather not say why."}
-{"type":"ActionCancelled","at":"2026-10-22T20:24:11.145Z","action":"A1"}
+{"type":"ActionCancelled","at":"2026-10-22T20:29:44.003Z","action":"A1"}
+{"type":"GoalCancelled","at":"2026-10-22T20:29:44.463Z","goal":"G","agreement":"Cancel it, and the venue too. I'd rather not say why."}
