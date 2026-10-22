@@ -2,7 +2,8 @@
 
 All work is tracked in bd (beads). Lasting design constraints are also kept
 here, as decision beads. Don't use TodoWrite, TaskCreate or markdown TODO
-lists for tracking work.
+lists for tracking work. Memories go in bd too (`bd remember`, injected by
+`bd prime`), never in Claude's own memory: everyone on the project reads them.
 
 ## Starting work
 
