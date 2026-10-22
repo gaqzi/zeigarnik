@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# Usage: script/context <id> [--claim]
+#
+# Prints what an agent needs to start on a bead (zg-nti): the bead in full,
+# its epic's design, its dependencies, the index of accepted decisions for
+# its areas, and the path rules that apply. --claim claims the bead first.
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+. script/lib/areas.sh
+
+usage() {
+  echo "usage: script/context <id> [--claim]" >&2
+  exit 2
+}
+
+id=
+claim=
+for arg in "$@"; do
+  case "$arg" in
+    --claim) claim=1 ;;
+    -*) usage ;;
+    *) [ -z "$id" ] && id=$arg || usage ;;
+  esac
+done
+[ -n "$id" ] || usage
+
+section() {
+  printf '\n━━ %s\n\n' "$1"
+}
+
+if [ -n "$claim" ]; then
+  bd update "$id" --claim
+fi
+
+json=$(bd show "$id" --json)
+bd show "$id"
+
+parent=$(jq -r '.[0].parent // empty' <<<"$json")
+if [ -n "$parent" ]; then
+  section "Epic $parent: design"
+  jq -r --arg p "$parent" \
+    '.[0].dependencies[] | select(.id == $p) | .design // "(no design)"' <<<"$json"
+fi
+
+section "Dependencies"
+jq -r '
+  [.[0].dependencies // [] | .[] | select(.dependency_type != "parent-child")]
+  | if length == 0 then "(none)" else .[] |
+      "\(.id) [\(.status)] \(.title)"
+      + (if .close_reason then "\n  closed: \(.close_reason)" else "" end)
+    end' <<<"$json"
+
+areas=
+unknown=
+for a in $(jq -r '.[0].labels // [] | .[] | select(startswith("area:")) | ltrimstr("area:")' <<<"$json"); do
+  if is_area "$a"; then
+    areas="$areas $a"
+  else
+    unknown="$unknown area:$a"
+  fi
+done
+if [ -n "$unknown" ] || [ -z "$areas" ]; then
+  section "Areas"
+  [ -z "$unknown" ] || echo "Unknown area labels, ignored:$unknown"
+  [ -n "$areas" ] || echo "This bead has no valid area label."
+  echo "Label it with the areas its work is about ($AREAS):"
+  echo "bd update $id --add-label area:<area>, then rerun script/context."
+  [ -n "$areas" ] || exit 0
+fi
+
+load=$areas
+for a in $areas; do
+  case " $AREAS_WITH_CORE " in *" $a "*) load="core $load" ;; esac
+done
+load=$(printf '%s\n' $load | sort -u | tr '\n' ' ')
+
+section "Decisions for: $load"
+query="type=decision AND status=closed AND ("
+sep=
+for a in $load; do
+  query="$query${sep}label=area:$a"
+  sep=" OR "
+done
+query="$query)"
+bd query "$query" --all --limit 0 --json |
+  jq -r 'sort_by(.id)[] | select(.close_reason == "accepted") | "\(.id)  \(.title)"'
+
+rules=
+for a in $load; do
+  [ -f ".claude/rules/$a.md" ] && rules="$rules .claude/rules/$a.md"
+done
+for a in $areas; do
+  case " $AREAS_WITH_TESTS " in *" $a "*) rules="$rules .claude/rules/testing.md" ;; esac
+done
+for f in $(printf '%s\n' $rules | sort -u); do
+  [ -f "$f" ] || continue
+  section "Path rule: $f"
+  # Skip the paths frontmatter; only the guidance is useful here.
+  awk 'NR == 1 && /^---$/ { fm = 1; next } fm && /^---$/ { fm = 0; next }
+    !fm && (body || NF) { body = 1; print }' "$f"
+done
+
+printf '\nRead a decision in full, with its rationale: bd show <id>\n'

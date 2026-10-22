@@ -74,3 +74,5 @@ issue-prefix: "zg"
 export.auto: false
 dolt.shared-server: true
 dolt.auto-commit: "on"
+sync:
+  remote: "git+ssh://git@github.com/gaqzi/zeigarnik.git"
