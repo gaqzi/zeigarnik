@@ -202,8 +202,10 @@ Copy, `/clear`, paste, and the next session starts focused.
    clarifying, exploring. Claude tracks them; you steer.
 3. **Close**: `/zg:close`. Confirm the goal's outcome, close every open item, and
    capture actions, decisions and findings in your tracking system.
-4. **Handoff**: the smallest message that starts the next session well. Copy
-   it, `/clear`, paste.
+4. **Handoff**: the smallest message that starts the next session well.
+   `/zg-copy-handoff` copies it; `/clear`, paste. The session counts as closed
+   once it is cleared after its handoff; quitting part-way leaves it open to
+   resume.
 
 ## Concepts
 
@@ -467,6 +469,7 @@ goal. Nothing is left hanging.
 | See a thread's history | expand it in the pane |
 | See what's new | ✦ marks threads created since your last reply |
 | Close the session | `/zg:close` |
+| Copy the handoff, to paste after `/clear` | `/zg-copy-handoff` |
 
 ## Configuration
 
@@ -516,6 +519,10 @@ and how to work on it, is in [docs/](docs/): [the design](docs/design.md),
 [development](docs/development.md) and [the decisions](docs/decisions.md)
 behind them.
 
-It isn't released yet, and does little so far: a pane that says there is no
-goal yet. To try it from a clone, run `script/bootstrap`, then start Claude Code
-with `claude --plugin-dir .` in the clone.
+It isn't released yet. So far it covers the skeleton of the session loop:
+`/zg:open` with a goal, actions recorded as they come up and shown in the
+pane, `/zg:close` with the rules for closing, and a handoff that lists what
+to file by hand (there are no sinks yet). The goal and open actions come back
+after a compaction or a resume. Threads, decisions and criteria come next.
+To try it from a clone, run `script/bootstrap`, then start Claude Code with
+`claude --plugin-dir .` in the clone.

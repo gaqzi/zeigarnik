@@ -42,6 +42,22 @@ press in the pane  ┘                │
 - Events are domain facts that keep both sides of the conversation
   (zg-tjz), and grow without breaking (zg-8ex).
 
+## Where the session lives
+
+- The log: `.zg/sessions/<session-id>.jsonl`, rewritten on every change
+  (zg-r1g). Refusals: `.zg/sessions/<session-id>.refusals.jsonl` (zg-vgk).
+- Each command loads the log, folds it and decides; the pane draws the
+  overview from `$.state`, which only mirrors the log.
+- `/zg:open` and `/zg:close` are prompt commands (`commands/`), so Claude
+  records through the tools; `/zg:open`'s typed line also reaches
+  UserPromptSubmit, where the session is renamed. `/zg-copy-handoff` is
+  answered by zg itself and costs no model turn.
+- The handoff can be written again until it's right. The session closes
+  (SessionClosed) on a `/clear` while a handoff stands; quitting leaves it
+  open to resume.
+- After a compaction or a resume, SessionStart re-injects the brief view
+  (zg-zo2), within 2k tokens (zg-n27).
+
 ## An example
 
 The reply `T5: no, two hours with the kids is a no. Keep transfers under

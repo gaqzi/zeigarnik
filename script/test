@@ -30,6 +30,7 @@ new_tree() {
   rm -rf "${tree:?}"/* "$tree"/.claude-plugin
   mkdir -p "$tree/.claude-plugin"
   cp .claude-plugin/plugin.json "$tree/.claude-plugin/"
+  cp -R types "$tree/types"
 }
 
 unit() {
@@ -45,7 +46,7 @@ unit() {
 wiring() {
   step "Mod wiring"
   new_tree
-  cp -R hooks src "$tree/"
+  cp -R hooks src commands "$tree/"
   find "$tree/src/core" -name '*.test.ts*' -delete
   claude plugin test "$tree"
 }

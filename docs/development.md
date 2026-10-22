@@ -64,7 +64,11 @@ code and JSON, not Markdown. The scripts are bash and need `bd` and `jq`.
 
 The repo is the plugin: `.claude-plugin/plugin.json`, and `hooks/hooks.json`
 naming the hooks module `src/mod/register.tsx`, which must define `register`
-itself (a re-export is refused). `tsc` reads the mod API from `vendor/`: the
+itself (a re-export is refused). The engine follows `$` across an import
+only into a `function` declaration, and only spelled `$.noun.call(...)`, so
+a module outside `register.tsx` takes `$` itself, never `$.fs`; a `$.state`
+reference is a const in the file that reads it. `claude plugin validate .`
+says when one isn't. `tsc` reads the mod API from `vendor/`: the
 declarations Claude Code writes for its own build. The API is early access
 and changes between releases, so `script/test` warns when they were written
 by another version than the `claude` installed; `script/update-vendor-deps`
