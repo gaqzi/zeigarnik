@@ -241,7 +241,8 @@ reach it descends from it, so each goal has its own tree.
   - `cancelled`: we decided it isn't worth finishing, the same meaning as for
     threads and actions.
 - A failed or cancelled goal is a legitimate close. It records why, when a
-  reason is given, and still produces a handoff.
+  reason is given, in your own words, and still produces a handoff. After such
+  an end its next goal can be a conversation about what to do instead.
 - Has an optional **origin**: the external item it works on, such as a bead or
   ticket. A goal started from a handoff takes its origin from the handoff's
   references. When there is an origin, the session keeps it in step:

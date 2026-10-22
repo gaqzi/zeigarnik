@@ -23,12 +23,31 @@ from `claude-code/testing`; a domain core test just never touches the engine.
 so `script/test unit` and `wiring` run it on a temporary copy holding one
 layer's tests.
 
-Evals live in `evals/<case>/`: a `prompt.md` (one prompt per case; a longer
-conversation is a recorded transcript the case resumes) and `graders/*.md`.
-There are no custom-code graders: the event log is checked with a `regex`
-grader on the file's contents. Each run is a headless `claude -p` in a fresh
-temporary directory. Runs can't start inside Claude Code's Bash sandbox (they
-make directories in `/tmp`), so an agent runs `script/test eval` outside it.
+Evals live in `evals/<case>/`: a `prompt.md` and `graders/*.md`, or a
+`case.yaml` (schema_version "1.1") with the graders inline. There are no
+custom-code graders: the event log is checked with a `regex` grader on the
+file's contents. A case with a fixed session ID (a resumed transcript) names
+the log's path with `target: {source: file, path: .zg/sessions/<id>.jsonl}`;
+`record-action` reads the trace, since its ID is unknown. Each run is a
+headless `claude -p` in a fresh temporary directory. Runs can't start inside
+Claude Code's Bash sandbox (they make directories in `/tmp`), so an agent runs
+`script/test eval` outside it.
+
+A longer conversation is a recorded transcript, and only `case.yaml` can
+resume one: `context.history_file` goes to `claude --resume`, which keeps the
+session ID, and `execution.prompt` is the next human turn. zg's log lives at
+`.zg/sessions/<session-id>.jsonl`, so `context.scaffold_script` (bash, run in
+the workspace, `$(dirname "$0")` is the case dir) copies the recorded log
+there. Scaffold scripts only run with `--scaffold`, which `script/test eval`
+passes since the cases are ours. A history holding a command's expansion
+goes stale when that command changes: re-record it then.
+
+To record one, in a scratch dir run
+`claude --plugin-dir <repo> -p --output-format json --allowedTools='mcp__zg__*' -- "<prompt>"`,
+and `--resume <session_id>` for each later turn. Copy
+`~/.claude/projects/<dir>/<id>.jsonl` to `history.jsonl`, keeping only the
+`user`, `assistant` and `custom-title` lines, and the scratch dir's
+`.zg/sessions/<id>.jsonl` to `log.jsonl`.
 
 ### Eval pass bars
 

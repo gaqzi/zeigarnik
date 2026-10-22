@@ -204,6 +204,15 @@ describe('close only when nothing is open', () => {
     })
   })
 
+  test('the handoff is written after a cancelled goal and action', () => {
+    expect(
+      when(
+        [...goalAndAction, a.actionCancelled(), a.goalCancelled()],
+        a.writeHandoff(),
+      ),
+    ).toEqual({ events: [a.handoffWritten()] })
+  })
+
   test('a handoff can be written again, replacing the last', () => {
     expect(
       when(

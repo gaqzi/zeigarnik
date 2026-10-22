@@ -73,8 +73,11 @@ static() {
 
 eval_layer() {
   step "Evals (costs tokens)"
+  # Each run of a case resuming history.jsonl leaves its session beside it.
+  rm -f evals/*/????????-????-????-????-????????????.jsonl
   # A case lists the tools it needs; zg's own still need granting here.
-  claude plugin eval . --trust-plugin --no-publish --allow-tools 'mcp__zg__*'
+  # --scaffold: cases seed a recorded session's log; they are ours, so trusted.
+  claude plugin eval . --trust-plugin --scaffold --no-publish --allow-tools 'mcp__zg__*'
 }
 
 case "$layer" in

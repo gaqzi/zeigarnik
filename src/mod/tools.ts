@@ -26,7 +26,7 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: 'action',
     description:
-      "Records an action: something that must happen for the work to count as finished, not a step of yours. add one as soon as it comes up, from either side. done or cancel only when the human says so; ask why when cancelling, but don't insist. export lists it in the handoff for the human to file, or records ref where you filed it.",
+      "Records an action: something that must happen for the work to count as finished, not a step of yours. add one as soon as it comes up, from either side. done or cancel only when the human says so; ask why when cancelling, but don't insist. reason: their words, never yours. export lists it in the handoff for the human to file, or records ref where you filed it.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -44,7 +44,7 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: 'close_goal',
     description:
-      'Closes the open goal once the human says how it ended: achieved, failed (with why) or cancelled. agreement: their words, verbatim.',
+      'Closes the open goal once the human says how it ended: achieved, failed (with why) or cancelled. agreement and reason: their own words, verbatim; no reason if they gave none.',
     inputSchema: {
       type: 'object',
       properties: {
