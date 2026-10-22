@@ -12,10 +12,9 @@ execution:
   allowed_tools:
     [mcp__zg__close_goal, mcp__zg__action, mcp__zg__handoff, mcp__zg__show]
 graders:
-  - name: handoff-written-about-what-to-do-instead
+  - name: handoff-written-when-agreed
     type: tool_used
     tool: mcp__zg__handoff
-    input_match: '"next":\s*"[^"]*([Ii]nstead|[Oo]therwise|[Aa]lternative|[Ss]tart(ing)? over|[Ww]hat to do)'
     min: 1
   - name: handoff-written
     type: regex

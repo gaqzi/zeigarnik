@@ -5,13 +5,18 @@ argument-hint: [how it went]
 
 The human is closing this zg session. $ARGUMENTS
 
-1. Ask whether the goal is achieved, failed (and why) or cancelled, unless
-   they just said. Ask in chat, not with a question dialog, so they answer in
-   their own words. Record it with mcp__zg__close_goal and their words
-   verbatim; give no reason they didn't give.
-2. For each open action, ask whether it is done, cancelled, or to be filed;
-   record it with mcp__zg__action (export lists it in the handoff), with
-   their words as any reason.
+1. Ask whether the goal is achieved, failed or cancelled, unless they just
+   said. Ask with a question dialog whose options are only those three, each
+   with a preview of what zg records (e.g. `picked: Cancelled`); the preview
+   is what lets them press n to add a note. Record it with
+   mcp__zg__close_goal as its description says. A bare pick of failed has no
+   reason yet: ask why in chat and record their answer as the reason. Never
+   use an option's label or description as a reason.
+2. For each open action, ask whether it is done, cancelled, or to be filed,
+   with a question dialog whose options are only those three, each with a
+   preview, the same way.
+   Record it with mcp__zg__action (export lists it in the handoff), with their
+   words as any reason, never an option's label.
 3. Always propose the handoff, also when the goal failed or was cancelled: the
    next session's one goal (after such an end it can be a conversation about
    what to do instead), the decisions it must respect (lasting or not), and
