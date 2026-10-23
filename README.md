@@ -46,35 +46,38 @@ A goal fans out into explorations, which fan back in to a decision. Along the
 way things come up that change the picture, and they need capturing where they
 matter.
 
-Here, the goal is to choose a family holiday. The family's criteria are the
-starting point. One exploration turns up a long airport transfer, which
-becomes a new criterion and changes how the other candidates are judged.
+Here, the goal is to choose a family holiday. The family's criteria go on the
+decision D1, which is what the session exists to make. One exploration turns
+up a long airport transfer, which becomes a new criterion and changes how the
+other candidates are judged.
 
 ```mermaid
 flowchart TD
-  G["G · Pick our end-of-May beach holiday<br/>C1 Europe · C2 sea ≥ 18°C · C3 sunny · C4 good bars"]
+  G["G · Pick our end-of-May beach holiday"]
   T1["T1 · Which countries are warm enough?"]
   T2["T2 · Places in Greece"]
   T3["T3 · Places in Spain"]
   T4["T4 · Places in Cyprus"]
   T5["T5 · Best Greek pick is 2h by bus<br/>from the airport. OK?"]
-  D1(["D1 · No: transfers ≤ 30 min<br/>→ new criterion C5"])
-  T6["T6 · Compare the shortlist"]
-  D2(["D2 · Paphos"])
-  A1[/"A1 · Book flights → exported"/]
+  D2(["D2 · How long may the transfer be?<br/>→ D2.1 transfers ≤ 30 min"])
+  D1(["D1 · Which holiday do we book?<br/>C1 Europe · C2 sea ≥ 18°C · C3 sunny<br/>C4 good bars · C5 transfer ≤ 30 min"])
+  D11["D1.1 · Greek village"]
+  D12["D1.2 · Costa del Sol"]
+  D13["D1.3 · Paphos"]
+  T6["T6 · Check Paphos flights"]
 
-  G --> T1
-  T1 -->|fan out| T2 & T3 & T4
-  T2 --> T5 --> D1
-  D1 -.->|re-check against C5| T3 & T4
-  T2 & T3 & T4 -->|fan in| T6
-  T6 --> D2
-  D2 --> A1
-  D2 -.->|achieves| G
+  G --> T1 & T2 & T3 & T4 & D1
+  T2 --> T5 --> D2
+  D1 --> D11 & D12 & D13
+  D13 --> T6
+  T1 -.->|fans out| T2 & T3 & T4
+  D2 -.->|new criterion C5| D1
+  T2 & T3 & T4 -.->|fan in as options| D1
+  D1 -.->|achieves| G
 ```
 
 **Fan-out**: one thread spawns several explorations. **Fan-in**: their
-results converge back into the thread that spawned them. Claude doesn't keep
+results converge on a decision, as its options. Claude doesn't keep
 track of this on its own; keeping fan-in reliable is most of what this plugin
 adds.
 
@@ -88,31 +91,47 @@ adds.
   least 18°C, sunny, good bars nearby.
 ```
 
-Claude records the goal and its criteria, and the pane opens beside the chat:
+Claude records the goal, opens the decision the session exists to make, and
+attaches the family's criteria to it:
 
 ```
-┌ zg ───────────────────────────────────┐
-│ G  Pick our end-of-May beach holiday  │
-│    threads 0 open · 0 closed          │
-│    C1 Europe  C2 sea≥18°C  C3 sunny   │
-│    C4 good bars                       │
-└───────────────────────────────────────┘
+→ new D1 Which holiday do we book? with C1–C4
 ```
 
-**Fan out.** Claude narrows the countries down (web search etc.) and opens a thread for each:
+The pane opens beside the chat:
 
 ```
-→ T1 resolved: sea ≥ 18°C by late May → Greece, Spain (south), Cyprus
+┌ zg ──────────────────────────────────────────────────────────────┐
+│ G  Pick our end-of-May beach holiday                             │
+│    1 open · 0 closed                                             │
+│                                                                  │
+│ ◆ D1 Which holiday do we book?                                   │
+│     C1 Europe                                                    │
+│     C2 sea ≥ 18°C                                                │
+│     C3 sunny                                                     │
+│     C4 good bars                                                 │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Fan out.** Claude opens T1 to narrow the countries down (web search etc.),
+resolves it, and opens a thread for each country. The new threads sit under
+G, not under T1: T1 is resolved, and a resolved thread can't hold open
+children.
+
+```
+→ new T1 Which countries are warm enough?
+→ T1 resolved: sea ≥ 18°C by late May → GR, ES, CY
 → new T2 Places in Greece
 → new T3 Places in Spain
 → new T4 Places in Cyprus
 ```
 
 **Something comes up.** In T2 the best beach is a village 2h by bus from the
-airport. Claude doesn't bury that in prose; it opens a question:
+airport. Claude doesn't bury that in prose; it opens a question thread under
+T2:
 
 ```
-→ new T5 Q: Best Greek pick is 2h by bus from the airport. OK?
+→ new T5 under T2: Best Greek pick is 2h by bus from the airport. OK?
 ```
 
 You answer in the main chat, addressing items by ID:
@@ -122,39 +141,49 @@ You answer in the main chat, addressing items by ID:
 > T3: skip anything that's not on the coast road
 ```
 
-**Propagate.** Claude records D1 (transfers ≤ 30 min, because of the kids)
-and adds criterion C5. It then re-checks against C5: the Greek village is out,
-and two Spanish options fail C5. It proposes updating T2 and T3 in one batch.
-You confirm once.
+**Propagate.** Your answer is a realization, so Claude records it as a
+decision with one option, in one step: D2 "How long may the transfer be?" →
+D2.1 transfers ≤ 30 min, under T5, with your words as the reason. T5 resolves
+with "see D2", and Claude adds criterion C5 (transfer ≤ 30 min, from D2) to
+D1. It then re-checks against C5: the Greek village is out, and two Spanish
+places fail C5. It proposes updating T2 and T3 in one batch. You confirm
+once.
 
 ```
-┌ zg ───────────────────────────────────┐
-│ G  Pick our end-of-May beach holiday  │
-│    threads 4 open · 2 closed          │
-│    C1 Europe  C2 sea≥18°C  C3 sunny   │
-│    C4 good bars  C5 transfer≤30m ✱    │
-│                                       │
-│ ○ T2 Places in Greece                 │
-│ ○ T3 Places in Spain                  │
-│ ○ T4 Places in Cyprus                 │
-│ ✦ T6 Compare the shortlist            │
-│ ✓ T1 Countries → GR, ES, CY           │
-│ ✓ T5 2h bus? → D1 no, ≤30 min         │
-│                                       │
-│ Actions                               │
-│ ☐ A1 Check school dates (you)         │
-└───────────────────────────────────────┘
-○ open  ✦ new  ✓ resolved  ✗ cancelled  ✱ changed
+┌ zg ──────────────────────────────────────────────────────────────┐
+│ G  Pick our end-of-May beach holiday                             │
+│    4 open · 4 closed                                             │
+│                                                                  │
+│ ✓ T1 Which countries are warm enough? → GR, ES, CY               │
+│ ○ T2 Places in Greece                                            │
+│   ✓ T5 2h bus? → see D2                                          │
+│     ✓ D2 How long may the transfer be? → D2.1 transfers ≤ 30 min │
+│ ○ T3 Places in Spain                                             │
+│ ○ T4 Places in Cyprus                                            │
+│ ◆ D1 Which holiday do we book?                                   │
+│     C1 Europe                                                    │
+│     C2 sea ≥ 18°C                                                │
+│     C3 sunny                                                     │
+│     C4 good bars                                                 │
+│     C5 transfer ≤ 30 min ✱                                       │
+│                                                                  │
+│ Actions                                                          │
+│ ☐ A1 Check school dates (you)                                    │
+└──────────────────────────────────────────────────────────────────┘
+○ open  ✦ new  ✓ resolved  ✗ cancelled  ◆ decision  ◇ option  ☐ action  ✱ changed
 ```
 
-**Fan in.** T2, T3 and T4 each resolve with a shortlist entry. Claude notes
-that T6 now has everything it needs and lays out the question overview (as in
-[Thread](#thread)). You pick Paphos: D2. T6 resolves, and Claude asks whether
-G is achieved.
+**Fan in.** T2, T3 and T4 each resolve with a shortlist entry, and Claude
+adds each as an option of D1: D1.1 Greek village, D1.2 Costa del Sol, D1.3
+Paphos. The options are places, found by the exploration threads. Under D1.3,
+T6 "Check Paphos flights" resolves: direct, Thursday and Sunday. Claude notes
+that D1 now has everything it needs and lays out the decision overview (as in
+[Decision](#decision)). You pick Paphos: D1 is decided, D1.3 chosen, D1.1 and
+D1.2 not chosen. Claude asks whether G is achieved.
 
-**Return.** Had you gone for lunch before picking, coming back to T6 would
-start with a recap: "T6, compare the shortlist: three options; the criteria
-changed since T2 (C5 added); the Greek village fails C5. Pending: your pick."
+**Return.** Had you gone for lunch before picking, coming back to D1 would
+start with a recap: "D1, which holiday: three options; C5 was added since you
+last looked (from D2); the Greek village fails it. Pending: your pick."
 
 **Close.**
 
@@ -169,7 +198,7 @@ open. Then it captures what needs to outlive the session:
 Capture (sink: reminders)
   A1 Check school dates    done
   A2 Book flights          → exported  reminders://x-9f2
-  D2 Paphos (+ C1–C5)      → exported  notes/holiday-2027.md
+  D1 Paphos (+ C1–C5)      → exported  notes/holiday-2027.md
 ```
 
 Then it prints the handoff:
@@ -177,7 +206,7 @@ Then it prints the handoff:
 ```
 Goal: Choose where to stay in Paphos
 Decisions to respect:
-  - D2 Paphos; criteria C1–C5 (notes/holiday-2027.md)
+  - D1 Paphos; criteria C1–C5 (notes/holiday-2027.md)
 References: notes/holiday-2027.md
 ```
 
@@ -334,19 +363,19 @@ and can hold threads and decisions of its own when it needs exploring.
 The overview of a decision reads like this:
 
 ```
-D3 Decision: Which place do we book?
-   Decision: D3.3 Paphos
+D1 Decision: Which holiday do we book?
+   Decision: D1.3 Paphos
    because (chat): Paphos then, the 20 min transfer settles it
    Criteria: C1 Europe · C2 sea ≥ 18°C · C3 sunny · C4 good bars
              C5 transfer ≤ 30 min (from D2)
    Options:
-     · D3.1 Greek village
+     · D1.1 Greek village
          #1 claude: best beach of the lot, but 2h by bus from the airport (fails C5)
-     · D3.2 Costa del Sol
+     · D1.2 Costa del Sol
          #1 claude: bars, easy flights; sea borderline for C2 in late May
-     ✓ D3.3 Paphos
-         #1 claude: warmest sea, short transfer; fewer bars than D3.2
-         T7 Check Paphos flights ✓ → direct, Thursday and Sunday
+     ✓ D1.3 Paphos
+         #1 claude: warmest sea, short transfer; fewer bars than D1.2
+         T6 Check Paphos flights ✓ → direct, Thursday and Sunday
 ```
 
 ### Action
@@ -380,7 +409,7 @@ context should begin small and focused.
 IDs are local to a session: the next session starts again at `T1` and `D1`.
 Anything that needs referring to later is captured into your tracking, where
 it gets a lasting ID, and the session records that ID against the item
-("D2 → notes/holiday-2027.md"). The handoff uses the lasting IDs, never the
+("D1 → notes/holiday-2027.md"). The handoff uses the lasting IDs, never the
 session-local ones.
 
 ## Rules
@@ -437,12 +466,14 @@ directions, and each one is tested on its own:
 
 | Direction | What happens | Who reacts |
 |---|---|---|
-| **Up** | A thread closes. Claude checks whether its parent can close too, and if not, says what's still needed: "T6 can close once T3 and T4 are in, so the options can be compared side by side." | the parent |
-| **Down** | A thread changes: a criterion is added or revised, or a decision is made. Claude re-checks the descendants it affects: "C5 rules out the Spanish options from T3; reopen T3 or drop them?" | each descendant |
+| **Up** | A thread closes. Claude checks whether its parent can close too, and if not, says what's still needed: "T6 is in and nothing else is open under D1.3, so D1 can be decided." | the parent |
+| **Down** | A node changes: a criterion is added or revised, or a decision is made. Claude re-checks the descendants it affects: "C5 rules out D1.1 Greek village; drop it?" | each descendant |
 | **Across** | Your reply to one thread also settles others that aren't parent and child, because you saw the common thread between them. Claude proposes resolving those too, with outcomes. | each affected thread; the reply belongs to no thread |
 
-Changes often travel up and then down. In the holiday example, C5 is found
-deep in T5, attached to the goal, and from there flows down to T3 and T4.
+Changes often travel up, then down or across. In the holiday example, C5 is
+found deep in T5, recorded as D2 and attached to D1, where it will judge D1's
+options; Claude also carries it across to T2 and T3, whose places it rules
+out.
 
 ### Recaps on return
 
@@ -475,7 +506,7 @@ goal. Nothing is left hanging.
 | Change the goal | `/zg:open <text>` again; Claude asks whether it's a revision or a replacement |
 | Revisit a thread | select it in the pane, or `T4` alone; Claude recaps |
 | See a thread's history | expand it in the pane |
-| See what's new | ✦ marks threads created since your last reply |
+| See what's new | ✦ marks nodes you haven't written to yet |
 | Close the session | `/zg:close` |
 | Copy the handoff, to paste after `/clear` | `/zg:copy-handoff` |
 
