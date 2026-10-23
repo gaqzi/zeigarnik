@@ -28,6 +28,10 @@ zg-pvk.
 | zg-51d | Code work: the main session coordinates; subagents write the tests (red), write the code (green) and review | project |
 | zg-tjb | Every event that decides or ends something keeps the human's words verbatim as its reason, with their source | core |
 | zg-2f3 | Configuration is a file in the repo, .zg/config.json, shared by everyone on the project | mod, storage |
+| zg-4h7 | A command changes only the items it names; what follows from an outcome is proposed, never cascaded | core, mod |
+| zg-86j | Claude ends a thread alone only on a condition the human set or on its own fan-out research, and the event says so | core, mod |
+| zg-f6d | The log is append-only: closed items are never rewritten, and rediscussion opens a new thread | core |
+| zg-ww9 | Derive a fact from the log before storing it | core |
 
 ## Accepted
 
@@ -635,6 +639,8 @@ is all there was, chat words have the conversation around them.
 #### How it was decided
 
 Agreed in chat on 2026-10-22, defining zg-bam.14 after zg-bam.11's manual check. The human: 'I want the option that is the types that we have decided on to be set as the type of decision, and then the reason'; 'in most cases it's covered by the event type so it's not really helpful. in those cases, we only really care about the reason given (if any)'; 'it doesn't hurt to have a reason for successes either ... don't constrain the human if they want it'; on a separate quote and reason: 'if we end up having two fields for a very similar thing, then I'd rather have one field and a type, or source (source: picker|chat, for example)'; on the name: 'I prefer reason over quote ... because reason is why we ended up with this event'. Still version 0: 'we haven't even shipped this thing'. Scope: 'keep it open to let the user express themselves as much as possible', dialog and pane alike. Open until the human accepts it.
+2026-10-23, slicing zg-bam.3: source gains a third value, claude, for a thread Claude closes on its own grounds (a condition the human set, or its own fan-out research reported in the reply); the reason then says which. Every thread close carries reason and source. The human: 'it's important to note that claude decided it was done'.
+2026-10-23: amended by zg-86j (source claude, and when Claude may close a thread alone).
 
 ### zg-2f3: Configuration is a file in the repo, .zg/config.json, shared by everyone on the project
 
@@ -670,6 +676,122 @@ travel with the repo and are reviewed like any other change.
 #### How it was decided
 
 Agreed in chat on 2026-10-23, slicing zg-bam. The human: 'config in repo, in case we end up being multiplayer we should have the same settings and workflow (gut feel, maybe it'll have to be revisited later and allow for a config.local or similar, but that's a future problem)'. The file name and JSON were Claude's proposal; the human: 'ok'.
+
+### zg-4h7: A command changes only the items it names; what follows from an outcome is proposed, never cascaded
+
+Areas: core, mod
+
+#### Context
+
+Children close first, close only when nothing is open, and merges each raised "should the code just close the rest?" while slicing zg-bam.3 and zg-bam.4 (2026-10-23). zg-su8 already rejects fixing a rule violation automatically; this says what a command may touch and how the rest gets done.
+
+#### Decision
+
+A command changes only the items it names. A refusal lists the items in the way, with their titles (the open direct children), so the human can answer each. Code never cascades a close.
+
+What follows from an outcome is proposed, never cascaded: when one outcome makes other items superfluous (an option picked, a goal abandoned), Claude proposes closing them as one batch with that outcome as the reason, the human confirms once, and each item gets its own event carrying the human's words. An explicit instruction from the human is itself the confirmation ("cancel everything, we lost funding"): Claude issues the commands, children first, each with that sentence verbatim as the reason and source chat, and lists every item it closed in its reply. Anything Claude infers is proposed first.
+
+A merge names the threads folded and the target; moving their children to the target is the merge's defined effect, not a cascade.
+
+#### Rationale
+
+The human decides what each open thing meant; a cascade decides for them and hides many ends in one event. zg-su8: zg never surprises the human. The fast path keeps the per-item loop from becoming tedious without giving the code any judgment.
+
+#### Alternatives Considered
+
+- Cascade with an inherited reason: one event hides many ends.
+- A cascade flag on the command: the same, opt-in.
+- Always propose, even on an explicit instruction: asks the human to confirm what they just said.
+
+#### How it was decided
+
+Agreed in chat on 2026-10-23, slicing zg-bam.3 (T13, T14). The human: 'refuse, no automatic and provide an overview so they can reply to each. suggest if some children fall out automatically by wanting to close (maybe it was about picking an option, so picking option B closes A, C, and D ...) but that's a specific scenario where an outcome makes other outcomes superfluous'; and 'suggest how to do it quickly if the human don't want to loop through each thread and give intricate responses (no, this entire goal has been superseded because we lost our next funding round ...)'.
+
+### zg-86j: Claude ends a thread alone only on a condition the human set or on its own fan-out research, and the event says so
+
+Areas: core, mod
+
+#### Context
+
+zg-tjb keeps the human's words as the reason of every event that decides or ends something, with source chat or dialog. Two cases have no human words: threads Claude opened for its own fan-out research (T1 in the README's walkthrough) close on Claude's findings, and the human sometimes pre-authorises a close ("try it; if it works, close it"). Raised while slicing zg-bam.3 (2026-10-23).
+
+#### Decision
+
+Claude may resolve or cancel a thread on its own only when:
+
+1. the human set the condition earlier and it can be checked as worded; the reason quotes the human's condition verbatim and names the evidence that met it; or
+2. the thread was Claude's own fan-out research, and the outcome is reported in the same reply.
+
+The event's source is `claude` (this amends zg-tjb: source gains that value, and then the reason is Claude's grounds, the only case where it is not the human's words). Claude reports every such close in its reply ("→ T1 resolved: …"). Its close never moves the parent on by itself: whether the parent can close is proposed to the human (README › Propagates results).
+
+Goals, actions, decisions, merges and cancels of the human's threads always need the human's words. When the human disputes a close, Claude opens a new thread under the nearest open ancestor, naming the closed thread by ID, with the objection as its first reply (closed items are not rewritten: see the append-only log decision).
+
+#### Rationale
+
+A thread is a question or an exploration, so a close always has grounds, and the log must show whose. Requiring the human's confirmation for Claude's own research threads would be friction without information; hiding who decided would be dishonest.
+
+#### Alternatives Considered
+
+- No source on Claude's closes: hides who decided.
+- The human confirms every close: friction on Claude's own fan-out.
+- Claude may also mark actions done or make decisions alone: a decision records the human's agreement (zg-tjz); an action's done is the human's call.
+
+#### How it was decided
+
+Agreed in chat on 2026-10-23, slicing zg-bam.3 (T12). The human: 'if it does, it should specify something that made it close the thread ... it's important to note that claude decided it was done. I would assume that a human had to be informed of the outcome and then agree to it ... Sure, "try this out, if it works that way, then it's okay so close it as confirmed, otherwise we look for other options" is closed by claude but it had a lot of context about why.' Scope to threads only, and the nearest-open-ancestor rule, came from a Sonnet and an Opus review of the draft.
+
+### zg-f6d: The log is append-only: closed items are never rewritten, and rediscussion opens a new thread
+
+Areas: core
+
+#### Context
+
+Merging threads and superseding or reopening decisions, while slicing zg-bam.4 and zg-bam.5 (2026-10-23).
+
+#### Decision
+
+The log is append-only history. An item's state says what actually happened to it: a merged thread is `merged` (not cancelled with a note), a replaced decision is `superseded`, a doubted one is `reopened`. Closed items stay closed and keep their history. Rediscussion happens in a new open thread that names the old item by ID; a `reopened` decision is a marker that points at that thread, and the thread's decision supersedes the old one. No event edits or removes an earlier one.
+
+Consequences to carry into the stories: the README's thread states gain `merged` and its rule reads "every thread must end resolved, cancelled or merged"; the README's Down propagation row no longer says "reopen T3"; both are event changes under zg-8ex. Removing something that should never have been logged (a pasted secret) is a storage concern for a bead of its own, not an exception to this rule.
+
+#### Rationale
+
+The log is the story of how things were settled (zg-tjz). Reopening the old thread would break children close first for ancestors already resolved and rewrite the past; folding merged into cancelled would say something false.
+
+#### Alternatives Considered
+
+- Reopen the old thread in place.
+- Merged as cancelled with a reason "merged into T5".
+- Supersede only, no reopened marker: loses the signal that a decision is in doubt right now.
+
+#### How it was decided
+
+Agreed in chat on 2026-10-23, slicing zg-bam.4 (T7, T9). On merged as a state: 'good'. On reopening in a new thread: 'B, yes, this better indicates that something was decided and then the decision was superseded, this is important to keep a log of things'. On merging closed threads: 'refuse seems reasonable, move before closing if needed otherwise let it stay'.
+
+### zg-ww9: Derive a fact from the log before storing it
+
+Areas: core
+
+#### Context
+
+Reply ordinals, the ✦ mark and "waiting on the human" each tempted a stored field while slicing zg-bam.3 and zg-bam.4 (2026-10-23).
+
+#### Decision
+
+When the events already determine a fact, the view computes it; no stored field and no event for it. Reply ordinals are positions per thread in log order; ✦ is an open thread with no human reply; whether a thread waits on the human comes from the log too, once defined. A field is added only when the log cannot determine the fact.
+
+#### Rationale
+
+A stored field is a second source of truth to keep in step with the events, and every event needs the human's sign-off (zg-8ex). A derived fact changes definition in one function.
+
+#### Alternatives Considered
+
+- Store the ordinal on ThreadReplied: shifts when a reply moves.
+- Store a "new" or "waiting" flag: must be cleared by every interaction, and drifts.
+
+#### How it was decided
+
+Agreed in chat on 2026-10-23 (T6, T8). The human on ordinals: 'it's the easiest and makes us have a sorting key as well. do we track timestamp then this could be a derived field'; on ✦: 'threads that haven't been interacted with, because that's more honest to what we need'.
 
 ## Superseded or withdrawn
 
