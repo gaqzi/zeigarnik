@@ -351,10 +351,10 @@ and can hold threads and decisions of its own when it needs exploring.
   Or it is cancelled, with your reason.
 - A realization along the way ("transfers must be short") is recorded as a
   decision with a single option, in one step.
-- States: `open` → `decided` | `cancelled`. A decided decision can later be
-  `superseded` (a later decision replaced it) or `reopened` (it is in doubt;
-  the rediscussion is a new decision, whose pick supersedes this one). Nothing
-  closed is rewritten.
+- States: `open` → `decided` | `cancelled`. A decided decision can be decided
+  again: you pick another option, or a new one, and the earlier pick stays in
+  its history with your words. Nothing closed is rewritten; rediscussion that
+  needs exploring is a new thread that names the decision.
 - Scope: `session` (it only guides the rest of this session's work) or
   `lasting` (later work must respect it). You choose with Claude at close:
   lasting decisions are captured into your tracking, session ones go only in

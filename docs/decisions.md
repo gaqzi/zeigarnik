@@ -33,6 +33,7 @@ zg-pvk.
 | zg-f6d | The log is append-only: closed items are never rewritten, and rediscussion opens a new thread | core |
 | zg-ww9 | Derive a fact from the log before storing it | core |
 | zg-8ld | Everything under a goal is a node of one kind, thread, decision or option; a kind adds only where it may sit and how it ends | core, mod |
+| zg-64v | The log is append-only: closed items are never rewritten, a decision changes by being decided again, and rediscussion opens a new thread | core |
 
 ## Accepted
 
@@ -833,6 +834,38 @@ The rules that matter (one parent, children close first, closing says how) run o
 
 Agreed in chat on 2026-10-23 and 2026-10-24, slicing zg-bam.5. The human: 'I'd rather have a Thread hierarchy where question is a special form of thread … I don't want to create a situation where a thread has multiple booleans that turns on and off various fields, that's poor design'; 'maybe Option is another thread type'; 'a question doesn't have options, it has threads and it ends with an answer. an answer may reference other threads in its text. decisions do have options, though. a decision has to be either decided, and reference an option#, or abandoned/cancelled (with a reason)'; 'I prefer having multiple event types'; 'Thread can only contain the Thread and Decision node. A Decision node can only contain Options, and an option can contain Thread and Decision nodes, feels like much clearer language and domain concepts'. On numbering: 'ambivalent'; D for decisions and dotted options was Claude's proposal. Accepted with 'accept' on 2026-10-24. The 2a and 2b designs (zg-bam.3, zg-bam.4) were reworded to it before any story started.
 2026-10-24, amended: a criterion is an item attached to a decision, not a node. A node ends, a criterion stands, so as a node it would need an exception to children close first and to close only when nothing is open. Exploring a criterion is a thread under the decision naming it by ID; settling a criterion's value is a decision whose chosen option is recorded as the criterion, with that decision as origin. Criteria attach to decisions only (the human: 'any criterion that comes with the goal really belongs to something that we're deciding'), widened to other nodes only if sibling decisions sharing one proves painful. The human: 'criterion as a unique type like action etc. makes perfect sense'.
+
+### zg-64v: The log is append-only: closed items are never rewritten, a decision changes by being decided again, and rediscussion opens a new thread
+
+Areas: core
+
+#### Context
+
+zg-f6d made the log append-only and said how a doubted or replaced decision is handled: a reopened marker pointing at a new thread, whose decision supersedes the old one. Under the node model (zg-8ld) a decision is a node with its options under it, and slicing zg-bam.5 (2026-10-24) showed the supersede and reopen machinery (an event, a field, two states, a rule for which decision supersedes which) answering a question the node already answers.
+
+#### Decision
+
+The log is append-only history. An item's state says what actually happened to it: a merged node is merged (not cancelled with a note); closed items stay closed and keep their history; no event edits or removes an earlier one.
+
+A decision changes by being decided again: the human picks another of its options, or a new one named in the same command, with their words as the reason. The node stays decided, the latest pick is its decision, and every earlier pick stays in its history with its words. There is no superseded or reopened state, no marker and no link between decisions: the question and its answers live on one node. When the question itself changes, a new decision is opened and names the old one in its title or reason.
+
+Rediscussion that needs exploring happens in a new open thread under the nearest open ancestor, naming the decision by ID, and ends with the re-decide. Nothing closed reopens.
+
+Consequences: zg-f6d's README changes stand (merged as a thread state; "every thread must end resolved, cancelled or merged"; no "reopen T3" in the Down row). The README's Decision states lose superseded and reopened. Removing something that should never have been logged (a pasted secret) remains a storage concern of its own (zg-3y8).
+
+#### Rationale
+
+The log is the story of how things were settled (zg-tjz), and re-deciding keeps that story on the node it belongs to: one question, its answers in order, each with the human's words. Supersede and reopen told the same story across two nodes and three states, with a derived rule to keep them in step (zg-ww9). Reopening a node in place would break children close first for ancestors already resolved; a re-decide opens nothing, since the new option is born chosen.
+
+#### Alternatives Considered
+
+- A reopened marker and a superseding decision (zg-f6d): an event, a field and two states for a fact the decision's own history holds.
+- Reopen the old node in place: breaks children close first for resolved ancestors.
+- Supersede only, no marker: still two nodes for one question.
+
+#### How it was decided
+
+Agreed in chat on 2026-10-24, slicing zg-bam.5, replacing zg-f6d's supersede and reopen. The human: 'I think it could be fine to add another option to a decision and then change the decision, it'll come out the same anyway when applying the events and you have the history. it might be the more pragmatic call?' Claude laid out what it keeps (append-only, one node per question, children close first untouched), what goes (DecisionReopened, supersedes, the superseded and reopened states) and what it costs (the 'in doubt' marker); the human: 'accept'. zg-f6d's own history: 'B, yes, this better indicates that something was decided and then the decision was superseded, this is important to keep a log of things', which the re-decided node's history still shows.
 
 ## Superseded or withdrawn
 
