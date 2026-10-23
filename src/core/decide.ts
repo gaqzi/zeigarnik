@@ -2,6 +2,7 @@ import type { Command } from './commands.ts'
 import type { Event } from './events.ts'
 import type { Action, Goal, Node, State } from './evolve.ts'
 import { nextId } from './ids.ts'
+import { type Child, stillOpenUnder } from './still-open.ts'
 
 // The rules live here and nowhere else (zg-kux). A command that would break
 // one is refused with the reason and a fix (zg-su8).
@@ -82,6 +83,21 @@ const findOpenNode = (
 
   return { node }
 }
+
+// Children close first: a parent is refused while any child is open.
+const refuseOpenChildren = (
+  children: readonly Child[],
+  parent: string,
+  fix: string,
+): Decided | undefined =>
+  children.length === 0
+    ? undefined
+    : refuse(`Children close first: ${stillOpenUnder(children, parent)}`, fix)
+
+const openChildrenOf = (state: State, parent: string): Child[] =>
+  state.nodes
+    .filter(node => node.parent === parent && node.status === 'open')
+    .map(node => ({ id: node.id, label: node.title }))
 
 const onAction = (
   state: State,
@@ -185,6 +201,9 @@ const decideOpenThread = (
   }
 }
 
+const threadChildrenFix =
+  'Show the human the open children and ask how each ends, or propose one outcome that settles them for the human to confirm.'
+
 const decideResolveThread = (
   state: State,
   command: Command & { type: 'ResolveThread' },
@@ -192,6 +211,12 @@ const decideResolveThread = (
   const { at, thread, outcome, source, reason } = command
   const found = findOpenNode(state, thread)
   if ('refusal' in found) return found
+  const blocked = refuseOpenChildren(
+    openChildrenOf(state, thread),
+    thread,
+    threadChildrenFix,
+  )
+  if (blocked !== undefined) return blocked
   if (outcome === undefined || outcome.trim() === '') {
     return refuse(
       'Closing says how: a resolved thread needs its outcome.',
@@ -211,6 +236,12 @@ const decideCancelNode = (
   const { at, node, source, reason } = command
   const found = findOpenNode(state, node)
   if ('refusal' in found) return found
+  const blocked = refuseOpenChildren(
+    openChildrenOf(state, node),
+    node,
+    threadChildrenFix,
+  )
+  if (blocked !== undefined) return blocked
 
   return { events: [{ type: 'NodeCancelled', at, node, source, reason }] }
 }
@@ -226,6 +257,18 @@ const decideCloseGoal = (
       'Nothing to close: write the handoff, or the human opens a goal with /zg:open.',
     )
   }
+  const blocked = refuseOpenChildren(
+    [
+      ...openChildrenOf(state, goal.id),
+      ...openActions(state).map(action => ({
+        id: action.id,
+        label: action.text,
+      })),
+    ],
+    goal.id,
+    'Ask the human how each ends, or, if their words end the whole session, cancel every open item with those words, children first, then the goal.',
+  )
+  if (blocked !== undefined) return blocked
   const { at, source, reason } = command
   switch (command.as) {
     case 'achieved':

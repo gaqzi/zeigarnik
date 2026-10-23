@@ -273,6 +273,10 @@ reach it descends from it, so each goal has its own tree.
     criteria). The handoff says why and what to try instead.
   - `cancelled`: we decided it isn't worth finishing, the same meaning as for
     threads and actions.
+- Closes, however it ends, only once every node and action under it is closed
+  (children close first). When your words end the whole session ("drop it
+  all"), Claude cancels each open item with those words, children first, then
+  the goal.
 - A failed or cancelled goal is a legitimate close. It records why, when a
   reason is given, in your own words. A pick in the close dialog records the
   outcome, and any note you add as the reason, with where it came from (the
@@ -420,8 +424,11 @@ fix it.
   a tree rooted at a goal: the goal and a thread hold threads and decisions, a
   decision holds only its options, an option holds threads and decisions.
 - **Children close first.** A node can only close once all of its children
-  are closed. An option closes with its decision, so it is what sits under the
-  options that must be closed before the decision can be made.
+  are closed, and the goal, as the root, only once every node and action
+  under it is. Nothing closes on its own: a refused close lists what is still
+  open, and Claude asks you how each ends. An option closes with its
+  decision, so it is what sits under the options that must be closed before
+  the decision can be made.
 - **Closing says how.** A thread resolves with an outcome. A decision is made
   by picking one of its open options, with your words; its other options end
   not chosen. A cancelled node keeps your reason; a cancelled action or goal

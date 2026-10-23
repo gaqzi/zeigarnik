@@ -420,6 +420,132 @@ describe('a thread closes once', () => {
   })
 })
 
+describe('children close first', () => {
+  const threadFix =
+    'Show the human the open children and ask how each ends, or propose one outcome that settles them for the human to confirm.'
+  const goalFix =
+    'Ask the human how each ends, or, if their words end the whole session, cancel every open item with those words, children first, then the goal.'
+  const under = (thread: string, title: string) =>
+    a.threadOpened({ thread, parent: 'T1', title })
+
+  test('a parent closes once every child has', () => {
+    const given = [
+      a.goalOpened(),
+      a.threadOpened(),
+      under('T2', 'Places in Greece'),
+      under('T3', 'Places in Spain'),
+      a.threadResolved({ thread: 'T2' }),
+      a.nodeCancelled({ node: 'T3' }),
+    ]
+
+    expect(when(given, a.resolveThread())).toEqual({
+      events: [a.threadResolved()],
+    })
+  })
+
+  test('cancelling a parent is refused while a child is open', () => {
+    const given = [a.goalOpened(), a.threadOpened(), under('T2', 'Flights')]
+
+    expect(when(given, a.cancelNode())).toEqual({
+      refusal: {
+        reason: 'Children close first: T2 Flights is still open under T1.',
+        fix: threadFix,
+      },
+    })
+  })
+
+  test('resolving a parent is refused while children are open, in ID order', () => {
+    const given = [
+      a.goalOpened(),
+      a.threadOpened(),
+      under('T2', 'Places in Greece'),
+      under('T3', 'Places in Spain'),
+      under('T4', 'Places in Italy'),
+      a.threadResolved({ thread: 'T4' }),
+    ]
+
+    expect(when(given, a.resolveThread())).toEqual({
+      refusal: {
+        reason:
+          'Children close first: T2 Places in Greece and T3 Places in Spain are still open under T1.',
+        fix: threadFix,
+      },
+    })
+  })
+
+  const goalCloses: { name: string; command: Command }[] = [
+    { name: 'achieved', command: a.closeGoal() },
+    { name: 'failed', command: a.failGoal() },
+    { name: 'cancelled', command: a.cancelGoal() },
+  ]
+  for (const { name, command } of goalCloses) {
+    test(`the goal is refused as ${name} while a thread and an action are open`, () => {
+      const given = [a.goalOpened(), a.threadOpened(), a.actionAdded()]
+
+      expect(when(given, command)).toEqual({
+        refusal: {
+          reason:
+            'Children close first: T1 Places in Greece and A1 Check school dates are still open under G.',
+          fix: goalFix,
+        },
+      })
+    })
+  }
+
+  test('the goal is refused while only an action is open', () => {
+    expect(when(goalAndAction, a.closeGoal())).toEqual({
+      refusal: {
+        reason:
+          'Children close first: A1 Check school dates is still open under G.',
+        fix: goalFix,
+      },
+    })
+  })
+
+  test('the goal is refused while only a thread is open', () => {
+    expect(when([a.goalOpened(), a.threadOpened()], a.closeGoal())).toEqual({
+      refusal: {
+        reason:
+          'Children close first: T1 Places in Greece is still open under G.',
+        fix: goalFix,
+      },
+    })
+  })
+
+  test('the goal lists its own open threads before its actions, each in ID order, and not deeper ones', () => {
+    const given = [
+      a.goalOpened(),
+      a.threadOpened(),
+      a.threadOpened({ thread: 'T2', title: 'Flights' }),
+      under('T3', 'Places in Spain'),
+      a.actionAdded({ action: 'A1', text: 'Check school dates' }),
+      a.actionAdded({ action: 'A2', text: 'Ask the grandparents' }),
+    ]
+
+    expect(when(given, a.closeGoal())).toEqual({
+      refusal: {
+        reason:
+          'Children close first: T1 Places in Greece, T2 Flights, A1 Check school dates and A2 Ask the grandparents are still open under G.',
+        fix: goalFix,
+      },
+    })
+  })
+
+  test('the goal closes once its threads and actions are closed', () => {
+    const given = [
+      a.goalOpened(),
+      a.threadOpened(),
+      a.actionAdded(),
+      a.threadResolved(),
+      a.actionDone(),
+    ]
+
+    expect(when(given, a.closeGoal())).toEqual({
+      events: [a.goalAchieved()],
+    })
+  })
+})
+
 describe('close only when nothing is open', () => {
   test('the handoff is written once the goal and every action are closed', () => {
     const decisions = [{ text: 'Paphos', lasting: true }]

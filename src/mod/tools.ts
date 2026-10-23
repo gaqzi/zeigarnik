@@ -224,9 +224,9 @@ export const toCommand = (
           type: 'ResolveThread',
           at,
           thread: closed.id,
+          ...optional('outcome', str(input, 'outcome')),
           source: closed.source,
           reason: closed.reason,
-          ...optional('outcome', str(input, 'outcome')),
         }
       }
       if (input.op !== 'add') {

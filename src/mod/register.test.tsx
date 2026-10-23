@@ -277,6 +277,79 @@ test('a refused command goes back as an error and is added to the trace', async 
   })
 })
 
+test('a thread with open children is refused with an overview and the refusal is traced', async ($, on) => {
+  const given = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T1', parent: 'G', title: 'Places' }),
+    a.threadOpened({ thread: 'T2', parent: 'T1', title: 'Places in Greece' }),
+    a.threadOpened({ thread: 'T3', parent: 'T1', title: 'Places in Spain' }),
+    a.threadOpened({ thread: 'T4', parent: 'T1', title: 'Places in Italy' }),
+    a.threadResolved({ thread: 'T4' }),
+  ]
+  const world = host(on, { [LOG]: log(given) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__thread',
+    op: 'resolve',
+    id: 'T1',
+    outcome: 'Greece or Spain',
+    source: 'chat',
+    reason: 'that covers it',
+  })
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: {
+      deny: 'Children close first: T2 Places in Greece and T3 Places in Spain are still open under T1. Show the human the open children and ask how each ends, or propose one outcome that settles them for the human to confirm.',
+    },
+    files: {
+      [LOG]: log(given),
+      [TRACE]: log([
+        {
+          type: 'CommandRefused',
+          at: AT,
+          command: a.resolveThread({ outcome: 'Greece or Spain' }),
+          reason:
+            'Children close first: T2 Places in Greece and T3 Places in Spain are still open under T1.',
+          fix: 'Show the human the open children and ask how each ends, or propose one outcome that settles them for the human to confirm.',
+        },
+      ]),
+    },
+  })
+})
+
+test('closing the goal as achieved with a thread and an action open is refused and traced', async ($, on) => {
+  const given = [a.goalOpened(), a.threadOpened(), a.actionAdded()]
+  const world = host(on, { [LOG]: log(given) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__close_goal',
+    as: 'achieved',
+    source: 'chat',
+    reason: 'we are done',
+  })
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: {
+      deny: 'Children close first: T1 Places in Greece and A1 Check school dates are still open under G. Ask the human how each ends, or, if their words end the whole session, cancel every open item with those words, children first, then the goal.',
+    },
+    files: {
+      [LOG]: log(given),
+      [TRACE]: log([
+        {
+          type: 'CommandRefused',
+          at: AT,
+          command: a.closeGoal({ reason: 'we are done' }),
+          reason:
+            'Children close first: T1 Places in Greece and A1 Check school dates are still open under G.',
+          fix: 'Ask the human how each ends, or, if their words end the whole session, cancel every open item with those words, children first, then the goal.',
+        },
+      ]),
+    },
+  })
+})
+
 test('the handoff is returned to Claude, and /zg:copy-handoff copies it', async ($, on) => {
   const world = host(on, { [LOG]: log(finished) })
   await $.session.start(START)
