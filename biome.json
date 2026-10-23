@@ -6,11 +6,11 @@
       "**/*.ts",
       "**/*.tsx",
       "**/*.json",
-      "!**/vendor",
-      "!**/.claude-plugin/types",
-      "!**/.beads",
-      "!**/.claude",
-      "!**/.idea"
+      "!vendor",
+      "!.claude-plugin/types",
+      "!.beads",
+      "!.claude",
+      "!.idea"
     ]
   },
   "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 80 },
