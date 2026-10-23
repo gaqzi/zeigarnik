@@ -482,21 +482,16 @@ goal. Nothing is left hanging.
 | `nudge_at` | 100k tokens | Session size at which Claude suggests closing |
 | `push_at` | 150k tokens | Session size at which Claude presses to close |
 
-## Experiments
-
-Kept in for now because they might be valuable. Each will be reviewed once
-there is real use behind it, and cut if it doesn't earn its place.
-
-- **Related links.** A thread can link to other threads besides its parent,
-  with a free-text reason ("same budget constraint as T3"). The hope is that
-  it makes propagation across threads easier to explain. The risk is that it's
-  extra structure nobody reads.
-
 ## Won't do
 
 Considered and rejected. The reason is kept so it can be revisited
 deliberately.
 
+- **Related links.** A thread linking to other threads besides its parent,
+  with a free-text reason ("same budget constraint as T3"), was meant to make
+  propagation across threads easier to explain. Dropped before it was built:
+  extra structure nobody reads, until real use shows the problem. If it does,
+  design it then.
 - **Parking threads.** Parking lets you avoid deciding, and parked threads
   grow into a backlog that never moves. Every thread ends `resolved` or
   `cancelled`. To pursue something elsewhere, decide that and capture it.
