@@ -227,7 +227,8 @@ at a glance what kind of thing it is.
 Threads, decisions and options are the **nodes** of a goal's tree. What may
 sit under what: the goal holds threads and decisions; a thread holds threads
 and decisions; a decision holds only its options; an option holds threads and
-decisions. Actions and criteria are items attached to a node, not nodes.
+decisions. Actions and criteria are items, not nodes: an action is attached
+to the node it came up in, a criterion to the decision it serves.
 
 ### Session
 
@@ -303,8 +304,9 @@ What matters to us when deciding, and why. Criteria can be set upfront, or
 found and revised while exploring the options. That is a normal part of
 exploring, not a failure.
 
-- Attached to a thread (often the goal) and apply to all of its descendants.
-- Revisions are kept, not overwritten, with the thread that caused them.
+- Attached to a decision. They apply to it and to every decision under its
+  options, so a criterion set high up is judged on all the way down.
+- Revisions are kept, not overwritten, with the node that caused them.
 - Changing a criterion means re-checking decisions already made under the old
   version (see [How Claude behaves](#how-claude-behaves)).
 
@@ -397,8 +399,8 @@ fix it.
   by picking one of its open options, with your words; its other options end
   not chosen. A cancelled node keeps your reason; a cancelled action or goal
   keeps it if you gave one.
-- **Criteria flow down.** Criteria apply to the thread they are attached to
-  and all of its descendants.
+- **Criteria flow down.** Criteria apply to the decision they are attached
+  to and to every decision under its options.
 - **Exports keep their reference.** Anything exported (an action, a decision,
   a finding) carries its external reference.
 - **One open goal.** Only one goal is `open` at a time.

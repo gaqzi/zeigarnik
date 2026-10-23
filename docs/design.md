@@ -76,8 +76,8 @@ Claude records the realization  RecordDecision{parent: T5, title, choice, source
                                   → DecisionOpened{D2, parent: T5, title}
                                   → OptionAdded{D2.1, decision: D2, title: choice}
                                   → DecisionMade{D2, option: D2.1, source: chat, reason}
-Claude adds C5                  AddCriterion{on: G, text, origin: D2}
-                                  → CriterionAdded{C5, on: G, text, origin: D2}
+Claude adds C5                  AddCriterion{on: D1, text, origin: D2}
+                                  → CriterionAdded{C5, on: D1, text, origin: D2}
 ```
 
 One command may yield several events; they are appended together or not at
