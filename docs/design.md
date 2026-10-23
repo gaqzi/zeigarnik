@@ -15,6 +15,10 @@ zg is a Claude Code mod written in TypeScript.
 | `src/storage/` | the session log and the refusal trace (zg-r1g, zg-vgk) |
 | `evals/` | model-behaviour evals (zg-egt) |
 
+Everything under a goal is a node: a thread, a decision or an option.
+Containment is one table in `src/core/`, read by `decide` on open, nest and
+merge (zg-8ld).
+
 ## How an input flows
 
 ```
@@ -66,11 +70,15 @@ The reply `T5: no, two hours with the kids is a no. Keep transfers under
 30 min.`:
 
 ```
-Claude records the reply  ReplyToThread{T5, author: human, text}
-                            → ThreadReplied{T5, author: human, text}
-Claude decides            MakeDecision{T5, choice, because}
-                            → DecisionMade{D1, T5, choice, because}
-                            → ThreadResolved{T5, outcome, by: D1}
-Claude adds C5            AddCriterion{on: G, text, from: T5}
-                            → CriterionAdded{C5, on: G, text, origin: T5}
+Claude records the reply        ReplyToNode{T5, author: human, text}
+                                  → NodeReplied{T5, author: human, text}
+Claude records the realization  RecordDecision{parent: T5, title, choice, source: chat, reason}
+                                  → DecisionOpened{D2, parent: T5, title}
+                                  → OptionAdded{D2.1, decision: D2, title: choice}
+                                  → DecisionMade{D2, option: D2.1, source: chat, reason}
+Claude adds C5                  AddCriterion{on: G, text, origin: D2}
+                                  → CriterionAdded{C5, on: G, text, origin: D2}
 ```
+
+One command may yield several events; they are appended together or not at
+all (zg-tjz).

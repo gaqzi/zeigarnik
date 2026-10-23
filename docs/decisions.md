@@ -32,6 +32,7 @@ zg-pvk.
 | zg-86j | Claude ends a thread alone only on a condition the human set or on its own fan-out research, and the event says so | core, mod |
 | zg-f6d | The log is append-only: closed items are never rewritten, and rediscussion opens a new thread | core |
 | zg-ww9 | Derive a fact from the log before storing it | core |
+| zg-8ld | Everything under a goal is a node of one kind, thread, decision or option; a kind adds only where it may sit and how it ends | core, mod |
 
 ## Accepted
 
@@ -792,6 +793,45 @@ A stored field is a second source of truth to keep in step with the events, and 
 #### How it was decided
 
 Agreed in chat on 2026-10-23 (T6, T8). The human on ordinals: 'it's the easiest and makes us have a sorting key as well. do we track timestamp then this could be a derived field'; on ✦: 'threads that haven't been interacted with, because that's more honest to what we need'.
+
+### zg-8ld: Everything under a goal is a node of one kind, thread, decision or option; a kind adds only where it may sit and how it ends
+
+Areas: core, mod
+
+#### Context
+
+Slicing zg-bam.5 (2026-10-23) asked how questions, options and decisions relate to threads. Three shapes were tried in discussion and rejected: a boolean on ThreadOpened, options as labelled entries on a question, and a class hierarchy. Flags grow into a grab bag of fields whose meaning depends on the flag; entries can't nest or keep a history; placement limits strengthen a subtype's preconditions (Liskov).
+
+#### Decision
+
+Everything under a goal is a node. The kinds today: thread (an exploration or a question; ends with an outcome), decision (ends by picking one of its options, with the human's words), option (its end follows from its decision: chosen or not chosen). The goal is the root, not a kind. Containment is one table in the core, read by decide on open, nest and merge, never by evolve or the views:
+
+| parent | holds |
+|---|---|
+| goal | thread, decision |
+| thread | thread, decision |
+| decision | option |
+| option | thread, decision |
+
+Replying, moving, merging (among one kind), cancelling and children close first are the same for every node. Their events and tool ops carry the base name (NodeReplied, NodeMoved, NodeMerged, NodeCancelled; the `node` tool) and address any node by ID. What one kind does carries the kind's name (ThreadOpened, ThreadResolved, DecisionOpened, DecisionMade, OptionAdded). No shared event or state field means something different per kind.
+
+A decision's end ends its open options as its defined effect, the picked one chosen and the others not chosen, like a merge's child move in zg-4h7: picking one option is deciding about all of them. A new kind is justified only by a new row in the table or a new way of ending. IDs: threads T1, decisions D1, options dotted under their decision, D1.2.
+
+#### Rationale
+
+The rules that matter (one parent, children close first, closing says how) run over the whole tree, so the tree wants one node type with one set of mechanics. Specialising only where a rule differs is zg-ww9's spirit applied to types. The table makes a limit one line to read and one line to change, and the kind's name on its own events keeps the log readable as what happened (zg-tjz).
+
+#### Alternatives Considered
+
+- A `kind` or `question` flag on one ThreadOpened: fields whose meaning depends on the flag, and the event name stops saying what happened.
+- Options as labelled entries on the question: no nesting, and a second, lossy channel for pros and cons beside replies.
+- A class hierarchy with containment overridden per subtype: Liskov violations in every subtype, checked in half the code.
+- Thread as the base word for the shared mechanics: a specific doubling as the generic reads wrong in every sentence about moving or merging.
+- A question kind: no rule differs from a thread; a question is a thread whose title is a question and whose outcome is the answer.
+
+#### How it was decided
+
+Agreed in chat on 2026-10-23 and 2026-10-24, slicing zg-bam.5. The human: 'I'd rather have a Thread hierarchy where question is a special form of thread … I don't want to create a situation where a thread has multiple booleans that turns on and off various fields, that's poor design'; 'maybe Option is another thread type'; 'a question doesn't have options, it has threads and it ends with an answer. an answer may reference other threads in its text. decisions do have options, though. a decision has to be either decided, and reference an option#, or abandoned/cancelled (with a reason)'; 'I prefer having multiple event types'; 'Thread can only contain the Thread and Decision node. A Decision node can only contain Options, and an option can contain Thread and Decision nodes, feels like much clearer language and domain concepts'. On numbering: 'ambivalent'; D for decisions and dotted options was Claude's proposal. Accepted with 'accept' on 2026-10-24. The 2a and 2b designs (zg-bam.3, zg-bam.4) were reworded to it before any story started.
 
 ## Superseded or withdrawn
 

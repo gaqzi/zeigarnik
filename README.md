@@ -220,9 +220,14 @@ at a glance what kind of thing it is.
 |---|---|
 | `G` | Goal |
 | `T` | Thread |
-| `D` | Decision |
+| `D` | Decision (its options are `D1.1`, `D1.2`…) |
 | `A` | Action |
 | `C` | Criterion |
+
+Threads, decisions and options are the **nodes** of a goal's tree. What may
+sit under what: the goal holds threads and decisions; a thread holds threads
+and decisions; a decision holds only its options; an option holds threads and
+decisions. Actions and criteria are items attached to a node, not nodes.
 
 ### Session
 
@@ -232,7 +237,7 @@ tracking carry over to the next one.
 
 ### Goal
 
-What the session set out to do. It is the root thread: every thread opened to
+What the session set out to do. It is the root of the tree: every node opened to
 reach it descends from it, so each goal has its own tree.
 
 - States: `open` → `achieved` | `failed` | `cancelled`
@@ -265,7 +270,7 @@ reach it descends from it, so each goal has its own tree.
     and open `G2` in the same session. Claude points out what that costs in
     context before you choose.
 - There is no waiting state for goals. A goal for later is recorded as a
-  **decision** ("next goal: …") on the thread where it came up. The pane lists
+  **decision** ("next goal: …") under the node where it came up. The pane lists
   these under the current goal, so you can see there is more to come, and the
   handoff picks them up. If one becomes `G2` in this session, `G1`'s tree
   closes with it and `G2` starts a tree of its own.
@@ -275,7 +280,7 @@ reach it descends from it, so each goal has its own tree.
 An ongoing conversation that we are looking to close. It might be a yes/no
 question, a long exploration, or a sub-topic of one.
 
-- Has exactly one **parent** (the goal, or another thread).
+- Has exactly one **parent** (the goal, another thread, or an option).
 - Has a **history**: what you and Claude said about it, word for word, so you
   can reread later how it was settled. Claude's side is the part of each reply
   that addresses the thread.
@@ -289,36 +294,8 @@ question, a long exploration, or a sub-topic of one.
 - Every thread must end `resolved` or `cancelled`. To pursue something outside
   this session, close the thread with a decision to do so. That produces an
   action captured into your tracking, or it becomes the next session's goal.
-
-**Questions** are threads whose purpose is a decision. That is how most
-decisions start: Claude, or you, poses a question with options.
-
-- **Options**: the candidate answers, referred to as `T3.1`, `T3.2` and so on.
-  Each one collects the thinking about it as it happens: pros, cons, findings,
-  open doubts.
-- **Criteria** (see below) say what the choice is judged on.
-- A question resolves into a **decision**.
-
-The overview of a question reads like this:
-
-```
-T6 Question: Which place do we book?
-   Decision: D2, T6.3 Paphos
-     because: the only option meeting all of C1 to C5;
-              the 20 min transfer settles C5 comfortably
-   Criteria: C1 Europe · C2 sea ≥ 18°C · C3 sunny · C4 good bars
-             C5 transfer ≤ 30 min (added from T5)
-   Options:
-     1. Greek village
-        + best beach of the lot
-        - 2h bus from the airport (fails C5)
-     2. Costa del Sol
-        + bars, easy flights
-        - sea borderline for C2 in late May
-     3. Paphos ✓
-        + warmest sea, short transfer
-        - fewer bars than option 2
-```
+- A question is a thread too: its title asks, its outcome is the answer, and
+  the answer may name other threads or decisions by ID.
 
 ### Criterion
 
@@ -333,24 +310,47 @@ exploring, not a failure.
 
 ### Decision
 
-A recorded choice: what was decided, why (citing criteria where there are
-any), and what it replaces. It keeps your words of agreement as you said
-them, hedges included ("fine for now, we can change it later").
+A choice we have to make. It is opened as a node, with its **options** as
+nodes under it (`D1.1`, `D1.2`…). Each option collects the replies about it,
+and can hold threads and decisions of its own when it needs exploring.
 
-- Usually the answer to a question. It can also stand alone, as a realization
-  along the way ("transfers must be short").
-- States: `decided` | `superseded` (a later decision replaced it) |
-  `reopened`.
-- Belongs to the thread where it was made.
+- Ends when you pick an option. The decision keeps your words of agreement as
+  you said them, hedges included ("fine for now, we can change it later"), and
+  where they came from. The picked option is chosen, the others not chosen.
+  Or it is cancelled, with your reason.
+- A realization along the way ("transfers must be short") is recorded as a
+  decision with a single option, in one step.
+- States: `open` → `decided` | `cancelled`. A decided decision can later be
+  `superseded` (a later decision replaced it) or `reopened` (it is in doubt;
+  the rediscussion is a new decision, whose pick supersedes this one). Nothing
+  closed is rewritten.
 - Scope: `session` (it only guides the rest of this session's work) or
   `lasting` (later work must respect it). You choose with Claude at close:
   lasting decisions are captured into your tracking, session ones go only in
   the handoff.
 
+The overview of a decision reads like this:
+
+```
+D3 Decision: Which place do we book?
+   Decision: D3.3 Paphos
+   because (chat): Paphos then, the 20 min transfer settles it
+   Criteria: C1 Europe · C2 sea ≥ 18°C · C3 sunny · C4 good bars
+             C5 transfer ≤ 30 min (from D2)
+   Options:
+     · D3.1 Greek village
+         #1 claude: best beach of the lot, but 2h by bus from the airport (fails C5)
+     · D3.2 Costa del Sol
+         #1 claude: bars, easy flights; sea borderline for C2 in late May
+     ✓ D3.3 Paphos
+         #1 claude: warmest sea, short transfer; fewer bars than D3.2
+         T7 Check Paphos flights ✓ → direct, Thursday and Sunday
+```
+
 ### Action
 
 Something that must happen for the work to count as finished. It belongs to
-the thread it came up in and has an owner (you or Claude).
+the node it came up in and has an owner (you or Claude).
 
 - States: `open` → `done` | `cancelled` | `exported`. An exported action records
   its external reference (a bead ID, ticket key, file path).
@@ -387,20 +387,23 @@ These always hold. The plugin enforces them, and they are the backbone of the
 tests. Anything that would break one is refused, with the reason and how to
 fix it.
 
-- **One parent.** Every item except a goal has exactly one parent. Parents
-  form a tree rooted at a goal.
-- **Children close first.** A thread can only be `resolved` once all of its
-  children are `resolved` or `cancelled`.
-- **Closing says how.** `resolved` requires an outcome. `cancelled` keeps its
-  reason, if one was given.
-- **Decisions belong to a thread.** A decision on a question resolves it.
+- **One parent.** Every item except a goal has exactly one parent. Nodes form
+  a tree rooted at a goal: the goal and a thread hold threads and decisions, a
+  decision holds only its options, an option holds threads and decisions.
+- **Children close first.** A node can only close once all of its children
+  are closed. An option closes with its decision, so it is what sits under the
+  options that must be closed before the decision can be made.
+- **Closing says how.** A thread resolves with an outcome. A decision is made
+  by picking one of its open options, with your words; its other options end
+  not chosen. A cancelled node keeps your reason; a cancelled action or goal
+  keeps it if you gave one.
 - **Criteria flow down.** Criteria apply to the thread they are attached to
   and all of its descendants.
 - **Exports keep their reference.** Anything exported (an action, a decision,
   a finding) carries its external reference.
 - **One open goal.** Only one goal is `open` at a time.
 - **Close only when nothing is open.** A session can only close when no goal,
-  thread or action is `open`.
+  node or action is `open`.
 
 ## How Claude behaves
 
@@ -418,8 +421,8 @@ thread before it exists.
 
 Tidying up means one of three things:
 
-- **merge**: fold threads into one: `T4–T7 merge T5`
-- **nest**: give a thread a different parent, when Claude put it in the wrong
+- **merge**: fold nodes of one kind into one: `T4–T7 merge T5`
+- **nest**: give a node a different parent, when Claude put it in the wrong
   place: `T5 under T2`
 - **cancel**: close it as not worth pursuing: `T4 cancel`
 
@@ -464,9 +467,9 @@ goal. Nothing is left hanging.
 |---|---|
 | Start a session | `/zg:open <text>`, or accept Claude's proposed goal |
 | See the structure | the pane (toggle with `/threads`) |
-| Reply to a thread | `T4: …` in chat, or type in the pane |
+| Reply to a node | `T4: …` in chat, or type in the pane |
 | Reply to several | several `T4:` blocks in one message |
-| Merge, nest or cancel threads | in the pane, or `T4–T7 merge T5`, `T5 under T2`, `T4 cancel` in chat |
+| Merge, nest or cancel nodes | in the pane, or `T4–T7 merge T5`, `T5 under T2`, `T4 cancel` in chat |
 | Change the goal | `/zg:open <text>` again; Claude asks whether it's a revision or a replacement |
 | Revisit a thread | select it in the pane, or `T4` alone; Claude recaps |
 | See a thread's history | expand it in the pane |
