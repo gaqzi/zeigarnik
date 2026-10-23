@@ -76,6 +76,88 @@ describe('one parent', () => {
       },
     })
   })
+
+  const underGoal = [a.goalOpened(), a.threadOpened()]
+
+  test('a thread opens under the open goal as T1', () => {
+    expect(when([a.goalOpened()], a.openThread())).toEqual({
+      events: [a.threadOpened()],
+    })
+  })
+
+  test('a thread opens under an open thread', () => {
+    expect(
+      when(underGoal, a.openThread({ parent: 'T1', title: 'Rhodes' })),
+    ).toEqual({
+      events: [a.threadOpened({ thread: 'T2', parent: 'T1', title: 'Rhodes' })],
+    })
+  })
+
+  test('threads are numbered across the session, whatever their depth', () => {
+    const given = [
+      ...underGoal,
+      a.threadOpened({ thread: 'T2', parent: 'T1', title: 'Rhodes' }),
+      a.threadOpened({ thread: 'T3', title: 'Flights' }),
+    ]
+
+    expect(
+      when(given, a.openThread({ parent: 'T2', title: 'Ferries' })),
+    ).toEqual({
+      events: [
+        a.threadOpened({ thread: 'T4', parent: 'T2', title: 'Ferries' }),
+      ],
+    })
+  })
+
+  const refused: {
+    name: string
+    given: Event[]
+    command: Command
+    reason: string
+    fix: string
+  }[] = [
+    {
+      name: 'refuses a thread when no goal is open',
+      given: [],
+      command: a.openThread(),
+      reason:
+        "One parent: a thread belongs to the open goal's tree, and no goal is open.",
+      fix: 'Open a goal first: the human starts one with /zg:open.',
+    },
+    {
+      name: 'refuses a parent that does not exist',
+      given: underGoal,
+      command: a.openThread({ parent: 'T7' }),
+      reason: 'One parent: there is no thread T7.',
+      fix: 'The open threads are T1.',
+    },
+    {
+      name: 'refuses a parent that does not exist when no thread is open',
+      given: [a.goalOpened()],
+      command: a.openThread({ parent: 'T7' }),
+      reason: 'One parent: there is no thread T7.',
+      fix: 'There are no open threads.',
+    },
+    {
+      name: 'refuses a resolved parent',
+      given: [...underGoal, a.threadResolved()],
+      command: a.openThread({ parent: 'T1' }),
+      reason: 'One parent: T1 is already resolved.',
+      fix: "Open it under T1's parent G, or under another open thread.",
+    },
+    {
+      name: 'refuses a cancelled parent',
+      given: [...underGoal, a.nodeCancelled()],
+      command: a.openThread({ parent: 'T1' }),
+      reason: 'One parent: T1 is already cancelled.',
+      fix: "Open it under T1's parent G, or under another open thread.",
+    },
+  ]
+  for (const { name, given, command, reason, fix } of refused) {
+    test(name, () => {
+      expect(when(given, command)).toEqual({ refusal: { reason, fix } })
+    })
+  }
 })
 
 describe('an open action', () => {

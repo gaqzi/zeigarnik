@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { a } from '../core/a.ts'
+import { AT, a } from '../core/a.ts'
 import { host, log } from './host.ts'
 
 // Wiring: that the engine reaches zg's hooks, and they reach the core and
@@ -108,8 +108,70 @@ test('an action recorded through a tool is logged and shows in the pane', async 
 
   expect({ answers, pane, files: world.files }).toEqual({
     answers: [{ result: 'GoalOpened G' }, { result: 'ActionAdded A1' }],
-    pane: ['○ G Pick a holiday', 'Actions', '☐ A1 Check school dates (human)'],
+    pane: [
+      '○ G Pick a holiday',
+      '0 open · 0 closed',
+      'Actions',
+      '☐ A1 Check school dates (human)',
+    ],
     files: { [LOG]: log([a.goalOpened(), a.actionAdded()]) },
+  })
+})
+
+test('a thread recorded through a tool is logged and shows in the pane as a tree', async ($, on) => {
+  const world = host(on)
+  await $.session.start(START)
+
+  const answers = [
+    await $.tool.call({ tool: 'mcp__zg__open', goal: 'Pick a holiday' }),
+    await $.tool.call({
+      tool: 'mcp__zg__thread',
+      op: 'add',
+      parent: 'G',
+      title: 'Places in Greece',
+    }),
+  ]
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+
+  expect({ answers, pane, files: world.files }).toEqual({
+    answers: [{ result: 'GoalOpened G' }, { result: 'ThreadOpened T1' }],
+    pane: [
+      '○ G Pick a holiday',
+      '1 open · 0 closed',
+      '  ○ T1 Places in Greece',
+    ],
+    files: { [LOG]: log([a.goalOpened(), a.threadOpened()]) },
+  })
+})
+
+test('a thread refused for want of a goal goes back as an error and is traced', async ($, on) => {
+  const world = host(on)
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__thread',
+    op: 'add',
+    parent: 'G',
+    title: 'Places in Greece',
+  })
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: {
+      deny: "One parent: a thread belongs to the open goal's tree, and no goal is open. Open a goal first: the human starts one with /zg:open.",
+    },
+    files: {
+      [TRACE]: log([
+        {
+          type: 'CommandRefused',
+          at: AT,
+          command: a.openThread(),
+          reason:
+            "One parent: a thread belongs to the open goal's tree, and no goal is open.",
+          fix: 'Open a goal first: the human starts one with /zg:open.',
+        },
+      ]),
+    },
   })
 })
 
@@ -212,6 +274,7 @@ test('a resumed session draws its log in the pane', async ($, on) => {
 
   expect(pane).toEqual([
     '○ G Pick a holiday',
+    '0 open · 0 closed',
     'Actions',
     '☐ A1 Check school dates (human)',
   ])

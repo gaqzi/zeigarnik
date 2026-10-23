@@ -1,6 +1,6 @@
 import type { Command } from './commands.ts'
 import type { Event } from './events.ts'
-import type { Action, Goal, State } from './evolve.ts'
+import type { Action, Goal, Node, State } from './evolve.ts'
 import { nextId } from './ids.ts'
 
 // The rules live here and nowhere else (zg-kux). A command that would break
@@ -23,8 +23,8 @@ const openGoal = (state: State) =>
 const openActions = (state: State) =>
   state.actions.filter(action => action.status === 'open')
 
-const ids = (actions: readonly Action[]) =>
-  actions.map(action => action.id).join(', ')
+const ids = (items: readonly (Action | Node)[]) =>
+  items.map(item => item.id).join(', ')
 
 // Commands on an action name one that exists and is still open.
 const findOpen = (
@@ -105,6 +105,51 @@ const decideAdd = (state: State, command: Command & { type: 'AddAction' }) => {
         owner: command.owner,
         ...(command.quote === undefined ? {} : { quote: command.quote }),
       } satisfies Event,
+    ],
+  }
+}
+
+const decideOpenThread = (
+  state: State,
+  command: Command & { type: 'OpenThread' },
+): Decided => {
+  const goal = openGoal(state)
+  if (goal === undefined) {
+    return refuse(
+      "One parent: a thread belongs to the open goal's tree, and no goal is open.",
+      'Open a goal first: the human starts one with /zg:open.',
+    )
+  }
+  const { at, parent, title } = command
+  const found = state.nodes.find(node => node.id === parent)
+  if (parent !== goal.id && found === undefined) {
+    const open = state.nodes.filter(node => node.status === 'open')
+    return refuse(
+      `One parent: there is no thread ${parent}.`,
+      open.length === 0
+        ? 'There are no open threads.'
+        : `The open threads are ${ids(open)}.`,
+    )
+  }
+  if (found !== undefined && found.status !== 'open') {
+    return refuse(
+      `One parent: ${parent} is already ${found.status}.`,
+      `Open it under ${parent}'s parent ${found.parent}, or under another open thread.`,
+    )
+  }
+
+  return {
+    events: [
+      {
+        type: 'ThreadOpened',
+        at,
+        thread: nextId(
+          'T',
+          state.nodes.map(node => node.id),
+        ),
+        parent,
+        title,
+      },
     ],
   }
 }
@@ -248,5 +293,7 @@ export const decide = (state: State, command: Command): Decided => {
       return decideHandoff(state, command)
     case 'CloseSession':
       return decideCloseSession(state, command)
+    case 'OpenThread':
+      return decideOpenThread(state, command)
   }
 }

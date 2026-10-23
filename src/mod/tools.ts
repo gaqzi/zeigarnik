@@ -45,6 +45,20 @@ export const specs: RegisteredToolSpec[] = [
     },
   },
   {
+    name: 'thread',
+    description:
+      "Records a thread: each thing we are looking to close, such as a question or a choice, opened under the goal or the thread it came up in. add one as soon as it comes up. parent: the goal's ID or a thread's.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        op: { enum: ['add'] },
+        parent: { ...text, description: 'G… or T…' },
+        title: { ...text, description: 'add: the thread' },
+      },
+      required: ['op', 'parent', 'title'],
+    },
+  },
+  {
     name: 'close_goal',
     description:
       "Closes the open goal once the human says how it ended: achieved, failed (with why) or cancelled. source: where the human's answer came from, dialog if picked in the dialog, chat if typed. reason: whatever words they gave about how it ended, verbatim (a dialog note, or what they typed, even 'drop it' or 'I'd rather not say'), never yours; leave it out only for a bare pick.",
@@ -159,6 +173,16 @@ export const toCommand = (
         source,
         ...reason,
       }
+    }
+    case 'thread': {
+      if (input.op !== 'add') return { missing: 'thread needs op: add.' }
+      const parent = str(input, 'parent')
+      if (parent === undefined) {
+        return { missing: "add needs the parent: the goal's ID or a thread's." }
+      }
+      const title = str(input, 'title')
+      if (title === undefined) return { missing: 'add needs the title.' }
+      return { type: 'OpenThread', at, parent, title }
     }
     case 'close_goal': {
       const as = GOAL_ENDS.find(end => end === input.as)

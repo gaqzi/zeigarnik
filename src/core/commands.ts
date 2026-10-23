@@ -51,3 +51,4 @@ export type Command =
       references: string[]
     }
   | { type: 'CloseSession'; at: string; via: 'clear' }
+  | { type: 'OpenThread'; at: string; parent: string; title: string }

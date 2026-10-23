@@ -19,6 +19,16 @@ export type Action = {
   ref?: string
 }
 
+export type Node = {
+  id: string
+  kind: 'thread'
+  parent: string
+  title: string
+  status: 'open' | 'resolved' | 'cancelled'
+  outcome?: string
+  reason?: string
+}
+
 export type Handoff = {
   next: string
   decisions: Decision[]
@@ -28,6 +38,7 @@ export type Handoff = {
 export type State = {
   goals: Goal[]
   actions: Action[]
+  nodes: Node[]
   handoff?: Handoff
   // False once anything happens after the handoff was written: it no longer
   // describes the session, and has to be written again.
@@ -38,6 +49,7 @@ export type State = {
 export const initial: State = {
   goals: [],
   actions: [],
+  nodes: [],
   handoffStands: false,
   isClosed: false,
 }
@@ -57,6 +69,13 @@ const setAction = (
   ...state,
   actions: state.actions.map(action =>
     action.id === id ? { ...action, ...change } : action,
+  ),
+})
+
+const setNode = (state: State, id: string, change: Partial<Node>): State => ({
+  ...state,
+  nodes: state.nodes.map(node =>
+    node.id === id ? { ...node, ...change } : node,
   ),
 })
 
@@ -121,6 +140,31 @@ const happened = (state: State, event: Event): State => {
       return setGoal(state, event.goal, {
         status: 'cancelled',
         ...ofReason(event.reason),
+      })
+    case 'ThreadOpened':
+      return {
+        ...state,
+        nodes: [
+          ...state.nodes,
+          {
+            id: event.thread,
+            kind: 'thread',
+            parent: event.parent,
+            title: event.title,
+            status: 'open',
+          },
+        ],
+      }
+    case 'ThreadResolved':
+      return setNode(state, event.thread, {
+        status: 'resolved',
+        outcome: event.outcome,
+        reason: event.reason,
+      })
+    case 'NodeCancelled':
+      return setNode(state, event.node, {
+        status: 'cancelled',
+        reason: event.reason,
       })
     case 'HandoffWritten':
       return {

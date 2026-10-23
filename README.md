@@ -101,16 +101,15 @@ attaches the family's criteria to it:
 The pane opens beside the chat:
 
 ```
-┌ zg ──────────────────────────────────────────────────────────────┐
-│ G  Pick our end-of-May beach holiday                             │
-│    1 open · 0 closed                                             │
-│                                                                  │
-│ ◆ D1 Which holiday do we book?                                   │
-│     C1 Europe                                                    │
-│     C2 sea ≥ 18°C                                                │
-│     C3 sunny                                                     │
-│     C4 good bars                                                 │
-└──────────────────────────────────────────────────────────────────┘
+┌ zg ────────────────────────────────────────────────────────────────────┐
+│ ○ G Pick our end-of-May beach holiday                                  │
+│ 1 open · 0 closed                                                      │
+│   ◆ D1 Which holiday do we book?                                       │
+│       C1 Europe                                                        │
+│       C2 sea ≥ 18°C                                                    │
+│       C3 sunny                                                         │
+│       C4 good bars                                                     │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Fan out.** Claude opens T1 to narrow the countries down (web search etc.),
@@ -150,26 +149,25 @@ places fail C5. It proposes updating T2 and T3 in one batch. You confirm
 once.
 
 ```
-┌ zg ──────────────────────────────────────────────────────────────┐
-│ G  Pick our end-of-May beach holiday                             │
-│    4 open · 4 closed                                             │
-│                                                                  │
-│ ✓ T1 Which countries are warm enough? → GR, ES, CY               │
-│ ○ T2 Places in Greece                                            │
-│   ✓ T5 2h bus? → see D2                                          │
-│     ✓ D2 How long may the transfer be? → D2.1 transfers ≤ 30 min │
-│ ○ T3 Places in Spain                                             │
-│ ○ T4 Places in Cyprus                                            │
-│ ◆ D1 Which holiday do we book?                                   │
-│     C1 Europe                                                    │
-│     C2 sea ≥ 18°C                                                │
-│     C3 sunny                                                     │
-│     C4 good bars                                                 │
-│     C5 transfer ≤ 30 min ✱                                       │
-│                                                                  │
-│ Actions                                                          │
-│ ☐ A1 Check school dates (you)                                    │
-└──────────────────────────────────────────────────────────────────┘
+┌ zg ────────────────────────────────────────────────────────────────────┐
+│ ○ G Pick our end-of-May beach holiday                                  │
+│ 4 open · 3 closed                                                      │
+│   ✓ T1 Which countries are warm enough? → GR, ES, CY                   │
+│   ○ T2 Places in Greece                                                │
+│     ✓ T5 2h bus? → see D2                                              │
+│       ✓ D2 How long may the transfer be? → D2.1 transfers ≤ 30 min     │
+│   ○ T3 Places in Spain                                                 │
+│   ○ T4 Places in Cyprus                                                │
+│   ◆ D1 Which holiday do we book?                                       │
+│       C1 Europe                                                        │
+│       C2 sea ≥ 18°C                                                    │
+│       C3 sunny                                                         │
+│       C4 good bars                                                     │
+│       C5 transfer ≤ 30 min ✱                                           │
+│                                                                        │
+│ Actions                                                                │
+│ ☐ A1 Check school dates (you)                                          │
+└────────────────────────────────────────────────────────────────────────┘
 ○ open  ✦ new  ✓ resolved  ✗ cancelled  ◆ decision  ◇ option  ☐ action  ✱ changed
 ```
 
@@ -499,7 +497,7 @@ goal. Nothing is left hanging.
 | You want to | Do |
 |---|---|
 | Start a session | `/zg:open <text>`, or accept Claude's proposed goal |
-| See the structure | the pane (toggle with `/threads`) |
+| See the structure | the pane: zg opens it when Claude Code starts, including `claude --resume`, shown once the terminal is 144 columns wide; `ctrl+x x` closes it until Claude Code next starts |
 | Reply to a node | `T4: …` in chat, or type in the pane |
 | Reply to several | several `T4:` blocks in one message |
 | Merge, nest or cancel nodes | in the pane, or `T4–T7 merge T5`, `T5 under T2`, `T4 cancel` in chat |
@@ -557,6 +555,8 @@ It isn't released yet. So far it covers the skeleton of the session loop:
 `/zg:open` with a goal, actions recorded as they come up and shown in the
 pane, `/zg:close` with the rules for closing, and a handoff that lists what
 to file by hand (there are no sinks yet). The goal and open actions come back
-after a compaction or a resume. Threads, decisions and criteria come next.
+after a compaction or a resume. Threads exist too: Claude opens them under
+the goal or another thread and they show in the pane as a tree; closing them
+comes next, then decisions and criteria.
 To try it from a clone, run `script/bootstrap`, then start Claude Code with
 `claude --plugin-dir .` in the clone.

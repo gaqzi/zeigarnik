@@ -22,11 +22,48 @@ test('shows each goal and action with how it stands', () => {
 
   expect(overview(state)).toEqual([
     { text: '○ G Pick a holiday (zg-bam.2)', isOpen: true },
+    { text: '0 open · 0 closed', isOpen: true },
     { text: 'Actions', isOpen: false },
     { text: '☐ A1 Check school dates (human)', isOpen: true },
     { text: '✓ A2 Book flights (claude)', isOpen: false },
     { text: '✗ A3 Rent a car (human) · taxis are fine', isOpen: false },
     { text: '→ A4 Pack (human) → handoff', isOpen: false },
+  ])
+})
+
+test('shows the threads as a tree under the goal, with how many are open', () => {
+  const state = fold([
+    a.goalOpened(),
+    a.threadOpened(),
+    a.threadOpened({ thread: 'T2', parent: 'T1', title: 'Rhodes' }),
+    a.threadOpened({ thread: 'T3', title: 'Flights' }),
+  ])
+
+  expect(overview(state)).toEqual([
+    { text: '○ G Pick a holiday', isOpen: true },
+    { text: '3 open · 0 closed', isOpen: true },
+    { text: '  ○ T1 Places in Greece', isOpen: true },
+    { text: '    ○ T2 Rhodes', isOpen: true },
+    { text: '  ○ T3 Flights', isOpen: true },
+  ])
+})
+
+test('shows closed threads dimmed at their depth, with the outcome or the reason, and counts them', () => {
+  const state = fold([
+    a.goalOpened(),
+    a.threadOpened(),
+    a.threadOpened({ thread: 'T2', parent: 'T1', title: 'Rhodes' }),
+    a.threadOpened({ thread: 'T3', title: 'Flights' }),
+    a.threadResolved({ thread: 'T2', outcome: 'Rhodes and Crete' }),
+    a.nodeCancelled({ node: 'T3', reason: 'not going to Greece' }),
+  ])
+
+  expect(overview(state)).toEqual([
+    { text: '○ G Pick a holiday', isOpen: true },
+    { text: '1 open · 2 closed', isOpen: true },
+    { text: '  ○ T1 Places in Greece', isOpen: true },
+    { text: '    ✓ T2 Rhodes → Rhodes and Crete', isOpen: false },
+    { text: '  ✗ T3 Flights · not going to Greece', isOpen: false },
   ])
 })
 
@@ -42,6 +79,7 @@ test('shows the reason after any outcome that has one', () => {
 
   expect(overview(state)).toEqual([
     { text: '✓ G Pick a holiday · achieved: good enough', isOpen: false },
+    { text: '0 open · 0 closed', isOpen: false },
     { text: 'Actions', isOpen: false },
     { text: '✓ A2 Book flights (claude) · shipped', isOpen: false },
     {
@@ -57,6 +95,7 @@ test('the full view ends with the handoff once it is written', () => {
   expect(fullView(state)).toBe(
     [
       '✗ G Pick a holiday · failed: nowhere meets every criterion',
+      '0 open · 0 closed',
       'Handoff written: /zg:copy-handoff copies it.',
       '',
       'Goal: Book the flights',
@@ -74,7 +113,9 @@ test('a handoff is out of date once work goes on past it', () => {
 
   expect(overview(state)).toEqual([
     { text: '✓ G Pick a holiday · achieved', isOpen: false },
+    { text: '0 open · 0 closed', isOpen: false },
     { text: '○ G2 Plan the bars', isOpen: true },
+    { text: '0 open · 0 closed', isOpen: true },
     { text: 'Handoff out of date: write it again.', isOpen: false },
   ])
 })

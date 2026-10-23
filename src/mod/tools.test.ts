@@ -20,6 +20,12 @@ const action = (overrides: Input = {}) => ({
   source: 'chat',
   ...overrides,
 })
+const thread = (overrides: Input = {}) => ({
+  op: 'add',
+  parent: 'G',
+  title: 'Places in Greece',
+  ...overrides,
+})
 const closeGoal = (overrides: Input = {}) => ({
   as: 'achieved',
   source: 'chat',
@@ -117,6 +123,12 @@ describe('a tool call becomes', () => {
       command: a.exportAction({ ref: 'zg-x1y' }),
     },
     {
+      name: 'a thread opened under its parent',
+      tool: 'thread',
+      input: thread(),
+      command: a.openThread(),
+    },
+    {
       name: 'a goal closed from a dialog pick, with no reason',
       tool: 'close_goal',
       input: closeGoal({ source: 'dialog' }),
@@ -180,6 +192,24 @@ describe('a tool call missing what it needs is refused', () => {
         tool: 'action',
         input: action({ id: undefined }),
         missing: 'done needs the id.',
+      },
+      {
+        name: 'a thread op zg has no name for',
+        tool: 'thread',
+        input: thread({ op: undefined }),
+        missing: 'thread needs op: add.',
+      },
+      {
+        name: 'a thread added without its parent',
+        tool: 'thread',
+        input: thread({ parent: ' ' }),
+        missing: "add needs the parent: the goal's ID or a thread's.",
+      },
+      {
+        name: 'a thread added without its title',
+        tool: 'thread',
+        input: thread({ title: undefined }),
+        missing: 'add needs the title.',
       },
       {
         name: 'a goal closed without how it ended',

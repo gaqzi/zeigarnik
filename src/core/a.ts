@@ -53,6 +53,22 @@ export const a = {
     references: [],
   }),
   sessionClosed: event('SessionClosed', { via: 'clear' }),
+  threadOpened: event('ThreadOpened', {
+    thread: 'T1',
+    parent: 'G',
+    title: 'Places in Greece',
+  }),
+  threadResolved: event('ThreadResolved', {
+    thread: 'T1',
+    outcome: 'Rhodes and Crete',
+    source: 'chat',
+    reason: 'that covers it',
+  }),
+  nodeCancelled: event('NodeCancelled', {
+    node: 'T1',
+    source: 'chat',
+    reason: 'not going to Greece',
+  }),
 
   openGoal: command('OpenGoal', { text: 'Pick a holiday' }),
   addAction: command('AddAction', {
@@ -80,4 +96,5 @@ export const a = {
     references: [],
   }),
   closeSession: command('CloseSession', { via: 'clear' }),
+  openThread: command('OpenThread', { parent: 'G', title: 'Places in Greece' }),
 }

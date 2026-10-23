@@ -7,6 +7,9 @@ export type Owner = 'human' | 'claude'
 // Where the human's words came from: picked in the dialog, or typed in chat.
 export type Source = 'chat' | 'dialog'
 
+// Who closed a node: the human in chat or the dialog, or Claude on its own.
+export type NodeSource = Source | 'claude'
+
 export type Decision = { text: string; lasting: boolean }
 
 // The default sink: an action exported here is listed in the handoff for the
@@ -71,6 +74,28 @@ export type Event =
       goal: string
       source: Source
       reason?: string
+    }
+  | {
+      type: 'ThreadOpened'
+      at: string
+      thread: string
+      parent: string
+      title: string
+    }
+  | {
+      type: 'ThreadResolved'
+      at: string
+      thread: string
+      outcome: string
+      source: NodeSource
+      reason: string
+    }
+  | {
+      type: 'NodeCancelled'
+      at: string
+      node: string
+      source: NodeSource
+      reason: string
     }
   | {
       type: 'HandoffWritten'

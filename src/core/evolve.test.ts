@@ -9,7 +9,7 @@ import { fold } from './evolve.ts'
 
 test('an event this build does not know changes nothing', () => {
   const unknown = {
-    type: 'ThreadOpened',
+    type: 'SomethingNobodyKnows',
     at: a.goalOpened().at,
   } as unknown as Event
 
