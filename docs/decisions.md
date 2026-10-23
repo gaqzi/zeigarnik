@@ -27,6 +27,7 @@ zg-pvk.
 | zg-n27 | zg's context budget: 3k fixed (cap 5k), checked by a test that counts what zg registers; a small per-turn index, 2k for re-injection; meter thresholds are configurable | evals, mod |
 | zg-51d | Code work: the main session coordinates; subagents write the tests (red), write the code (green) and review | project |
 | zg-tjb | Every event that decides or ends something keeps the human's words verbatim as its reason, with their source | core |
+| zg-2f3 | Configuration is a file in the repo, .zg/config.json, shared by everyone on the project | mod, storage |
 
 ## Accepted
 
@@ -634,6 +635,41 @@ is all there was, chat words have the conversation around them.
 #### How it was decided
 
 Agreed in chat on 2026-10-22, defining zg-bam.14 after zg-bam.11's manual check. The human: 'I want the option that is the types that we have decided on to be set as the type of decision, and then the reason'; 'in most cases it's covered by the event type so it's not really helpful. in those cases, we only really care about the reason given (if any)'; 'it doesn't hurt to have a reason for successes either ... don't constrain the human if they want it'; on a separate quote and reason: 'if we end up having two fields for a very similar thing, then I'd rather have one field and a type, or source (source: picker|chat, for example)'; on the name: 'I prefer reason over quote ... because reason is why we ended up with this event'. Still version 0: 'we haven't even shipped this thing'. Scope: 'keep it open to let the user express themselves as much as possible', dialog and pane alike. Open until the human accepts it.
+
+### zg-2f3: Configuration is a file in the repo, .zg/config.json, shared by everyone on the project
+
+Areas: mod, storage
+
+#### Context
+
+zg needs settings: the sink (where captured items go, in plain words), and
+the context meter's nudge_at and push_at (zg-n27). Claude Code offers
+per-person settings through `$.config` and the `/config` menu, and the
+sessions already live in the repo under `.zg/` (zg-r1g).
+
+#### Decision
+
+zg's configuration is a file in the repo, `.zg/config.json`, beside the
+sessions, and everyone working on the project shares it. There are no
+per-person overrides yet; a `config.local` or similar is a later problem.
+JSON because the plugin can parse it with nothing added.
+
+#### Rationale
+
+If a project is worked on by several people, they should have the same
+settings and the same workflow: the sink and the meter thresholds describe
+the project, not the person. Committed beside the sessions, the settings
+travel with the repo and are reviewed like any other change.
+
+#### Alternatives Considered
+
+- `$.config` / the `/config` menu: per person, so a team would drift apart.
+- YAML: reads better for the sink's prose, but needs a parser bundled.
+- A per-person override file now: not needed until someone needs it.
+
+#### How it was decided
+
+Agreed in chat on 2026-10-23, slicing zg-bam. The human: 'config in repo, in case we end up being multiplayer we should have the same settings and workflow (gut feel, maybe it'll have to be revisited later and allow for a config.local or similar, but that's a future problem)'. The file name and JSON were Claude's proposal; the human: 'ok'.
 
 ## Superseded or withdrawn
 
