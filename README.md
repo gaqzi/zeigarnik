@@ -317,8 +317,8 @@ question, a long exploration, or a sub-topic of one.
 - States:
   - `open`: not yet closed
   - `resolved`: closed with an outcome
-  - `cancelled`: closed as not worth pursuing, with the reason recorded if
-    one was given
+  - `cancelled`: closed as not worth pursuing, with the words that closed it
+    and whose they are
 - Every thread must end `resolved` or `cancelled`. To pursue something outside
   this session, close the thread with a decision to do so. That produces an
   action captured into your tracking, or it becomes the next session's goal.
@@ -556,7 +556,8 @@ It isn't released yet. So far it covers the skeleton of the session loop:
 pane, `/zg:close` with the rules for closing, and a handoff that lists what
 to file by hand (there are no sinks yet). The goal and open actions come back
 after a compaction or a resume. Threads exist too: Claude opens them under
-the goal or another thread and they show in the pane as a tree; closing them
-comes next, then decisions and criteria.
+the goal or another thread and they show in the pane as a tree, and Claude
+closes them, resolved with an outcome or cancelled, each with the reason and
+whose words it is. Decisions and criteria come next.
 To try it from a clone, run `script/bootstrap`, then start Claude Code with
 `claude --plugin-dir .` in the clone.

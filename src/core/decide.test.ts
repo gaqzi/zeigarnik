@@ -301,6 +301,123 @@ describe('closing says how', () => {
       },
     })
   })
+
+  const threadOpen = [a.goalOpened(), a.threadOpened()]
+
+  test('a thread resolves with its outcome', () => {
+    expect(when(threadOpen, a.resolveThread())).toEqual({
+      events: [a.threadResolved()],
+    })
+  })
+
+  test('a thread resolves on Claude’s own word', () => {
+    expect(when(threadOpen, a.resolveThread({ source: 'claude' }))).toEqual({
+      events: [a.threadResolved({ source: 'claude' })],
+    })
+  })
+
+  test('a thread is cancelled with the words that closed it', () => {
+    expect(when(threadOpen, a.cancelNode())).toEqual({
+      events: [a.nodeCancelled()],
+    })
+  })
+
+  test('a thread is cancelled on Claude’s own word', () => {
+    expect(when(threadOpen, a.cancelNode({ source: 'claude' }))).toEqual({
+      events: [a.nodeCancelled({ source: 'claude' })],
+    })
+  })
+
+  const withoutOutcome: { name: string; outcome: string | undefined }[] = [
+    { name: 'no outcome', outcome: undefined },
+    { name: 'a blank outcome', outcome: '   ' },
+  ]
+  for (const { name, outcome } of withoutOutcome) {
+    test(`refuses a resolved thread with ${name}`, () => {
+      expect(when(threadOpen, a.resolveThread({ outcome }))).toEqual({
+        refusal: {
+          reason: 'Closing says how: a resolved thread needs its outcome.',
+          fix: 'Pass what T1 settled as the outcome: a short summary, your words are fine.',
+        },
+      })
+    })
+  }
+})
+
+describe('a thread closes once', () => {
+  const closing: {
+    name: string
+    status: string
+    closed: Event
+    command: Command
+  }[] = [
+    {
+      name: 'refuses resolving a resolved thread',
+      status: 'resolved',
+      closed: a.threadResolved(),
+      command: a.resolveThread(),
+    },
+    {
+      name: 'refuses cancelling a resolved thread',
+      status: 'resolved',
+      closed: a.threadResolved(),
+      command: a.cancelNode(),
+    },
+    {
+      name: 'refuses resolving a cancelled thread',
+      status: 'cancelled',
+      closed: a.nodeCancelled(),
+      command: a.resolveThread(),
+    },
+  ]
+  for (const { name, status, closed, command } of closing) {
+    test(name, () => {
+      const given = [
+        a.goalOpened(),
+        a.threadOpened(),
+        a.threadOpened({ thread: 'T2', title: 'Flights' }),
+        closed,
+      ]
+
+      expect(when(given, command)).toEqual({
+        refusal: {
+          reason: `T1 is already ${status}.`,
+          fix: 'The open threads are T2.',
+        },
+      })
+    })
+  }
+
+  const unknown: { name: string; command: Command }[] = [
+    { name: 'resolving', command: a.resolveThread({ thread: 'T7' }) },
+    { name: 'cancelling', command: a.cancelNode({ node: 'T7' }) },
+  ]
+  for (const { name, command } of unknown) {
+    test(`refuses ${name} a thread that does not exist`, () => {
+      const given = [
+        a.goalOpened(),
+        a.threadOpened(),
+        a.threadOpened({ thread: 'T2', title: 'Flights' }),
+        a.threadResolved(),
+      ]
+
+      expect(when(given, command)).toEqual({
+        refusal: {
+          reason: 'There is no thread T7.',
+          fix: 'The open threads are T2.',
+        },
+      })
+    })
+  }
+
+  test('says so when no thread is open to close instead', () => {
+    expect(when([a.goalOpened()], a.resolveThread({ thread: 'T7' }))).toEqual({
+      refusal: {
+        reason: 'There is no thread T7.',
+        fix: 'There are no open threads.',
+      },
+    })
+  })
 })
 
 describe('close only when nothing is open', () => {

@@ -1,7 +1,7 @@
 import type { RegisteredToolSpec } from 'claude-code'
 
 import type { Command } from '../core/commands.ts'
-import { HANDOFF, type Source } from '../core/events.ts'
+import { HANDOFF, type NodeSource, type Source } from '../core/events.ts'
 
 // The tools Claude records the session through. Each call becomes one
 // command (zg-kux); what the descriptions say reaches the model on every
@@ -13,6 +13,10 @@ export const SHOW = 'show'
 const text = { type: 'string' } as const
 
 const SOURCES: Source[] = ['chat', 'dialog']
+const NODE_SOURCES: NodeSource[] = ['chat', 'dialog', 'claude']
+
+const CLOSED_BY =
+  "source: whose words closed it: chat or dialog for the human's, claude when you close it yourself. reason: those words verbatim for the human's; with claude, what let you close it yourself: the condition the human set and that it was met, or your own fan-out research reported in this reply."
 
 export const specs: RegisteredToolSpec[] = [
   {
@@ -46,16 +50,33 @@ export const specs: RegisteredToolSpec[] = [
   },
   {
     name: 'thread',
-    description:
-      "Records a thread: each thing we are looking to close, such as a question or a choice, opened under the goal or the thread it came up in. add one as soon as it comes up. parent: the goal's ID or a thread's.",
+    description: `Records a thread: each thing we are looking to close, such as a question or a choice, opened under the goal or the thread it came up in. add one as soon as it comes up. parent: the goal's ID or a thread's. resolve closes it with outcome: a short summary, your words are fine. ${CLOSED_BY}`,
     inputSchema: {
       type: 'object',
       properties: {
-        op: { enum: ['add'] },
-        parent: { ...text, description: 'G… or T…' },
+        op: { enum: ['add', 'resolve'] },
+        parent: { ...text, description: 'add: G… or T…' },
         title: { ...text, description: 'add: the thread' },
+        id: { ...text, description: 'resolve: T…' },
+        outcome: text,
+        source: { enum: NODE_SOURCES },
+        reason: text,
       },
-      required: ['op', 'parent', 'title'],
+      required: ['op'],
+    },
+  },
+  {
+    name: 'node',
+    description: `Closes any node (a thread so far): cancel when it is no longer worth pursuing. ${CLOSED_BY}`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        op: { enum: ['cancel'] },
+        id: text,
+        source: { enum: NODE_SOURCES },
+        reason: text,
+      },
+      required: ['op'],
     },
   },
   {
@@ -113,6 +134,27 @@ const optional = (key: string, value: string | undefined) =>
 
 const sourceOf = (input: Input) =>
   SOURCES.find(source => source === input.source)
+
+const nodeSourceOf = (input: Input) =>
+  NODE_SOURCES.find(source => source === input.source)
+
+// The id, source and reason that close a node, or what is missing.
+const closedBy = (
+  op: string,
+  input: Input,
+): { id: string; source: NodeSource; reason: string } | { missing: string } => {
+  const id = str(input, 'id')
+  if (id === undefined) return { missing: `${op} needs the id.` }
+  const source = nodeSourceOf(input)
+  if (source === undefined) {
+    return { missing: `${op} needs source: chat, dialog or claude.` }
+  }
+  const reason = str(input, 'reason')
+  if (reason === undefined) {
+    return { missing: `${op} needs the reason: the words that closed it.` }
+  }
+  return { id, source, reason }
+}
 
 const ACTION_OPS = ['add', 'done', 'cancel', 'export']
 const GOAL_ENDS = ['achieved', 'failed', 'cancelled'] as const
@@ -175,7 +217,21 @@ export const toCommand = (
       }
     }
     case 'thread': {
-      if (input.op !== 'add') return { missing: 'thread needs op: add.' }
+      if (input.op === 'resolve') {
+        const closed = closedBy('resolve', input)
+        if ('missing' in closed) return closed
+        return {
+          type: 'ResolveThread',
+          at,
+          thread: closed.id,
+          source: closed.source,
+          reason: closed.reason,
+          ...optional('outcome', str(input, 'outcome')),
+        }
+      }
+      if (input.op !== 'add') {
+        return { missing: 'thread needs op: add or resolve.' }
+      }
       const parent = str(input, 'parent')
       if (parent === undefined) {
         return { missing: "add needs the parent: the goal's ID or a thread's." }
@@ -183,6 +239,18 @@ export const toCommand = (
       const title = str(input, 'title')
       if (title === undefined) return { missing: 'add needs the title.' }
       return { type: 'OpenThread', at, parent, title }
+    }
+    case 'node': {
+      if (input.op !== 'cancel') return { missing: 'node needs op: cancel.' }
+      const closed = closedBy('cancel', input)
+      if ('missing' in closed) return closed
+      return {
+        type: 'CancelNode',
+        at,
+        node: closed.id,
+        source: closed.source,
+        reason: closed.reason,
+      }
     }
     case 'close_goal': {
       const as = GOAL_ENDS.find(end => end === input.as)

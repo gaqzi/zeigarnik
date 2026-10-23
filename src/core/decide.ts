@@ -49,6 +49,40 @@ const findOpen = (
   return { action }
 }
 
+const openThreadsFix = (state: State) => {
+  const open = state.nodes.filter(node => node.status === 'open')
+
+  return open.length === 0
+    ? 'There are no open threads.'
+    : `The open threads are ${ids(open)}.`
+}
+
+// Closing a node names one that exists and is still open.
+const findOpenNode = (
+  state: State,
+  id: string,
+): { node: Node } | { refusal: Refusal } => {
+  const node = state.nodes.find(one => one.id === id)
+  if (node === undefined) {
+    return {
+      refusal: {
+        reason: `There is no thread ${id}.`,
+        fix: openThreadsFix(state),
+      },
+    }
+  }
+  if (node.status !== 'open') {
+    return {
+      refusal: {
+        reason: `${id} is already ${node.status}.`,
+        fix: openThreadsFix(state),
+      },
+    }
+  }
+
+  return { node }
+}
+
 const onAction = (
   state: State,
   id: string,
@@ -123,12 +157,9 @@ const decideOpenThread = (
   const { at, parent, title } = command
   const found = state.nodes.find(node => node.id === parent)
   if (parent !== goal.id && found === undefined) {
-    const open = state.nodes.filter(node => node.status === 'open')
     return refuse(
       `One parent: there is no thread ${parent}.`,
-      open.length === 0
-        ? 'There are no open threads.'
-        : `The open threads are ${ids(open)}.`,
+      openThreadsFix(state),
     )
   }
   if (found !== undefined && found.status !== 'open') {
@@ -152,6 +183,36 @@ const decideOpenThread = (
       },
     ],
   }
+}
+
+const decideResolveThread = (
+  state: State,
+  command: Command & { type: 'ResolveThread' },
+): Decided => {
+  const { at, thread, outcome, source, reason } = command
+  const found = findOpenNode(state, thread)
+  if ('refusal' in found) return found
+  if (outcome === undefined || outcome.trim() === '') {
+    return refuse(
+      'Closing says how: a resolved thread needs its outcome.',
+      `Pass what ${thread} settled as the outcome: a short summary, your words are fine.`,
+    )
+  }
+
+  return {
+    events: [{ type: 'ThreadResolved', at, thread, outcome, source, reason }],
+  }
+}
+
+const decideCancelNode = (
+  state: State,
+  command: Command & { type: 'CancelNode' },
+): Decided => {
+  const { at, node, source, reason } = command
+  const found = findOpenNode(state, node)
+  if ('refusal' in found) return found
+
+  return { events: [{ type: 'NodeCancelled', at, node, source, reason }] }
 }
 
 const decideCloseGoal = (
@@ -295,5 +356,9 @@ export const decide = (state: State, command: Command): Decided => {
       return decideCloseSession(state, command)
     case 'OpenThread':
       return decideOpenThread(state, command)
+    case 'ResolveThread':
+      return decideResolveThread(state, command)
+    case 'CancelNode':
+      return decideCancelNode(state, command)
   }
 }

@@ -55,6 +55,7 @@ export const register: Register = on => {
             'goal' in event ? event.goal : '',
             'action' in event ? event.action : '',
             'thread' in event ? event.thread : '',
+            'node' in event ? event.node : '',
           ]
             .filter(part => part !== '')
             .join(' '),

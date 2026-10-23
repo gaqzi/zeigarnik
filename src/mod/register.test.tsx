@@ -145,6 +145,90 @@ test('a thread recorded through a tool is logged and shows in the pane as a tree
   })
 })
 
+test('Claude resolves its own research thread with its outcome and the words that say so', async ($, on) => {
+  const warm = a.threadOpened({ title: 'Which countries are warm enough?' })
+  const world = host(on, { [LOG]: log([a.goalOpened(), warm]) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__thread',
+    op: 'resolve',
+    id: 'T1',
+    outcome: 'GR, ES, CY',
+    source: 'claude',
+    reason: 'my research under T1, reported in this reply',
+  })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => ({
+    text: text.text,
+    isDim: text.props.dimColor,
+  }))
+
+  expect({ answer, pane, files: world.files }).toEqual({
+    answer: { result: 'ThreadResolved T1' },
+    pane: [
+      { text: '○ G Pick a holiday', isDim: false },
+      { text: '0 open · 1 closed', isDim: false },
+      {
+        text: '  ✓ T1 Which countries are warm enough? → GR, ES, CY',
+        isDim: true,
+      },
+    ],
+    files: {
+      [LOG]: log([
+        a.goalOpened(),
+        warm,
+        a.threadResolved({
+          outcome: 'GR, ES, CY',
+          source: 'claude',
+          reason: 'my research under T1, reported in this reply',
+        }),
+      ]),
+    },
+  })
+})
+
+test("the human's words end a thread, cancelled with the reason verbatim", async ($, on) => {
+  const cyprus = a.threadOpened({ thread: 'T4', title: 'Places in Cyprus' })
+  const world = host(on, { [LOG]: log([a.goalOpened(), cyprus]) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__node',
+    op: 'cancel',
+    id: 'T4',
+    source: 'chat',
+    reason: 'skip Cyprus, flights are silly money',
+  })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => ({
+    text: text.text,
+    isDim: text.props.dimColor,
+  }))
+
+  expect({ answer, pane, files: world.files }).toEqual({
+    answer: { result: 'NodeCancelled T4' },
+    pane: [
+      { text: '○ G Pick a holiday', isDim: false },
+      { text: '0 open · 1 closed', isDim: false },
+      {
+        text: '  ✗ T4 Places in Cyprus · skip Cyprus, flights are silly money',
+        isDim: true,
+      },
+    ],
+    files: {
+      [LOG]: log([
+        a.goalOpened(),
+        cyprus,
+        a.nodeCancelled({
+          node: 'T4',
+          reason: 'skip Cyprus, flights are silly money',
+        }),
+      ]),
+    },
+  })
+})
+
 test('a thread refused for want of a goal goes back as an error and is traced', async ($, on) => {
   const world = host(on)
   await $.session.start(START)

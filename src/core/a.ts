@@ -97,4 +97,15 @@ export const a = {
   }),
   closeSession: command('CloseSession', { via: 'clear' }),
   openThread: command('OpenThread', { parent: 'G', title: 'Places in Greece' }),
+  resolveThread: command('ResolveThread', {
+    thread: 'T1',
+    outcome: 'Rhodes and Crete',
+    source: 'chat',
+    reason: 'that covers it',
+  }),
+  cancelNode: command('CancelNode', {
+    node: 'T1',
+    source: 'chat',
+    reason: 'not going to Greece',
+  }),
 }

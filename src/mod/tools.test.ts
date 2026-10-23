@@ -26,6 +26,21 @@ const thread = (overrides: Input = {}) => ({
   title: 'Places in Greece',
   ...overrides,
 })
+const resolve = (overrides: Input = {}) => ({
+  op: 'resolve',
+  id: 'T1',
+  outcome: 'Rhodes and Crete',
+  source: 'chat',
+  reason: 'that covers it',
+  ...overrides,
+})
+const cancel = (overrides: Input = {}) => ({
+  op: 'cancel',
+  id: 'T1',
+  source: 'chat',
+  reason: 'not going to Greece',
+  ...overrides,
+})
 const closeGoal = (overrides: Input = {}) => ({
   as: 'achieved',
   source: 'chat',
@@ -129,6 +144,42 @@ describe('a tool call becomes', () => {
       command: a.openThread(),
     },
     {
+      name: 'a thread resolved with its outcome',
+      tool: 'thread',
+      input: resolve(),
+      command: a.resolveThread(),
+    },
+    {
+      name: 'a thread resolved on Claude’s own word',
+      tool: 'thread',
+      input: resolve({ source: 'claude' }),
+      command: a.resolveThread({ source: 'claude' }),
+    },
+    {
+      name: 'a thread resolved with a blank outcome, left for decide to refuse',
+      tool: 'thread',
+      input: resolve({ outcome: ' ' }),
+      command: a.resolveThread({ outcome: undefined }),
+    },
+    {
+      name: 'a thread resolved with the outcome key absent, left for decide to refuse',
+      tool: 'thread',
+      input: resolve({ outcome: undefined }),
+      command: a.resolveThread({ outcome: undefined }),
+    },
+    {
+      name: 'a node cancelled with the words that closed it',
+      tool: 'node',
+      input: cancel(),
+      command: a.cancelNode(),
+    },
+    {
+      name: 'a node cancelled on Claude’s own word',
+      tool: 'node',
+      input: cancel({ source: 'claude' }),
+      command: a.cancelNode({ source: 'claude' }),
+    },
+    {
       name: 'a goal closed from a dialog pick, with no reason',
       tool: 'close_goal',
       input: closeGoal({ source: 'dialog' }),
@@ -197,7 +248,37 @@ describe('a tool call missing what it needs is refused', () => {
         name: 'a thread op zg has no name for',
         tool: 'thread',
         input: thread({ op: undefined }),
-        missing: 'thread needs op: add.',
+        missing: 'thread needs op: add or resolve.',
+      },
+      {
+        name: 'a thread resolved without its id',
+        tool: 'thread',
+        input: resolve({ id: undefined }),
+        missing: 'resolve needs the id.',
+      },
+      {
+        name: 'a thread resolved without the words that closed it',
+        tool: 'thread',
+        input: resolve({ reason: undefined }),
+        missing: 'resolve needs the reason: the words that closed it.',
+      },
+      {
+        name: 'a node op zg has no name for',
+        tool: 'node',
+        input: cancel({ op: 'merge' }),
+        missing: 'node needs op: cancel.',
+      },
+      {
+        name: 'a node cancelled without its id',
+        tool: 'node',
+        input: cancel({ id: undefined }),
+        missing: 'cancel needs the id.',
+      },
+      {
+        name: 'a node cancelled from a dialog without the words that closed it',
+        tool: 'node',
+        input: cancel({ source: 'dialog', reason: undefined }),
+        missing: 'cancel needs the reason: the words that closed it.',
       },
       {
         name: 'a thread added without its parent',
@@ -272,6 +353,39 @@ describe('a tool call whose source is absent or not chat or dialog is refused', 
   const sources = [
     { how: 'absent', source: undefined },
     { how: 'pane', source: 'pane' },
+  ]
+  for (const { name, tool, input, missing } of calls) {
+    for (const { how, source } of sources) {
+      test(`${name} with its source ${how}`, () => {
+        expect(toCommand(tool, input(source), AT)).toEqual({ missing })
+      })
+    }
+  }
+})
+
+describe('a tool call whose source is absent or not chat, dialog or claude is refused', () => {
+  const calls: {
+    name: string
+    tool: string
+    input: (source: unknown) => Input
+    missing: string
+  }[] = [
+    {
+      name: 'a thread resolved',
+      tool: 'thread',
+      input: source => resolve({ source }),
+      missing: 'resolve needs source: chat, dialog or claude.',
+    },
+    {
+      name: 'a node cancelled',
+      tool: 'node',
+      input: source => cancel({ source }),
+      missing: 'cancel needs source: chat, dialog or claude.',
+    },
+  ]
+  const sources = [
+    { how: 'absent', source: undefined },
+    { how: 'human', source: 'human' },
   ]
   for (const { name, tool, input, missing } of calls) {
     for (const { how, source } of sources) {
