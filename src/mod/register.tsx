@@ -4,6 +4,7 @@ import { brief } from '../core/brief.ts'
 import { handoff } from '../core/handoff.ts'
 import { fullView } from '../core/overview.ts'
 import { title } from '../core/title.ts'
+import { turnIndex } from '../core/turn-index.ts'
 import { current, now, run, show } from './session.ts'
 import { HANDOFF_TOOL, SHOW, specs, toCommand } from './tools.ts'
 
@@ -17,6 +18,19 @@ const OPENING = /^\/zg:open\s+(\S[\s\S]*)$/
 const titled = { plugin: 'zg', key: 'titled' } as const
 // The scan reads a state reference only from a const in the file using it.
 const pane = atom({ plugin: 'zg', key: 'lines' } as const, [])
+
+// zg-n27: every prompt, slash commands included, brings the index of what is
+// open.
+const withIndex = <R extends { additionalContext?: string[] }>(
+  result: R,
+  index: string | undefined,
+): R =>
+  index === undefined
+    ? result
+    : {
+        ...result,
+        additionalContext: [...(result.additionalContext ?? []), index],
+      }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
@@ -68,12 +82,12 @@ export const register: Register = on => {
   // one place a plugin can rename the session (see zg-bam.2's comments).
   // Once Claude has recorded the goal's origin, the next prompt adds it.
   on('classic.UserPromptSubmit', async ($, e, next) => {
-    const result = await next(e)
+    const state = await current($, await $.session.id())
+    const result = withIndex(await next(e), turnIndex(state))
     const opening = OPENING.exec(e.prompt.trim())
     if (opening?.[1] !== undefined) {
       return { ...result, sessionTitle: title(opening[1]) }
     }
-    const state = await current($, await $.session.id())
     const goal = state.goals.find(one => one.status === 'open')
     const { value } = await $.state.get(titled)
     if (goal?.origin === undefined || value === goal.id) return result

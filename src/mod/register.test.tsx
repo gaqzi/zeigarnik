@@ -55,8 +55,10 @@ test('/zg:open renames the session after the goal', async ($, on) => {
   expect(answer).toEqual({ sessionTitle: 'Pick a holiday' })
 })
 
-test('the next prompt adds the origin to the title, once', async ($, on) => {
-  host(on, { [LOG]: log([a.goalOpened({ origin: 'zg-abc' })]) })
+test('the next prompt adds the origin to the title once, with the index alongside', async ($, on) => {
+  host(on, {
+    [LOG]: log([a.goalOpened({ origin: 'zg-abc' }), a.threadOpened()]),
+  })
   const prompt = { prompt: 'go on', session_title: 'Pick a holiday' }
 
   const answers = [
@@ -64,7 +66,54 @@ test('the next prompt adds the origin to the title, once', async ($, on) => {
     await $.classic.UserPromptSubmit(prompt),
   ]
 
-  expect(answers).toEqual([{ sessionTitle: 'zg-abc Pick a holiday' }, {}])
+  expect(answers).toEqual([
+    {
+      sessionTitle: 'zg-abc Pick a holiday',
+      additionalContext: ['zg open: T1 Places in Greece'],
+    },
+    { additionalContext: ['zg open: T1 Places in Greece'] },
+  ])
+})
+
+test('each prompt brings the index of what is open', async ($, on) => {
+  const given = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T1', title: 'Places in Greece' }),
+    a.threadOpened({ thread: 'T2', title: 'Places in Spain' }),
+    a.threadResolved({ thread: 'T2' }),
+    a.actionAdded(),
+  ]
+  host(on, { [LOG]: log(given) })
+
+  const answer = await $.classic.UserPromptSubmit({ prompt: 'what next?' })
+
+  expect(answer).toEqual({
+    additionalContext: ['zg open: T1 Places in Greece | A1 Check school dates'],
+  })
+})
+
+test('a slash command other than /zg:open still gets the index', async ($, on) => {
+  host(on, { [LOG]: log([a.goalOpened(), a.threadOpened()]) })
+
+  const answer = await $.classic.UserPromptSubmit({ prompt: '/zg:close' })
+
+  expect(answer).toEqual({
+    additionalContext: ['zg open: T1 Places in Greece'],
+  })
+})
+
+test('/zg:open gets the index alongside the new title', async ($, on) => {
+  const given = [a.goalOpened(), a.threadOpened()]
+  host(on, { [LOG]: log(given) })
+
+  const answer = await $.classic.UserPromptSubmit({
+    prompt: '/zg:open Pick a holiday',
+  })
+
+  expect(answer).toEqual({
+    sessionTitle: 'Pick a holiday',
+    additionalContext: ['zg open: T1 Places in Greece'],
+  })
 })
 
 // The kit can't list commands ($.command.list is undefined), so
@@ -459,19 +508,33 @@ test('/zg:copy-handoff shows the handoff when it cannot copy', async ($, on) => 
   })
 })
 
-const BRIEF =
-  'zg: the goal is G Pick a holiday\nOpen actions:\n- A1 Check school dates (human)\nFull view: mcp__zg__show.'
+const BRIEF = [
+  'zg: the goal is G Pick a holiday',
+  'Open threads:',
+  '- T1 Places in Greece (under G)',
+  '- T3 Places in Spain (under T1)',
+  'Open actions:',
+  '- A1 Check school dates (human)',
+  'Full view: mcp__zg__show.',
+].join('\n')
 
-test('after a compaction the goal and open actions are re-injected', async ($, on) => {
-  host(on, { [LOG]: log([a.goalOpened(), a.actionAdded()]) })
+const OPEN = [
+  a.goalOpened(),
+  a.threadOpened({ thread: 'T1', parent: 'G', title: 'Places in Greece' }),
+  a.threadOpened({ thread: 'T3', parent: 'T1', title: 'Places in Spain' }),
+  a.actionAdded(),
+]
+
+test('after a compaction the goal, open threads and open actions are re-injected', async ($, on) => {
+  host(on, { [LOG]: log(OPEN) })
 
   const answer = await $.classic.SessionStart({ source: 'compact' })
 
   expect(answer).toEqual({ additionalContext: [BRIEF] })
 })
 
-test('after a resume the goal and open actions are re-injected', async ($, on) => {
-  host(on, { [LOG]: log([a.goalOpened(), a.actionAdded()]) })
+test('after a resume the goal, open threads and open actions are re-injected', async ($, on) => {
+  host(on, { [LOG]: log(OPEN) })
 
   const answer = await $.classic.SessionStart({ source: 'resume' })
 

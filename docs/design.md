@@ -62,7 +62,12 @@ press in the pane  ┘                │
   (SessionClosed) on a `/clear` while a handoff stands; quitting leaves it
   open to resume.
 - After a compaction or a resume, SessionStart re-injects the brief view
-  (zg-zo2), within 2k tokens (zg-n27).
+  (zg-zo2): the goal, open threads and open actions, within 2k tokens
+  (zg-n27).
+- Every prompt, slash commands included, carries the per-turn index of what
+  is open (`src/core/turn-index.ts`), added as `additionalContext` by
+  `classic.UserPromptSubmit`, on its own budget of 300 tokens plus about 15
+  an item (zg-n27), separate from the brief's 2k.
 
 ## An example
 
