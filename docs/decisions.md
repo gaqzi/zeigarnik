@@ -34,6 +34,7 @@ zg-pvk.
 | zg-ww9 | Derive a fact from the log before storing it | core |
 | zg-8ld | Everything under a goal is a node of one kind, thread, decision or option; a kind adds only where it may sit and how it ends | core, mod |
 | zg-64v | The log is append-only: closed items are never rewritten, a decision changes by being decided again, and rediscussion opens a new thread | core |
+| zg-b8o | A story's acceptance describes use, never how a test sets it up; harness workarounds live once in docs/development.md | evals, project |
 
 ## Accepted
 
@@ -866,6 +867,71 @@ The log is the story of how things were settled (zg-tjz), and re-deciding keeps 
 #### How it was decided
 
 Agreed in chat on 2026-10-24, slicing zg-bam.5, replacing zg-f6d's supersede and reopen. The human: 'I think it could be fine to add another option to a decision and then change the decision, it'll come out the same anyway when applying the events and you have the history. it might be the more pragmatic call?' Claude laid out what it keeps (append-only, one node per question, children close first untouched), what goes (DecisionReopened, supersedes, the superseded and reopened states) and what it costs (the 'in doubt' marker); the human: 'accept'. zg-f6d's own history: 'B, yes, this better indicates that something was decided and then the decision was superseded, this is important to keep a log of things', which the re-decided node's history still shows.
+
+### zg-b8o: A story's acceptance describes use, never how a test sets it up; harness workarounds live once in docs/development.md
+
+Areas: evals, project
+
+#### Context
+
+zg-bam.3.8's second scenario (written 2026-10-23) put the eval recording
+recipe into the acceptance: a transcript cut after the dialog's expansion, a
+spliced answer, a resume with "Continue.". Fitted to the recipe, it then
+expected a bare dialog pick on a thread to produce a ThreadResolved without
+a reason, which the slice's event contract (zg-bam.3, events v0) and
+zg-tjb's note of 2026-10-23 forbid, and which the story's own checklist
+contradicts. The story was not dispatchable.
+
+The harness knowledge already existed: docs/development.md describes the
+splice (zg-bam.14), and close-dialog-bare-failed's description names what
+that case leaves unexercised and why. Missing was the rule that a story
+points at it instead of restating it. A harness gap is filed as a bead,
+labelled per zg-nti.
+
+#### Decision
+
+A scenario describes use: what the human says and picks, what Claude
+calls, and what zg records, refuses or shows. A Given may state earlier
+state in zg's own terms. The scenario names its layer and, for an eval, its
+bar (zg-egt); the checklist may name files.
+
+A scenario never says how a test produces its situation (recorded
+transcripts, spliced answers, scaffolds, fixtures). The harness's limits
+and the way around each are written once, in docs/development.md. A
+scenario that cannot be exercised with them is a harness gap to file, not
+a reason to change the acceptance or an event contract to suit the test.
+
+The acceptance describes the behaviour in full whatever the harness
+reaches. A scenario automation cannot reach is marked "checked by hand" on
+its layer line. It is checked when the behaviour is new or changed; a case
+that copies a proven case's shape verbatim is not checked again. What a
+case leaves unexercised, if anything, and why, goes in that case's
+description.
+
+#### Rationale
+
+The human, 2026-10-24: a test workaround "is an implementation detail and
+not something that should leak into the acceptance criteria"; the scenario
+"is getting too much in the weeds of how to test rather than how the system
+behaves when used by a human". A recipe copied into stories drifts, and a
+mistake in the copy reads as a rule about zg. Checking by hand only what is
+new or changed rewards reusing the shapes that work and keeps manual
+testing shrinking (the human: "encourage ourselves to do the thing that
+works and reduce the manual testing").
+
+#### Alternatives Considered
+
+- A memory alone (bd remember): reaches every session, but is flat, has no
+  rationale, is not in script/context's index and gives a reviewer nothing
+  to cite. A memory still points here so planning sessions see it.
+- The recipe repeated in each story's checklist, as 3.8 did: the copies
+  drift and the harness's limits start to look like rules about zg.
+- Dropping unreached scenarios from the acceptance: hides a behaviour gap
+  behind a green suite (acceptance-honesty).
+
+#### How it was decided
+
+Decided 2026-10-24 with the human, after zg-bam.3.8 proved undispatchable. Their words: a test workaround 'is an implementation detail and not something that should leak into the acceptance criteria'; 'how could we resolve it so the acceptance criteria is focused on the visible actions rather than implementation, while also recording how to handle the complexity of the tech implementation?'. Chose a decision over a memory because the rule constrains two reviewed work products (acceptance text, eval cases) and a reviewer needs something to cite. On hand checks: 'verified by hand when changed, or something new that isn't a verbatim copy of previous cases. because I hope we then encourage ourselves to do the thing that works and reduce the manual testing.' Wording reviewed by two subagents (sonnet, opus) before creation; drafts in .dispatch/decision-acceptance/. 'd8: yes'.
 
 ## Superseded or withdrawn
 

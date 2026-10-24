@@ -41,6 +41,8 @@ decision beads, rendered in [docs/decisions.md](docs/decisions.md).
   touches or reads (zg-nti).
 - For code, coordinate: `test-writer`, `implementer` and `reviewer` agents do
   red, green and review (zg-51d).
+- A story's acceptance describes use, never how a test sets it up; how the
+  harness is worked around lives once in docs/development.md (zg-b8o).
 
 ## Conventions & Patterns
 

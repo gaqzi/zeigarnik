@@ -65,6 +65,14 @@ closing sentence, and `toolUseResult` with `questions`, `answers` and
 `annotations`. Copy the format from a real answered dialog under
 `~/.claude/projects`. The case's prompt then lets Claude go on.
 
+A headless run cannot answer a question Claude asks in chat either. When the
+behaviour has Claude ask and the human answer, the case's prompt is the
+human's answer and the asking turn is not exercised: the case's description
+says so, and the scenario is marked "checked by hand" (zg-b8o), checked when
+the behaviour is new or changed, not for a case that copies a proven shape.
+The acceptance itself never carries any of this: it describes what the human
+does and what zg records, and this section holds the recipe.
+
 ### Eval pass bars
 
 From zg-egt. Each case runs 5 times, since the model isn't deterministic.
