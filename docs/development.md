@@ -133,6 +133,7 @@ The repo follows
 | `script/cibuild` | What CI runs |
 | `script/update-vendor-deps` | Replace the mod API declarations in `vendor/` with the installed Claude Code's. Spends one short haiku turn |
 | `script/context <id> [--claim]` | Everything needed to start on a bead: the bead, its epic's design, its dependencies, the decisions and path rules for its areas. Warns about unknown area labels |
+| `script/context --area <area>[,<area>]...` | The decisions and path rules for the named areas, with no bead, for defining stories. Repeat `--area` or comma-separate; mixing it with a bead ID is refused |
 | `script/decisions` | Render the decision beads into [decisions.md](decisions.md). Refuses while a decision lacks a valid area label |
 
 ## Tracking work
@@ -141,7 +142,9 @@ All work and every lasting decision is a bead in bd; `bd prime` prints the
 workflow, and a SessionStart hook runs it for Claude. Each bead carries labels
 for the areas its work is about, and agents load context by them (zg-nti):
 
-- `script/context <id>` gives the decisions for the bead's areas.
+- `script/context <id>` gives the decisions for the bead's areas. Before a
+  bead exists, `script/context --area <area>` gives the same for named areas,
+  for defining stories.
 - `.claude/rules/` gives practical guidance when matching files are touched.
 
 Decisions are made by the human, recorded as decision beads, and rendered into

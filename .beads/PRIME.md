@@ -10,6 +10,7 @@ lists for tracking work. Memories go in bd too (`bd remember`, injected by
 ```bash
 bd ready                         # open, unblocked work
 script/context <id> --claim      # claim it, and print what you need to start
+script/context --area <area>     # decisions and rules for areas, before a bead exists
 ```
 
 `script/context` prints the bead (as `bd show` would), its epic's design,

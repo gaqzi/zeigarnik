@@ -41,8 +41,10 @@ decision beads, rendered in [docs/decisions.md](docs/decisions.md).
   touches or reads (zg-nti).
 - For code, coordinate: `test-writer`, `implementer` and `reviewer` agents do
   red, green and review (zg-51d).
-- A story's acceptance describes use, never how a test sets it up; how the
-  harness is worked around lives once in docs/development.md (zg-b8o).
+- Before defining stories, load the areas' decisions with
+  `script/context --area <area>`. A story's acceptance describes use, never
+  how a test sets it up; the harness workarounds live once in
+  docs/development.md (zg-b8o).
 
 ## Conventions & Patterns
 
