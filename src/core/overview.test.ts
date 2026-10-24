@@ -42,9 +42,9 @@ test('shows the threads as a tree under the goal, with how many are open', () =>
   expect(overview(state)).toEqual([
     { text: '○ G Pick a holiday', isOpen: true },
     { text: '3 open · 0 closed', isOpen: true },
-    { text: '  ○ T1 Places in Greece', isOpen: true },
-    { text: '    ○ T2 Rhodes', isOpen: true },
-    { text: '  ○ T3 Flights', isOpen: true },
+    { text: '  ✦ T1 Places in Greece', isOpen: true },
+    { text: '    ✦ T2 Rhodes', isOpen: true },
+    { text: '  ✦ T3 Flights', isOpen: true },
   ])
 })
 
@@ -61,7 +61,7 @@ test('shows closed threads dimmed at their depth, with the outcome or the reason
   expect(overview(state)).toEqual([
     { text: '○ G Pick a holiday', isOpen: true },
     { text: '1 open · 2 closed', isOpen: true },
-    { text: '  ○ T1 Places in Greece', isOpen: true },
+    { text: '  ✦ T1 Places in Greece', isOpen: true },
     { text: '    ✓ T2 Rhodes → Rhodes and Crete', isOpen: false },
     { text: '  ✗ T3 Flights · not going to Greece', isOpen: false },
   ])
@@ -172,7 +172,7 @@ test('the pane’s overview leaves replies out', () => {
     '○ G Pick a holiday',
     '3 open · 0 closed',
     '  ○ T5 2h bus?',
-    '    ○ T6 Transfers',
+    '    ✦ T6 Transfers',
     '  ○ T7 Flights',
   ])
 })

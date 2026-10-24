@@ -188,7 +188,7 @@ test('a thread recorded through a tool is logged and shows in the pane as a tree
     pane: [
       '○ G Pick a holiday',
       '1 open · 0 closed',
-      '  ○ T1 Places in Greece',
+      '  ✦ T1 Places in Greece',
     ],
     files: { [LOG]: log([a.goalOpened(), a.threadOpened()]) },
   })
@@ -600,4 +600,54 @@ test('show answers that there is no goal yet', async ($, on) => {
   const ran = await $.tool.call({ tool: 'mcp__zg__show' })
 
   expect(ran).toEqual({ result: 'No goal yet.' })
+})
+
+test('an untouched thread is new in the pane, with its line not dimmed', async ($, on) => {
+  const world = host(on)
+  await $.session.start(START)
+
+  const answers = [
+    await $.tool.call({ tool: 'mcp__zg__open', goal: 'Pick a holiday' }),
+    await $.tool.call({
+      tool: 'mcp__zg__thread',
+      op: 'add',
+      parent: 'G',
+      title: 'Places in Greece',
+    }),
+    await $.tool.call({
+      tool: 'mcp__zg__node',
+      op: 'reply',
+      id: 'T1',
+      author: 'claude',
+      text: 'Rhodes and Crete look best',
+    }),
+  ]
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => ({
+    text: text.text,
+    isDim: text.props.dimColor,
+  }))
+
+  expect({ answers, pane, files: world.files }).toEqual({
+    answers: [
+      { result: 'GoalOpened G' },
+      { result: 'ThreadOpened T1' },
+      { result: 'NodeReplied T1' },
+    ],
+    pane: [
+      { text: '○ G Pick a holiday', isDim: false },
+      { text: '1 open · 0 closed', isDim: false },
+      { text: '  ✦ T1 Places in Greece', isDim: false },
+    ],
+    files: {
+      [LOG]: log([
+        a.goalOpened(),
+        a.threadOpened(),
+        a.nodeReplied({
+          author: 'claude',
+          text: 'Rhodes and Crete look best',
+        }),
+      ]),
+    },
+  })
 })

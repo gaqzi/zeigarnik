@@ -567,7 +567,7 @@ what is open with every prompt. Threads exist too: Claude opens them under the
 goal or another thread and they show in the pane as a tree, and Claude closes
 them, resolved with an outcome or cancelled, each with the reason and whose
 words it is. Each thread keeps what both sides said about it, word for word,
-and `show` lists it under the thread; the pane doesn't show it yet. Decisions
-and criteria come next.
+and `show` lists it under the thread; the pane doesn't show it yet. The pane
+marks ✦ a thread you haven't written to yet. Decisions and criteria come next.
 To try it from a clone, run `script/bootstrap`, then start Claude Code with
 `claude --plugin-dir .` in the clone.
