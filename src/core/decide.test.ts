@@ -420,6 +420,77 @@ describe('a thread closes once', () => {
   })
 })
 
+describe('a closed thread takes no replies', () => {
+  const closed: { name: string; status: string; closed: Event }[] = [
+    {
+      name: 'refuses a reply to a resolved thread',
+      status: 'resolved',
+      closed: a.threadResolved({ thread: 'T5' }),
+    },
+    {
+      name: 'refuses a reply to a cancelled thread',
+      status: 'cancelled',
+      closed: a.nodeCancelled({ node: 'T5' }),
+    },
+  ]
+  for (const { name, status, closed: end } of closed) {
+    test(name, () => {
+      const given = [
+        a.goalOpened(),
+        a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+        a.threadOpened({ thread: 'T6', title: 'Flights' }),
+        end,
+      ]
+
+      expect(when(given, a.replyToNode({ node: 'T5' }))).toEqual({
+        refusal: {
+          reason: `T5 is already ${status}.`,
+          fix: "Open a new thread under T5's parent for what's new; the open threads are T6.",
+        },
+      })
+    })
+  }
+
+  test('says there are no open threads when none is left to name', () => {
+    const given = [
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+      a.threadResolved({ thread: 'T5' }),
+    ]
+
+    expect(when(given, a.replyToNode({ node: 'T5' }))).toEqual({
+      refusal: {
+        reason: 'T5 is already resolved.',
+        fix: "Open a new thread under T5's parent for what's new; there are no open threads.",
+      },
+    })
+  })
+
+  test('refuses a reply to a thread that does not exist', () => {
+    const given = [a.goalOpened(), a.threadOpened({ thread: 'T5' })]
+
+    expect(when(given, a.replyToNode({ node: 'T9' }))).toEqual({
+      refusal: {
+        reason: 'There is no thread T9.',
+        fix: 'The open threads are T5.',
+      },
+    })
+  })
+})
+
+describe('replies are kept verbatim', () => {
+  test('a reply to an open thread appends one NodeReplied with its author and text', () => {
+    const given = [a.goalOpened(), a.threadOpened({ thread: 'T5' })]
+    const text = '  Noted:  transfers\nunder 30 minutes  '
+
+    expect(
+      when(given, a.replyToNode({ node: 'T5', author: 'claude', text })),
+    ).toEqual({
+      events: [a.nodeReplied({ node: 'T5', author: 'claude', text })],
+    })
+  })
+})
+
 describe('children close first', () => {
   const threadFix =
     'Show the human the open children and ask how each ends, or propose one outcome that settles them for the human to confirm.'

@@ -1,8 +1,8 @@
 import type { Action, Goal, Node, State } from './evolve.ts'
 import { handoff } from './handoff.ts'
 
-// The full view of the session, line by line: the pane draws the lines, and
-// `show` sends them to Claude on request (zg-zo2).
+// The full view of the session, line by line: `show` sends Claude all of it
+// on request, and the pane draws a subset (zg-zo2).
 
 export type Line = { text: string; isOpen: boolean }
 
@@ -84,7 +84,22 @@ const actionLine = (action: Action): Line => {
   }
 }
 
-export const overview = (state: State): Line[] => {
+// A thread's replies, numbered from 1 in log order, one level under its line;
+// a reply's later lines sit under its text.
+const replyLines = (state: State, { node, depth }: Placed): Line[] =>
+  state.replies
+    .filter(reply => reply.node === node.id)
+    .map((reply, index) => {
+      const prefix = `${'  '.repeat(depth + 1)}#${index + 1} ${reply.author}: `
+      const indent = ' '.repeat(prefix.length)
+
+      return {
+        text: prefix + reply.text.replaceAll('\n', `\n${indent}`),
+        isOpen: false,
+      }
+    })
+
+const view = (state: State, linesOf: (one: Placed) => Line[]): Line[] => {
   if (state.goals.length === 0) return [{ text: 'No goal yet.', isOpen: false }]
   const actions =
     state.actions.length === 0
@@ -105,15 +120,23 @@ export const overview = (state: State): Line[] => {
   const goals = state.goals.flatMap(goal => {
     const placed = nodesUnder(state, goal.id)
 
-    return [goalLine(goal), countLine(placed, goal), ...placed.map(nodeLine)]
+    return [goalLine(goal), countLine(placed, goal), ...placed.flatMap(linesOf)]
   })
 
   return [...goals, ...actions, ...written]
 }
 
-// What `show` answers: the overview, and the handoff when one is written.
+// The pane's lines: threads without what was said on them.
+export const overview = (state: State): Line[] =>
+  view(state, one => [nodeLine(one)])
+
+// What `show` answers: the overview with each thread's replies, and the
+// handoff when one is written.
 export const fullView = (state: State): string => {
-  const lines = overview(state).map(line => line.text)
+  const lines = view(state, one => [
+    nodeLine(one),
+    ...replyLines(state, one),
+  ]).map(line => line.text)
   const written = state.handoff === undefined ? [] : ['', handoff(state)]
 
   return [...lines, ...written].join('\n')

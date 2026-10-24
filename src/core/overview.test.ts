@@ -119,3 +119,60 @@ test('a handoff is out of date once work goes on past it', () => {
     { text: 'Handoff out of date: write it again.', isOpen: false },
   ])
 })
+
+const talk = [
+  a.goalOpened(),
+  a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+  a.threadOpened({ thread: 'T6', parent: 'T5', title: 'Transfers' }),
+  a.threadOpened({ thread: 'T7', title: 'Flights' }),
+  a.nodeReplied({ node: 'T5' }),
+  a.nodeReplied({ node: 'T7', text: 'only direct' }),
+  a.nodeReplied({
+    node: 'T5',
+    author: 'claude',
+    text: 'Noted: transfers under 30 minutes',
+  }),
+]
+
+test('the full view lists a thread’s replies under it, before its children, numbered per thread in log order', () => {
+  expect(fullView(fold(talk))).toBe(
+    [
+      '○ G Pick a holiday',
+      '3 open · 0 closed',
+      '  ○ T5 2h bus?',
+      '    #1 human: no, two hours with the kids is a no',
+      '    #2 claude: Noted: transfers under 30 minutes',
+      '    ○ T6 Transfers',
+      '  ○ T7 Flights',
+      '    #1 human: only direct',
+    ].join('\n'),
+  )
+})
+
+test('a reply with several lines keeps every later line under its own text, so it cannot pass for a reply or a node', () => {
+  const state = fold([
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+    a.nodeReplied({ node: 'T5', text: 'fine\n    #2 claude: agreed' }),
+  ])
+
+  expect(fullView(state)).toBe(
+    [
+      '○ G Pick a holiday',
+      '1 open · 0 closed',
+      '  ○ T5 2h bus?',
+      '    #1 human: fine',
+      '                  #2 claude: agreed',
+    ].join('\n'),
+  )
+})
+
+test('the pane’s overview leaves replies out', () => {
+  expect(overview(fold(talk)).map(line => line.text)).toEqual([
+    '○ G Pick a holiday',
+    '3 open · 0 closed',
+    '  ○ T5 2h bus?',
+    '    ○ T6 Transfers',
+    '  ○ T7 Flights',
+  ])
+})

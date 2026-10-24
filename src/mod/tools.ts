@@ -1,7 +1,12 @@
 import type { RegisteredToolSpec } from 'claude-code'
 
 import type { Command } from '../core/commands.ts'
-import { HANDOFF, type NodeSource, type Source } from '../core/events.ts'
+import {
+  HANDOFF,
+  type NodeSource,
+  type Owner,
+  type Source,
+} from '../core/events.ts'
 
 // The tools Claude records the session through. Each call becomes one
 // command (zg-kux); what the descriptions say reaches the model on every
@@ -13,6 +18,7 @@ export const SHOW = 'show'
 const text = { type: 'string' } as const
 
 const SOURCES: Source[] = ['chat', 'dialog']
+const OWNERS: Owner[] = ['human', 'claude']
 const NODE_SOURCES: NodeSource[] = ['chat', 'dialog', 'claude']
 
 const CLOSED_BY =
@@ -67,12 +73,14 @@ export const specs: RegisteredToolSpec[] = [
   },
   {
     name: 'node',
-    description: `Closes any node (a thread so far): cancel when it is no longer worth pursuing. ${CLOSED_BY}`,
+    description: `Acts on any node (a thread so far). cancel closes it when it is no longer worth pursuing. ${CLOSED_BY} When a message addresses a thread, reply: author human with their words exactly as written in their message, author claude with your own part that addresses it; one reply per thread per message.`,
     inputSchema: {
       type: 'object',
       properties: {
-        op: { enum: ['cancel'] },
+        op: { enum: ['cancel', 'reply'] },
         id: text,
+        author: { enum: OWNERS },
+        text: { ...text, description: 'reply: what was said' },
         source: { enum: NODE_SOURCES },
         reason: text,
       },
@@ -117,7 +125,7 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: SHOW,
     description:
-      "Shows zg's full view of this session from its log: the goal, actions and handoff.",
+      "Shows zg's full view of this session from its log: the goal, actions, threads with what was said on them, and handoff.",
     inputSchema: { type: 'object', properties: {} },
   },
 ]
@@ -241,7 +249,20 @@ export const toCommand = (
       return { type: 'OpenThread', at, parent, title }
     }
     case 'node': {
-      if (input.op !== 'cancel') return { missing: 'node needs op: cancel.' }
+      if (input.op === 'reply') {
+        const id = str(input, 'id')
+        if (id === undefined) return { missing: 'reply needs the id.' }
+        const author = OWNERS.find(owner => owner === input.author)
+        if (author === undefined) {
+          return { missing: 'reply needs author: human or claude.' }
+        }
+        const said = str(input, 'text')
+        if (said === undefined) return { missing: 'reply needs the text.' }
+        return { type: 'ReplyToNode', at, node: id, author, text: said }
+      }
+      if (input.op !== 'cancel') {
+        return { missing: 'node needs op: cancel or reply.' }
+      }
       const closed = closedBy('cancel', input)
       if ('missing' in closed) return closed
       return {

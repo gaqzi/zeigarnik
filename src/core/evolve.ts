@@ -29,6 +29,8 @@ export type Node = {
   reason?: string
 }
 
+export type Reply = { node: string; author: Owner; text: string; at: string }
+
 export type Handoff = {
   next: string
   decisions: Decision[]
@@ -39,6 +41,8 @@ export type State = {
   goals: Goal[]
   actions: Action[]
   nodes: Node[]
+  // In log order; a reply's number is its place among its node's.
+  replies: Reply[]
   handoff?: Handoff
   // False once anything happens after the handoff was written: it no longer
   // describes the session, and has to be written again.
@@ -50,6 +54,7 @@ export const initial: State = {
   goals: [],
   actions: [],
   nodes: [],
+  replies: [],
   handoffStands: false,
   isClosed: false,
 }
@@ -166,6 +171,19 @@ const happened = (state: State, event: Event): State => {
         status: 'cancelled',
         reason: event.reason,
       })
+    case 'NodeReplied':
+      return {
+        ...state,
+        replies: [
+          ...state.replies,
+          {
+            node: event.node,
+            author: event.author,
+            text: event.text,
+            at: event.at,
+          },
+        ],
+      }
     case 'HandoffWritten':
       return {
         ...state,

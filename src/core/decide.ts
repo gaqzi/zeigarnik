@@ -50,12 +50,19 @@ const findOpen = (
   return { action }
 }
 
-const openThreadsFix = (state: State) => {
+// Which threads are open, as a clause for the caller to make a sentence of.
+const openThreadsClause = (state: State) => {
   const open = state.nodes.filter(node => node.status === 'open')
 
   return open.length === 0
-    ? 'There are no open threads.'
-    : `The open threads are ${ids(open)}.`
+    ? 'there are no open threads'
+    : `the open threads are ${ids(open)}`
+}
+
+const openThreadsFix = (state: State) => {
+  const clause = openThreadsClause(state)
+
+  return `${clause.charAt(0).toUpperCase()}${clause.slice(1)}.`
 }
 
 // Closing a node names one that exists and is still open.
@@ -246,6 +253,25 @@ const decideCancelNode = (
   return { events: [{ type: 'NodeCancelled', at, node, source, reason }] }
 }
 
+const decideReplyToNode = (
+  state: State,
+  command: Command & { type: 'ReplyToNode' },
+): Decided => {
+  const { at, node, author, text } = command
+  const target = state.nodes.find(one => one.id === node)
+  if (target === undefined) {
+    return refuse(`There is no thread ${node}.`, openThreadsFix(state))
+  }
+  if (target.status !== 'open') {
+    return refuse(
+      `${node} is already ${target.status}.`,
+      `Open a new thread under ${node}'s parent for what's new; ${openThreadsClause(state)}.`,
+    )
+  }
+
+  return { events: [{ type: 'NodeReplied', at, node, author, text }] }
+}
+
 const decideCloseGoal = (
   state: State,
   command: Command & { type: 'CloseGoal' },
@@ -403,5 +429,7 @@ export const decide = (state: State, command: Command): Decided => {
       return decideResolveThread(state, command)
     case 'CancelNode':
       return decideCancelNode(state, command)
+    case 'ReplyToNode':
+      return decideReplyToNode(state, command)
   }
 }

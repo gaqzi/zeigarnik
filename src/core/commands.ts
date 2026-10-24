@@ -67,3 +67,10 @@ export type Command =
       source: NodeSource
       reason: string
     }
+  | {
+      type: 'ReplyToNode'
+      at: string
+      node: string
+      author: Owner
+      text: string
+    }

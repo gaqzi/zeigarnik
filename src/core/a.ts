@@ -69,6 +69,11 @@ export const a = {
     source: 'chat',
     reason: 'not going to Greece',
   }),
+  nodeReplied: event('NodeReplied', {
+    node: 'T1',
+    author: 'human',
+    text: 'no, two hours with the kids is a no',
+  }),
 
   openGoal: command('OpenGoal', { text: 'Pick a holiday' }),
   addAction: command('AddAction', {
@@ -107,5 +112,10 @@ export const a = {
     node: 'T1',
     source: 'chat',
     reason: 'not going to Greece',
+  }),
+  replyToNode: command('ReplyToNode', {
+    node: 'T1',
+    author: 'human',
+    text: 'no, two hours with the kids is a no',
   }),
 }

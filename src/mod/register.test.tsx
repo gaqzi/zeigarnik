@@ -229,6 +229,62 @@ test("the human's words end a thread, cancelled with the reason verbatim", async
   })
 })
 
+test('both sides of an exchange are kept on a thread and show under it', async ($, on) => {
+  const bus = a.threadOpened({ thread: 'T5', title: '2h bus?' })
+  const world = host(on, { [LOG]: log([a.goalOpened(), bus]) })
+  await $.session.start(START)
+
+  const answers = [
+    await $.tool.call({
+      tool: 'mcp__zg__node',
+      op: 'reply',
+      id: 'T5',
+      author: 'human',
+      text: 'no, two hours with the kids is a no',
+    }),
+    await $.tool.call({
+      tool: 'mcp__zg__node',
+      op: 'reply',
+      id: 'T5',
+      author: 'claude',
+      text: 'Noted: transfers under 30 minutes',
+    }),
+  ]
+  const shown = await $.tool.call({ tool: 'mcp__zg__show' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+
+  expect({ answers, shown, pane, files: world.files }).toEqual({
+    answers: [{ result: 'NodeReplied T5' }, { result: 'NodeReplied T5' }],
+    shown: {
+      result: [
+        '○ G Pick a holiday',
+        '1 open · 0 closed',
+        '  ○ T5 2h bus?',
+        '    #1 human: no, two hours with the kids is a no',
+        '    #2 claude: Noted: transfers under 30 minutes',
+      ].join('\n'),
+    },
+    pane: ['○ G Pick a holiday', '1 open · 0 closed', '  ○ T5 2h bus?'],
+    files: {
+      [LOG]: log([
+        a.goalOpened(),
+        bus,
+        a.nodeReplied({
+          node: 'T5',
+          author: 'human',
+          text: 'no, two hours with the kids is a no',
+        }),
+        a.nodeReplied({
+          node: 'T5',
+          author: 'claude',
+          text: 'Noted: transfers under 30 minutes',
+        }),
+      ]),
+    },
+  })
+})
+
 test('a thread refused for want of a goal goes back as an error and is traced', async ($, on) => {
   const world = host(on)
   await $.session.start(START)

@@ -41,6 +41,13 @@ const cancel = (overrides: Input = {}) => ({
   reason: 'not going to Greece',
   ...overrides,
 })
+const reply = (overrides: Input = {}) => ({
+  op: 'reply',
+  id: 'T1',
+  author: 'human',
+  text: 'no, two hours with the kids is a no',
+  ...overrides,
+})
 const closeGoal = (overrides: Input = {}) => ({
   as: 'achieved',
   source: 'chat',
@@ -180,6 +187,21 @@ describe('a tool call becomes', () => {
       command: a.cancelNode({ source: 'claude' }),
     },
     {
+      name: 'a reply with its author and text',
+      tool: 'node',
+      input: reply(),
+      command: a.replyToNode(),
+    },
+    {
+      name: 'a reply by Claude, its text kept untrimmed',
+      tool: 'node',
+      input: reply({ author: 'claude', text: '  Noted: transfers\n ' }),
+      command: a.replyToNode({
+        author: 'claude',
+        text: '  Noted: transfers\n ',
+      }),
+    },
+    {
       name: 'a goal closed from a dialog pick, with no reason',
       tool: 'close_goal',
       input: closeGoal({ source: 'dialog' }),
@@ -266,7 +288,43 @@ describe('a tool call missing what it needs is refused', () => {
         name: 'a node op zg has no name for',
         tool: 'node',
         input: cancel({ op: 'merge' }),
-        missing: 'node needs op: cancel.',
+        missing: 'node needs op: cancel or reply.',
+      },
+      {
+        name: 'a reply without its id',
+        tool: 'node',
+        input: reply({ id: undefined }),
+        missing: 'reply needs the id.',
+      },
+      {
+        name: 'a reply without its author',
+        tool: 'node',
+        input: reply({ author: undefined }),
+        missing: 'reply needs author: human or claude.',
+      },
+      {
+        name: 'a reply whose author is neither human nor claude',
+        tool: 'node',
+        input: reply({ author: 'dialog' }),
+        missing: 'reply needs author: human or claude.',
+      },
+      {
+        name: 'a reply without its text',
+        tool: 'node',
+        input: reply({ text: undefined }),
+        missing: 'reply needs the text.',
+      },
+      {
+        name: 'a reply whose text is blank',
+        tool: 'node',
+        input: reply({ text: '  ' }),
+        missing: 'reply needs the text.',
+      },
+      {
+        name: 'a reply missing both id and author names the id first',
+        tool: 'node',
+        input: reply({ id: undefined, author: undefined }),
+        missing: 'reply needs the id.',
       },
       {
         name: 'a node cancelled without its id',

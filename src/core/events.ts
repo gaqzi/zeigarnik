@@ -98,6 +98,13 @@ export type Event =
       reason: string
     }
   | {
+      type: 'NodeReplied'
+      at: string
+      node: string
+      author: Owner
+      text: string
+    }
+  | {
       type: 'HandoffWritten'
       at: string
       next: string
