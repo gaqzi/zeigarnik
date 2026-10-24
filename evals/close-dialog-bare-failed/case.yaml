@@ -14,21 +14,21 @@ execution:
 graders:
   - name: goal-failed-with-their-words-from-chat
     type: regex
-    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    target: {source: file, path: .zg/sessions/1f05a246-c3f6-4020-a897-c9701362803a.jsonl}
     pattern: '"type":"GoalFailed"(?=[^\n]*"source":"chat")(?=[^\n]*"reason":"the venue fell through and nothing else fits the dates")'
     match: contains
   - name: action-done-from-the-dialog
     type: regex
-    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    target: {source: file, path: .zg/sessions/1f05a246-c3f6-4020-a897-c9701362803a.jsonl}
     pattern: '"type":"ActionDone"(?=[^\n]*"action":"A1")(?=[^\n]*"source":"dialog")'
     match: contains
   - name: failed-goal-is-not-recorded-from-the-dialog
     type: regex
-    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    target: {source: file, path: .zg/sessions/1f05a246-c3f6-4020-a897-c9701362803a.jsonl}
     pattern: '"type":"GoalFailed"[^\n]*"source":"dialog"'
     match: not_contains
   - name: no-agreement
     type: regex
-    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    target: {source: file, path: .zg/sessions/1f05a246-c3f6-4020-a897-c9701362803a.jsonl}
     pattern: '"agreement"'
     match: not_contains

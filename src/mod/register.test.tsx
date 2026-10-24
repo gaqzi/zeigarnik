@@ -455,6 +455,45 @@ test('closing the goal as achieved with a thread and an action open is refused a
   })
 })
 
+test('the handoff with a thread still open is refused and traced, and writes nothing', async ($, on) => {
+  const given = [
+    a.goalOpened(),
+    a.threadOpened(),
+    a.actionAdded(),
+    a.threadOpened({ thread: 'T2', title: 'Compare the shortlist' }),
+    a.threadResolved(),
+    a.actionDone(),
+    a.goalAchieved(),
+  ]
+  const world = host(on, { [LOG]: log(given) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__handoff',
+    next: 'Book the flights',
+    decisions: [],
+    references: [],
+  })
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: {
+      deny: 'Close only when nothing is open: T2 still open. Ask the human how each one ends: the goal achieved, failed or cancelled; each thread resolved or cancelled; each action done, cancelled, or exported to the handoff for filing.',
+    },
+    files: {
+      [LOG]: log(given),
+      [TRACE]: log([
+        {
+          type: 'CommandRefused',
+          at: AT,
+          command: a.writeHandoff({ next: 'Book the flights' }),
+          reason: 'Close only when nothing is open: T2 still open.',
+          fix: 'Ask the human how each one ends: the goal achieved, failed or cancelled; each thread resolved or cancelled; each action done, cancelled, or exported to the handoff for filing.',
+        },
+      ]),
+    },
+  })
+})
+
 test('the handoff is returned to Claude, and /zg:copy-handoff copies it', async ($, on) => {
   const world = host(on, { [LOG]: log(finished) })
   await $.session.start(START)

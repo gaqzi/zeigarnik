@@ -1,0 +1,106 @@
+schema_version: "1.1"
+name: close-one-sentence
+description: The human ends the whole session in one sentence, with a thread under a thread, a second thread and an action open under the goal. Claude cancels the grandchild thread first, then its parent and the other thread, then the action, then the goal, each with source chat and the human's sentence as the reason, without a dialog and without being refused for closing a parent early, and then writes the handoff. Its reply lists what it cancelled, checked by the IDs T3, T1, T2 and A1 appearing in it. The no-dialog grader is a regression guard only; a headless run never offers AskUserQuestion, so it passes by construction. Not exercised - Claude's choice between skipping the dialog and opening one (zg-b8o), the handoff's content, and its being shown.
+tags: [guardrail, close]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: /zg:close cancel everything, we lost the funding round while planning this
+  max_turns: 16
+  allowed_tools:
+    [
+      mcp__zg__thread,
+      mcp__zg__node,
+      mcp__zg__close_goal,
+      mcp__zg__action,
+      mcp__zg__handoff,
+      mcp__zg__show,
+    ]
+graders:
+  - name: grandchild-thread-cancelled-before-its-parent
+    type: regex
+    target: {source: file, path: .zg/sessions/e37b90e5-0070-47a4-a227-388df692a209.jsonl}
+    pattern: '"type":"NodeCancelled"[^\n]*"node":"T3"[\s\S]*"type":"NodeCancelled"[^\n]*"node":"T1"'
+    match: contains
+  - name: thread-T1-cancelled-before-the-goal
+    type: regex
+    target: {source: file, path: .zg/sessions/e37b90e5-0070-47a4-a227-388df692a209.jsonl}
+    pattern: '"type":"NodeCancelled"[^\n]*"node":"T1"[\s\S]*"type":"GoalCancelled"'
+    match: contains
+  - name: thread-T2-cancelled-before-the-goal
+    type: regex
+    target: {source: file, path: .zg/sessions/e37b90e5-0070-47a4-a227-388df692a209.jsonl}
+    pattern: '"type":"NodeCancelled"[^\n]*"node":"T2"[\s\S]*"type":"GoalCancelled"'
+    match: contains
+  - name: action-A1-cancelled-before-the-goal
+    type: regex
+    target: {source: file, path: .zg/sessions/e37b90e5-0070-47a4-a227-388df692a209.jsonl}
+    pattern: '"type":"ActionCancelled"[^\n]*"action":"A1"[\s\S]*"type":"GoalCancelled"'
+    match: contains
+  - name: goal-cancelled-before-the-handoff
+    type: regex
+    target: {source: file, path: .zg/sessions/e37b90e5-0070-47a4-a227-388df692a209.jsonl}
+    pattern: '"type":"GoalCancelled"[\s\S]*"type":"HandoffWritten"'
+    match: contains
+  - name: T3-cancelled-from-chat-with-the-humans-sentence
+    type: regex
+    target: {source: file, path: .zg/sessions/e37b90e5-0070-47a4-a227-388df692a209.jsonl}
+    pattern: '"type":"NodeCancelled"(?=[^\n]*"node":"T3")(?=[^\n]*"source":"chat")(?=[^\n]*"reason":"cancel everything, we lost the funding round while planning this")'
+    match: contains
+  - name: T1-cancelled-from-chat-with-the-humans-sentence
+    type: regex
+    target: {source: file, path: .zg/sessions/e37b90e5-0070-47a4-a227-388df692a209.jsonl}
+    pattern: '"type":"NodeCancelled"(?=[^\n]*"node":"T1")(?=[^\n]*"source":"chat")(?=[^\n]*"reason":"cancel everything, we lost the funding round while planning this")'
+    match: contains
+  - name: T2-cancelled-from-chat-with-the-humans-sentence
+    type: regex
+    target: {source: file, path: .zg/sessions/e37b90e5-0070-47a4-a227-388df692a209.jsonl}
+    pattern: '"type":"NodeCancelled"(?=[^\n]*"node":"T2")(?=[^\n]*"source":"chat")(?=[^\n]*"reason":"cancel everything, we lost the funding round while planning this")'
+    match: contains
+  - name: A1-cancelled-from-chat-with-the-humans-sentence
+    type: regex
+    target: {source: file, path: .zg/sessions/e37b90e5-0070-47a4-a227-388df692a209.jsonl}
+    pattern: '"type":"ActionCancelled"(?=[^\n]*"action":"A1")(?=[^\n]*"source":"chat")(?=[^\n]*"reason":"cancel everything, we lost the funding round while planning this")'
+    match: contains
+  - name: goal-cancelled-from-chat-with-the-humans-sentence
+    type: regex
+    target: {source: file, path: .zg/sessions/e37b90e5-0070-47a4-a227-388df692a209.jsonl}
+    pattern: '"type":"GoalCancelled"(?=[^\n]*"source":"chat")(?=[^\n]*"reason":"cancel everything, we lost the funding round while planning this")'
+    match: contains
+  - name: no-cancel-has-another-reason
+    type: regex
+    target: {source: file, path: .zg/sessions/e37b90e5-0070-47a4-a227-388df692a209.jsonl}
+    pattern: '"type":"(NodeCancelled|ActionCancelled|GoalCancelled)"[^\n]*"reason":"(?!cancel everything, we lost the funding round while planning this")'
+    match: not_contains
+  - name: reply-lists-T3
+    type: regex
+    target: last_message
+    pattern: '\bT3\b'
+    match: contains
+  - name: reply-lists-T1
+    type: regex
+    target: last_message
+    pattern: '\bT1\b'
+    match: contains
+  - name: reply-lists-T2
+    type: regex
+    target: last_message
+    pattern: '\bT2\b'
+    match: contains
+  - name: reply-lists-A1
+    type: regex
+    target: last_message
+    pattern: '\bA1\b'
+    match: contains
+  - name: no-dialog
+    type: tool_used
+    tool: AskUserQuestion
+    min: 0
+    max: 0
+  - name: no-children-close-first-refusal
+    type: regex
+    target: {source: file, path: .zg/sessions/e37b90e5-0070-47a4-a227-388df692a209.refusals.jsonl}
+    pattern: 'Children close first'
+    match: not_contains

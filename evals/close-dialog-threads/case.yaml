@@ -1,0 +1,81 @@
+schema_version: "1.1"
+name: close-dialog-threads
+description: /zg:close's dialog was answered with a thread under a thread, an action and the goal open, children first - T2 Resolved with the note "Paphos, 20 min transfer", T1 Resolved without one, A1 Done, G Achieved. A headless run can't answer a dialog, so history.jsonl ends at the dialog's answer, spliced in as Claude Code writes an answered AskUserQuestion (zg-bam.14 says how). The human's next message says what settled T1, and Claude records T2 from the dialog with the note as its reason, T1 from chat with those words, both threads with the preview's outcome text as shown ("the shortlist is compared", "where to stay is settled"), then A1 and G from the dialog with no reason, in that order, without being refused for closing a parent before its child, then writes the handoff. Not exercised - the asking turn, where Claude asks in chat what settled T1 and records nothing for T1 until the human answers, since the prompt is the answer itself; and the whole AskUserQuestion turn, which is spliced, so the questions, their T2, T1, A1, G order and the previews come from the spliced spec, not from Claude. Those steps are left to the human's check of the transcripts (zg-b8o).
+tags: [guardrail, close]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: settled by T2, nothing more to it
+  max_turns: 12
+  allowed_tools:
+    [
+      mcp__zg__thread,
+      mcp__zg__node,
+      mcp__zg__close_goal,
+      mcp__zg__action,
+      mcp__zg__handoff,
+      mcp__zg__show,
+    ]
+graders:
+  - name: children-settle-before-parents
+    type: regex
+    target: {source: file, path: .zg/sessions/78c3b830-605a-4a0c-a7a0-4b4ff715b313.jsonl}
+    pattern: '"type":"ThreadResolved"(?=[^\n]*"thread":"T2")[^\n]*\n[\s\S]*"type":"ThreadResolved"(?=[^\n]*"thread":"T1")[^\n]*\n[\s\S]*"type":"ActionDone"[^\n]*\n[\s\S]*"type":"GoalAchieved"[^\n]*\n[\s\S]*"type":"HandoffWritten"'
+    match: contains
+  - name: T2-resolved-from-the-dialog-with-its-note
+    type: regex
+    target: {source: file, path: .zg/sessions/78c3b830-605a-4a0c-a7a0-4b4ff715b313.jsonl}
+    pattern: '"type":"ThreadResolved"(?=[^\n]*"thread":"T2")(?=[^\n]*"source":"dialog")(?=[^\n]*"reason":"Paphos, 20 min transfer")'
+    match: contains
+  - name: T2-outcome-is-the-previews-outcome-text
+    type: regex
+    target: {source: file, path: .zg/sessions/78c3b830-605a-4a0c-a7a0-4b4ff715b313.jsonl}
+    pattern: '"type":"ThreadResolved"(?=[^\n]*"thread":"T2")(?=[^\n]*"outcome":"the shortlist is compared")'
+    match: contains
+  - name: T1-outcome-is-the-previews-outcome-text
+    type: regex
+    target: {source: file, path: .zg/sessions/78c3b830-605a-4a0c-a7a0-4b4ff715b313.jsonl}
+    pattern: '"type":"ThreadResolved"(?=[^\n]*"thread":"T1")(?=[^\n]*"outcome":"where to stay is settled")'
+    match: contains
+  - name: T1-resolved-from-chat-with-the-humans-sentence
+    type: regex
+    target: {source: file, path: .zg/sessions/78c3b830-605a-4a0c-a7a0-4b4ff715b313.jsonl}
+    pattern: '"type":"ThreadResolved"(?=[^\n]*"thread":"T1")(?=[^\n]*"source":"chat")(?=[^\n]*"reason":"settled by T2, nothing more to it")'
+    match: contains
+  - name: A1-done-from-the-dialog
+    type: regex
+    target: {source: file, path: .zg/sessions/78c3b830-605a-4a0c-a7a0-4b4ff715b313.jsonl}
+    pattern: '"type":"ActionDone"(?=[^\n]*"action":"A1")(?=[^\n]*"source":"dialog")'
+    match: contains
+  - name: goal-achieved-from-the-dialog
+    type: regex
+    target: {source: file, path: .zg/sessions/78c3b830-605a-4a0c-a7a0-4b4ff715b313.jsonl}
+    pattern: '"type":"GoalAchieved"(?=[^\n]*"source":"dialog")'
+    match: contains
+  - name: a-bare-pick-carries-no-reason
+    type: regex
+    target: {source: file, path: .zg/sessions/78c3b830-605a-4a0c-a7a0-4b4ff715b313.jsonl}
+    pattern: '"type":"(ActionDone|GoalAchieved)"[^\n]*"reason"'
+    match: not_contains
+  - name: no-thread-resolved-with-another-reason
+    type: regex
+    target: {source: file, path: .zg/sessions/78c3b830-605a-4a0c-a7a0-4b4ff715b313.jsonl}
+    pattern: '"type":"ThreadResolved"[^\n]*"reason":"(?!(Paphos, 20 min transfer|settled by T2, nothing more to it)")'
+    match: not_contains
+  - name: no-agreement
+    type: regex
+    target: {source: file, path: .zg/sessions/78c3b830-605a-4a0c-a7a0-4b4ff715b313.jsonl}
+    pattern: '"agreement"'
+    match: not_contains
+  - name: handoff-written
+    type: regex
+    target: {source: file, path: .zg/sessions/78c3b830-605a-4a0c-a7a0-4b4ff715b313.jsonl}
+    pattern: '"type":"HandoffWritten"'
+    match: contains
+  - name: no-children-close-first-refusal
+    type: regex
+    target: {source: file, path: .zg/sessions/78c3b830-605a-4a0c-a7a0-4b4ff715b313.refusals.jsonl}
+    pattern: 'Children close first'
+    match: not_contains

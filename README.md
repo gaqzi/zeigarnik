@@ -189,8 +189,12 @@ last looked (from D2); the Greek village fails it. Pending: your pick."
 > /zg:close
 ```
 
-Claude asks, in one dialog, how G ended and what becomes of each item still
-open. Then it captures what needs to outlive the session:
+Claude asks, in one dialog, how each open thread ended (resolved or
+cancelled), what becomes of each action, and how G ended, children first. A
+thread closed with a bare pick gets a follow-up in chat: what settled or
+dropped it. If one sentence ends it all (`/zg:close cancel everything, we lost
+the funding round`), there is no dialog: Claude cancels every open item with
+those words as the reason. Then it captures what needs to outlive the session:
 
 ```
 Capture (sink: reminders)

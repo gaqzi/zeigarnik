@@ -618,6 +618,18 @@ describe('children close first', () => {
 })
 
 describe('close only when nothing is open', () => {
+  const FIX =
+    'Ask the human how each one ends: the goal achieved, failed or cancelled; each thread resolved or cancelled; each action done, cancelled, or exported to the handoff for filing.'
+  const onlyT2Open = [
+    a.goalOpened(),
+    a.threadOpened(),
+    a.actionAdded(),
+    a.threadOpened({ thread: 'T2', title: 'Compare the shortlist' }),
+    a.threadResolved(),
+    a.actionDone(),
+    a.goalAchieved(),
+  ]
+
   test('the handoff is written once the goal and every action are closed', () => {
     const decisions = [{ text: 'Paphos', lasting: true }]
 
@@ -648,7 +660,34 @@ describe('close only when nothing is open', () => {
     expect(when(goalAndAction, a.writeHandoff())).toEqual({
       refusal: {
         reason: 'Close only when nothing is open: G, A1 still open.',
-        fix: 'Ask the human how each one ends: the goal achieved, failed or cancelled; each action done, cancelled, or exported to the handoff for filing.',
+        fix: FIX,
+      },
+    })
+  })
+
+  test('refuses the handoff while a thread is open, though the goal and actions are closed', () => {
+    expect(when(onlyT2Open, a.writeHandoff())).toEqual({
+      refusal: {
+        reason: 'Close only when nothing is open: T2 still open.',
+        fix: FIX,
+      },
+    })
+  })
+
+  test('names the open goal, threads and actions in that order', () => {
+    expect(
+      when(
+        [
+          a.goalOpened(),
+          a.threadOpened({ thread: 'T2', title: 'Compare the shortlist' }),
+          a.actionAdded(),
+        ],
+        a.writeHandoff(),
+      ),
+    ).toEqual({
+      refusal: {
+        reason: 'Close only when nothing is open: G, T2, A1 still open.',
+        fix: FIX,
       },
     })
   })

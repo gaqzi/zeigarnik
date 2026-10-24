@@ -1,0 +1,4 @@
+{"type":"GoalOpened","at":"2026-10-24T22:20:36.062Z","goal":"G","text":"Plan a week's holiday stay in Cyprus in June"}
+{"type":"ThreadOpened","at":"2026-10-24T22:20:45.957Z","thread":"T1","parent":"G","title":"Where to stay"}
+{"type":"ThreadOpened","at":"2026-10-24T22:20:51.061Z","thread":"T2","parent":"T1","title":"Compare the shortlist"}
+{"type":"ActionAdded","at":"2026-10-24T22:20:51.098Z","action":"A1","text":"Book the hotel before Friday","owner":"human","quote":"I must book the hotel before Friday"}

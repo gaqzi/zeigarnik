@@ -14,26 +14,26 @@ execution:
 graders:
   - name: goal-failed-with-the-note-from-the-dialog
     type: regex
-    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    target: {source: file, path: .zg/sessions/1f05a246-c3f6-4020-a897-c9701362803a.jsonl}
     pattern: '"type":"GoalFailed"(?=[^\n]*"source":"dialog")(?=[^\n]*"reason":"captain hammer threw a car at my head")'
     match: contains
   - name: action-done-from-the-dialog
     type: regex
-    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    target: {source: file, path: .zg/sessions/1f05a246-c3f6-4020-a897-c9701362803a.jsonl}
     pattern: '"type":"ActionDone"(?=[^\n]*"action":"A1")(?=[^\n]*"source":"dialog")'
     match: contains
   - name: a-bare-pick-carries-no-reason
     type: regex
-    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    target: {source: file, path: .zg/sessions/1f05a246-c3f6-4020-a897-c9701362803a.jsonl}
     pattern: '"type":"ActionDone"[^\n]*"reason"'
     match: not_contains
   - name: no-agreement
     type: regex
-    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    target: {source: file, path: .zg/sessions/1f05a246-c3f6-4020-a897-c9701362803a.jsonl}
     pattern: '"agreement"'
     match: not_contains
   - name: handoff-written
     type: regex
-    target: {source: file, path: .zg/sessions/38afd132-8ff3-46ea-ae5b-3264c4a69d3b.jsonl}
+    target: {source: file, path: .zg/sessions/1f05a246-c3f6-4020-a897-c9701362803a.jsonl}
     pattern: '"type":"HandoffWritten"'
     match: contains

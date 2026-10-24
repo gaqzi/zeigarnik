@@ -24,6 +24,9 @@ const openGoal = (state: State) =>
 const openActions = (state: State) =>
   state.actions.filter(action => action.status === 'open')
 
+const openNodes = (state: State) =>
+  state.nodes.filter(node => node.status === 'open')
+
 const ids = (items: readonly (Action | Node)[]) =>
   items.map(item => item.id).join(', ')
 
@@ -52,7 +55,7 @@ const findOpen = (
 
 // Which threads are open, as a clause for the caller to make a sentence of.
 const openThreadsClause = (state: State) => {
-  const open = state.nodes.filter(node => node.status === 'open')
+  const open = openNodes(state)
 
   return open.length === 0
     ? 'there are no open threads'
@@ -342,12 +345,13 @@ const decideHandoff = (
   const actions = openActions(state)
   const open = [
     ...(goal === undefined ? [] : [goal.id]),
+    ...openNodes(state).map(node => node.id),
     ...actions.map(a => a.id),
   ]
   if (open.length > 0) {
     return refuse(
       `Close only when nothing is open: ${open.join(', ')} still open.`,
-      'Ask the human how each one ends: the goal achieved, failed or cancelled; each action done, cancelled, or exported to the handoff for filing.',
+      'Ask the human how each one ends: the goal achieved, failed or cancelled; each thread resolved or cancelled; each action done, cancelled, or exported to the handoff for filing.',
     )
   }
   const { at, next, decisions, references } = command
