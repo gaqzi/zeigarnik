@@ -418,6 +418,364 @@ describe('one parent', () => {
       expect(when(folding, command)).toEqual({ refusal: { reason, fix } })
     })
   }
+
+  describe('a decision and its options', () => {
+    const withDecision = [a.goalOpened(), a.decisionOpened()]
+    const withOption = [...withDecision, a.optionAdded()]
+
+    test('a decision opens under the open goal as D1', () => {
+      expect(when([a.goalOpened()], a.openDecision())).toEqual({
+        events: [a.decisionOpened()],
+      })
+    })
+
+    test('a decision opens under an option, numbered as a decision', () => {
+      expect(
+        when(
+          withOption,
+          a.openDecision({ parent: 'D1.1', title: 'Which bus?' }),
+        ),
+      ).toEqual({
+        events: [
+          a.decisionOpened({
+            decision: 'D2',
+            parent: 'D1.1',
+            title: 'Which bus?',
+          }),
+        ],
+      })
+    })
+
+    test('an option is added to a decision, numbered from D1.1', () => {
+      expect(when(withDecision, a.addOption())).toEqual({
+        events: [a.optionAdded()],
+      })
+    })
+
+    test('options are numbered under their decision in the order they come', () => {
+      expect(when(withOption, a.addOption({ title: 'Paphos' }))).toEqual({
+        events: [a.optionAdded({ option: 'D1.2', title: 'Paphos' })],
+      })
+    })
+
+    test('a dropped option’s number is not reused', () => {
+      const given = [...withOption, a.nodeCancelled({ node: 'D1.1' })]
+
+      expect(when(given, a.addOption({ title: 'Paphos' }))).toEqual({
+        events: [a.optionAdded({ option: 'D1.2', title: 'Paphos' })],
+      })
+    })
+
+    test('a thread opens under an option, numbered across the session', () => {
+      const given = [
+        ...withOption,
+        a.optionAdded({ option: 'D1.2', title: 'Paphos' }),
+        a.threadOpened({ thread: 'T2' }),
+      ]
+
+      expect(
+        when(
+          given,
+          a.openThread({ parent: 'D1.2', title: 'Check Paphos flights' }),
+        ),
+      ).toEqual({
+        events: [
+          a.threadOpened({
+            thread: 'T3',
+            parent: 'D1.2',
+            title: 'Check Paphos flights',
+          }),
+        ],
+      })
+    })
+  })
+
+  describe('one parent follows the containment table', () => {
+    const table = [
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T1' }),
+      a.decisionOpened(),
+      a.optionAdded(),
+      a.threadOpened({ thread: 'T4' }),
+      a.threadResolved({ thread: 'T4' }),
+      a.decisionOpened({ decision: 'D2' }),
+      a.nodeCancelled({ node: 'D2' }),
+    ]
+    const rows: {
+      name: string
+      given: Event[]
+      command: Command
+      reason: string
+      fix: string
+    }[] = [
+      {
+        name: 'an option is refused on a thread',
+        given: table,
+        command: a.addOption({ decision: 'T1', title: 'X' }),
+        reason:
+          'One parent: T1 is a thread, and only a decision holds options.',
+        fix: 'Open a decision under T1, and add the option there.',
+      },
+      {
+        name: 'a thread is refused under a decision',
+        given: table,
+        command: a.openThread({ parent: 'D1', title: 'X' }),
+        reason: 'One parent: D1 is a decision, and holds only its options.',
+        fix: "Open the thread under one of D1's options, or beside D1.",
+      },
+      {
+        name: 'a decision is refused under a decision',
+        given: table,
+        command: a.openDecision({ parent: 'D1', title: 'X' }),
+        reason: 'One parent: D1 is a decision, and holds only its options.',
+        fix: "Open the decision under one of D1's options, or beside D1.",
+      },
+      {
+        name: 'an option is refused when the decision already has one with that title',
+        given: table,
+        command: a.addOption({ decision: 'D1', title: 'Greek village' }),
+        reason: 'D1 already has the option Greek village (D1.1).',
+        fix: 'Reply to D1.1 instead.',
+      },
+      {
+        name: 'a decision is refused under a resolved thread',
+        given: table,
+        command: a.openDecision({ parent: 'T4', title: 'X' }),
+        reason: 'T4 is already resolved.',
+        fix: "Open it under T4's parent G, or under another open node.",
+      },
+      {
+        name: 'an option is refused on a cancelled decision',
+        given: table,
+        command: a.addOption({ decision: 'D2', title: 'X' }),
+        reason: 'D2 is already cancelled.',
+        fix: 'The open decisions are D1.',
+      },
+      {
+        name: 'an option is refused on a decision that does not exist',
+        given: table,
+        command: a.addOption({ decision: 'D9', title: 'X' }),
+        reason: 'There is no decision D9.',
+        fix: 'The open decisions are D1.',
+      },
+      {
+        name: 'an option is refused on an option',
+        given: table,
+        command: a.addOption({ decision: 'D1.1', title: 'X' }),
+        reason:
+          'One parent: D1.1 is an option, and only a decision holds options.',
+        fix: 'Open a decision under D1.1, and add the option there.',
+      },
+      {
+        name: 'a decision is refused under a parent that does not exist, naming the parents that would take it',
+        given: table,
+        command: a.openDecision({ parent: 'T9', title: 'X' }),
+        reason: 'One parent: there is no node T9.',
+        fix: 'Open it under G, T1 or D1.1.',
+      },
+      {
+        name: 'a decision is refused when no goal is open',
+        given: [],
+        command: a.openDecision({ parent: 'G', title: 'X' }),
+        reason:
+          "One parent: a decision belongs to the open goal's tree, and no goal is open.",
+        fix: 'Open a goal first: the human starts one with /zg:open.',
+      },
+    ]
+    for (const { name, given, command, reason, fix } of rows) {
+      test(name, () => {
+        expect(when(given, command)).toEqual({ refusal: { reason, fix } })
+      })
+    }
+  })
+
+  describe('the new kinds keep the tree a tree', () => {
+    const tree = [
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.optionAdded(),
+      a.optionAdded({ option: 'D1.2', title: 'Paphos' }),
+      a.decisionOpened({ decision: 'D3', title: 'Which flights?' }),
+      a.optionAdded({ option: 'D3.1', decision: 'D3', title: 'Direct' }),
+      a.threadOpened({ thread: 'T2' }),
+    ]
+    const rows: {
+      name: string
+      command: Command
+      reason: string
+      fix: string
+    }[] = [
+      {
+        name: 'an option does not nest under a thread',
+        command: a.nestNode({ node: 'D1.1', parent: 'T2' }),
+        reason: 'One parent: an option sits under a decision.',
+        fix: 'Nest D1.1 under D3.',
+      },
+      {
+        name: 'an option does not nest under another option',
+        command: a.nestNode({ node: 'D1.1', parent: 'D1.2' }),
+        reason: 'One parent: an option sits under a decision.',
+        fix: 'Nest D1.1 under D3.',
+      },
+      {
+        name: 'a thread does not nest under a decision',
+        command: a.nestNode({ node: 'T2', parent: 'D1' }),
+        reason: 'One parent: D1 is a decision, and holds only its options.',
+        fix: 'Nest T2 under D1.1, D1.2 or D3.1.',
+      },
+      {
+        name: 'options merge only within their decision',
+        command: a.mergeNodes({ from: ['D1.1'], into: 'D3.1' }),
+        reason: 'One parent: options merge only within their decision.',
+        fix: 'Merge D1.1 into another open option of D1, or leave it where it is.',
+      },
+      {
+        name: 'a thread does not merge into a decision',
+        command: a.mergeNodes({ from: ['T2'], into: 'D1' }),
+        reason: 'One parent: D1 is a decision, and holds only its options.',
+        fix: 'Merge T2 into another open thread, or leave it where it is.',
+      },
+      {
+        name: 'decisions do not merge',
+        command: a.mergeNodes({ from: ['D1'], into: 'D3' }),
+        reason: "One parent: decisions don't merge.",
+        fix: "Nest D1's options under D3, add its criteria to D3, then cancel D1 naming D3.",
+      },
+    ]
+    for (const { name, command, reason, fix } of rows) {
+      test(`${name}`, () => {
+        expect(when(tree, command)).toEqual({ refusal: { reason, fix } })
+      })
+    }
+
+    test('an option nests under another open decision and keeps its ID', () => {
+      expect(when(tree, a.nestNode({ node: 'D1.1', parent: 'D3' }))).toEqual({
+        events: [a.nodeMoved({ node: 'D1.1', parent: 'D3' })],
+      })
+    })
+
+    test('a thread nests under an option', () => {
+      expect(when(tree, a.nestNode({ node: 'T2', parent: 'D1.2' }))).toEqual({
+        events: [a.nodeMoved({ node: 'T2', parent: 'D1.2' })],
+      })
+    })
+
+    test('a decision nests under an option', () => {
+      expect(when(tree, a.nestNode({ node: 'D3', parent: 'D1.2' }))).toEqual({
+        events: [a.nodeMoved({ node: 'D3', parent: 'D1.2' })],
+      })
+    })
+  })
+
+  describe('a node op that names a missing or closed node is answered with the open nodes once decisions and options are among them', () => {
+    const dropped = [
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.optionAdded(),
+      a.optionAdded({ option: 'D1.2', title: 'Paphos' }),
+      a.nodeCancelled({ node: 'D1.1' }),
+    ]
+    const rows: {
+      name: string
+      command: Command
+      reason: string
+      fix: string
+    }[] = [
+      {
+        name: 'cancelling a node that does not exist',
+        command: a.cancelNode({ node: 'D1.9' }),
+        reason: 'There is no node D1.9.',
+        fix: 'The open nodes are D1, D1.2.',
+      },
+      {
+        name: 'nesting a node that does not exist',
+        command: a.nestNode({ node: 'D1.9', parent: 'G' }),
+        reason: 'One parent: there is no node D1.9.',
+        fix: 'The open nodes are D1, D1.2.',
+      },
+      {
+        name: 'merging a node that does not exist',
+        command: a.mergeNodes({ from: ['D1.9'], into: 'D1.2' }),
+        reason: 'There is no node D1.9.',
+        fix: 'The open nodes are D1, D1.2.',
+      },
+      {
+        name: 'replying to a dropped option',
+        command: a.replyToNode({ node: 'D1.1' }),
+        reason: 'D1.1 is already cancelled.',
+        fix: "Open a new thread beside D1, under G, for what's new; the open nodes are D1, D1.2.",
+      },
+      {
+        name: 'moving a reply to a node that does not exist',
+        command: a.moveReply({ node: 'D1.2', to: 'D1.9' }),
+        reason: 'There is no node D1.9.',
+        fix: 'The open nodes are D1, D1.2.',
+      },
+    ]
+    for (const { name, command, reason, fix } of rows) {
+      test(name, () => {
+        expect(when(dropped, command)).toEqual({ refusal: { reason, fix } })
+      })
+    }
+  })
+
+  describe('a missing or closed parent is answered with parents the table accepts', () => {
+    const decision = [
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T1' }),
+      a.decisionOpened(),
+      a.optionAdded(),
+    ]
+    const droppedOption = [...decision, a.nodeCancelled({ node: 'D1.1' })]
+    const rows: {
+      name: string
+      given: Event[]
+      command: Command
+      reason: string
+      fix: string
+    }[] = [
+      {
+        name: 'a thread under a missing parent is sent to the goal and the nodes that can hold a thread',
+        given: decision,
+        command: a.openThread({ parent: 'T9' }),
+        reason: 'One parent: there is no node T9.',
+        fix: 'Open it under G, T1 or D1.1.',
+      },
+      {
+        name: 'a missing thread to nest names every open node',
+        given: decision,
+        command: a.nestNode({ node: 'T9', parent: 'T1' }),
+        reason: 'One parent: there is no node T9.',
+        fix: 'The open nodes are T1, D1, D1.1.',
+      },
+      {
+        name: 'a merge into a missing thread names every open node',
+        given: decision,
+        command: a.mergeNodes({ from: ['T1'], into: 'T9' }),
+        reason: 'There is no node T9.',
+        fix: 'The open nodes are T1, D1, D1.1.',
+      },
+      {
+        name: 'a thread under a cancelled option is sent beside its decision',
+        given: droppedOption,
+        command: a.openThread({ parent: 'D1.1' }),
+        reason: 'One parent: D1.1 is already cancelled.',
+        fix: 'Open it beside D1, under G, or under another open thread.',
+      },
+      {
+        name: 'a decision under a cancelled option is sent beside its decision',
+        given: droppedOption,
+        command: a.openDecision({ parent: 'D1.1', title: 'X' }),
+        reason: 'D1.1 is already cancelled.',
+        fix: 'Open it beside D1, under G, or under another open node.',
+      },
+    ]
+    for (const { name, given, command, reason, fix } of rows) {
+      test(name, () => {
+        expect(when(given, command)).toEqual({ refusal: { reason, fix } })
+      })
+    }
+  })
 })
 
 describe('a merged thread stays merged', () => {

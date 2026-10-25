@@ -176,3 +176,62 @@ test('stays within 300 tokens and 15 for each item at twenty threads and twenty 
 
   expect(tokens(turnIndex(state) ?? '')).toBeLessThanOrEqual(300 + 15 * 40)
 })
+
+describe('open decisions', () => {
+  test('are listed after the open threads, with the options left out', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+      a.decisionOpened(),
+      a.optionAdded(),
+      a.actionAdded(),
+    ])
+
+    expect(turnIndex(state)).toBe(
+      'zg open: T2 Places in Greece · D1 Which holiday do we book? | A1 Check school dates',
+    )
+  })
+
+  test('come after the threads even when they were opened first', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.optionAdded(),
+      a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+    ])
+
+    expect(turnIndex(state)).toBe(
+      'zg open: T2 Places in Greece · D1 Which holiday do we book?',
+    )
+  })
+
+  test('leave out a cancelled decision and its options', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.optionAdded(),
+      a.nodeCancelled({ node: 'D1.1' }),
+      a.nodeCancelled({ node: 'D1' }),
+      a.actionAdded(),
+    ])
+
+    expect(turnIndex(state)).toBe('zg open: A1 Check school dates')
+  })
+
+  test('are listed with the open threads under their options', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.optionAdded(),
+      a.threadOpened({
+        thread: 'T3',
+        parent: 'D1.1',
+        title: 'Check Paphos flights',
+      }),
+    ])
+
+    expect(turnIndex(state)).toBe(
+      'zg open: T3 Check Paphos flights · D1 Which holiday do we book?',
+    )
+  })
+})

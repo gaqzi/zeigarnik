@@ -86,6 +86,20 @@ export type Event =
       title: string
     }
   | {
+      type: 'DecisionOpened'
+      at: string
+      decision: string
+      parent: string
+      title: string
+    }
+  | {
+      type: 'OptionAdded'
+      at: string
+      option: string
+      decision: string
+      title: string
+    }
+  | {
       type: 'ThreadResolved'
       at: string
       thread: string

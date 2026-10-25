@@ -286,3 +286,121 @@ test('a moved reply takes its place among the new thread’s replies by when it 
     ].join('\n'),
   )
 })
+
+describe('a decision and its options', () => {
+  const holiday = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+    a.nodeReplied({ node: 'T2', text: 'Greece first' }),
+    a.decisionOpened(),
+    a.optionAdded(),
+    a.optionAdded({ option: 'D1.2', title: 'Paphos' }),
+    a.nodeReplied({
+      node: 'D1.1',
+      text: 'best beach of the lot, but 2h by bus',
+    }),
+    a.threadOpened({
+      thread: 'T3',
+      parent: 'D1.2',
+      title: 'Check Paphos flights',
+    }),
+  ]
+
+  test('the pane draws the decision ◆ and its options ◇ one level under it, ✦ while nobody has written to them, and counts every node', () => {
+    expect(overview(fold(holiday))).toEqual([
+      { text: '○ G Pick a holiday', isOpen: true },
+      { text: '5 open · 0 closed', isOpen: true },
+      { text: '  ○ T2 Places in Greece', isOpen: true, item: 'T2' },
+      {
+        text: '  ◆ D1 Which holiday do we book?',
+        isOpen: true,
+        item: 'D1',
+      },
+      { text: '    ◇ D1.1 Greek village', isOpen: true, item: 'D1.1' },
+      { text: '    ✦ D1.2 Paphos', isOpen: true, item: 'D1.2' },
+      { text: '      ✦ T3 Check Paphos flights', isOpen: true, item: 'T3' },
+    ])
+  })
+
+  test('a decision nobody has written to is ✦', () => {
+    const state = fold([a.goalOpened(), a.decisionOpened(), a.optionAdded()])
+
+    expect(overview(state).map(line => line.text)).toEqual([
+      '○ G Pick a holiday',
+      '2 open · 0 closed',
+      '  ✦ D1 Which holiday do we book?',
+      '    ✦ D1.1 Greek village',
+    ])
+  })
+
+  test('a dropped option is drawn ✗ with the human’s reason, dimmed, and counted closed', () => {
+    const state = fold([
+      ...holiday,
+      a.nodeCancelled({ node: 'D1.1', reason: 'too far with the kids' }),
+    ])
+
+    expect(overview(state).slice(1, 6)).toEqual([
+      { text: '4 open · 1 closed', isOpen: true },
+      { text: '  ○ T2 Places in Greece', isOpen: true, item: 'T2' },
+      {
+        text: '  ◆ D1 Which holiday do we book?',
+        isOpen: true,
+        item: 'D1',
+      },
+      {
+        text: '    ✗ D1.1 Greek village · too far with the kids',
+        isOpen: false,
+        item: 'D1.1',
+      },
+      { text: '    ✦ D1.2 Paphos', isOpen: true, item: 'D1.2' },
+    ])
+  })
+
+  test('siblings draw threads before decisions, whatever the log order', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.threadOpened({ thread: 'T1' }),
+    ])
+
+    expect(overview(state).map(line => line.text)).toEqual([
+      '○ G Pick a holiday',
+      '2 open · 0 closed',
+      '  ✦ T1 Places in Greece',
+      '  ✦ D1 Which holiday do we book?',
+    ])
+  })
+
+  test('options draw in numeric order, so D1.10 comes after D1.9', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.optionAdded({ option: 'D1.10', title: 'Tenth' }),
+      a.optionAdded({ option: 'D1.9', title: 'Ninth' }),
+    ])
+
+    expect(overview(state).map(line => line.text)).toEqual([
+      '○ G Pick a holiday',
+      '3 open · 0 closed',
+      '  ✦ D1 Which holiday do we book?',
+      '    ✦ D1.9 Ninth',
+      '    ✦ D1.10 Tenth',
+    ])
+  })
+
+  test('the full view marks the decision ◆ and its options ◇, with their replies and children, and no ✦', () => {
+    expect(fullView(fold(holiday))).toBe(
+      [
+        '○ G Pick a holiday',
+        '5 open · 0 closed',
+        '  ○ T2 Places in Greece',
+        '    #1 human: Greece first',
+        '  ◆ D1 Which holiday do we book?',
+        '    ◇ D1.1 Greek village',
+        '      #1 human: best beach of the lot, but 2h by bus',
+        '    ◇ D1.2 Paphos',
+        '      ○ T3 Check Paphos flights',
+      ].join('\n'),
+    )
+  })
+})

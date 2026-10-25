@@ -104,7 +104,7 @@ The pane opens beside the chat:
 ┌ zg ────────────────────────────────────────────────────────────────────┐
 │ ○ G Pick our end-of-May beach holiday                                  │
 │ 1 open · 0 closed                                                      │
-│   ◆ D1 Which holiday do we book?                                       │
+│   ✦ D1 Which holiday do we book?                                       │
 │       C1 Europe                                                        │
 │       C2 sea ≥ 18°C                                                    │
 │       C3 sunny                                                         │
@@ -158,7 +158,7 @@ once.
 │       ✓ D2 How long may the transfer be? → D2.1 transfers ≤ 30 min     │
 │   ○ T3 Places in Spain                                                 │
 │   ○ T4 Places in Cyprus                                                │
-│   ◆ D1 Which holiday do we book?                                       │
+│   ✦ D1 Which holiday do we book?                                       │
 │       C1 Europe                                                        │
 │       C2 sea ≥ 18°C                                                    │
 │       C3 sunny                                                         │
@@ -583,6 +583,10 @@ everything zg knows about it there, its replies included, without asking
 Claude. Claude can move a thread to another parent when you say so, or to fix
 its own mistake, and merge threads that turned out to be the same into one
 when you say so, and it can move a reply it put on the wrong thread. The pane marks ✦ a thread you
-haven't written to yet. Decisions and criteria come next. To try it from a
+haven't written to yet. Decisions and options exist too: Claude opens a
+decision for a choice you have to make and adds its options under it (D1.1,
+D1.2), explorations go in threads under an option, and you drop an option in
+your own words. `show` takes an item's ID (`show D1`) for everything about
+that item. Deciding and criteria come next. To try it from a
 clone, run `script/bootstrap`, then start Claude Code with
 `claude --plugin-dir .` in the clone.

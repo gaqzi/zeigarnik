@@ -16,8 +16,9 @@ zg is a Claude Code mod written in TypeScript.
 | `evals/` | model-behaviour evals (zg-egt) |
 
 Everything under a goal is a node: a thread, a decision or an option.
-Containment is one table in `src/core/`, read by `decide` on open, nest and
-merge (zg-8ld).
+Containment is one table in `src/core/` (`containment.ts`), read by `decide`
+on open, nest and merge (zg-8ld). `show` takes an optional item ID and answers
+that item's details, the same view the pane shows on selection.
 
 ## How an input flows
 

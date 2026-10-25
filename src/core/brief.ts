@@ -1,4 +1,5 @@
 import type { State } from './evolve.ts'
+import { nodesInTreeOrder } from './overview.ts'
 
 // The short view re-injected after a compaction or a resume (zg-zo2): the
 // open goal, its open threads and open actions, and where the full view is.
@@ -37,7 +38,7 @@ export const brief = (state: State): string | undefined => {
         ? 'zg: no goal is open, and the handoff is written.'
         : 'zg: no goal is open.'
       : `zg: the goal is ${goal.id} ${cut(goal.text, MAX_GOAL)}${goal.origin === undefined ? '' : ` (${cut(goal.origin, MAX_ORIGIN)})`}`
-  const threads = state.nodes
+  const threads = nodesInTreeOrder(state)
     .filter(node => node.status === 'open')
     .map(
       node =>

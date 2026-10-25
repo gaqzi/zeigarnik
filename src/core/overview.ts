@@ -24,26 +24,59 @@ const ACTION_MARK: Record<Action['status'], string> = {
   exported: '→',
 }
 
-export const NODE_MARK: Record<Node['status'], string> = {
-  open: '○',
+const CLOSED_MARK: Record<Exclude<Node['status'], 'open'>, string> = {
   resolved: '✓',
   cancelled: '✗',
   merged: '→',
 }
 
+const OPEN_MARK: Record<Node['kind'], string> = {
+  thread: '○',
+  decision: '◆',
+  option: '◇',
+}
+
+export const nodeMark = (node: Node): string =>
+  node.status === 'open' ? OPEN_MARK[node.kind] : CLOSED_MARK[node.status]
+
 const paneMark = (node: Node, state: State): string =>
-  isNew(node, state) ? '✦' : NODE_MARK[node.status]
+  isNew(node, state) ? '✦' : nodeMark(node)
 
 type Placed = { node: Node; depth: number }
 
-// The nodes under a parent, children after their parent, siblings in ID order.
+const KIND_ORDER: Record<Node['kind'], number> = {
+  thread: 0,
+  decision: 1,
+  option: 2,
+}
+
+// An ID's numbers, compared one by one, so D1.10 follows D1.9.
+const idNumbers = (id: string): number[] => id.slice(1).split('.').map(Number)
+
+export const bySiblingOrder = (one: Node, other: Node): number => {
+  const kinds = KIND_ORDER[one.kind] - KIND_ORDER[other.kind]
+  if (kinds !== 0) return kinds
+  const [x, y] = [idNumbers(one.id), idNumbers(other.id)]
+
+  return (x[0] ?? 0) - (y[0] ?? 0) || (x[1] ?? 0) - (y[1] ?? 0)
+}
+
+// The nodes under a parent, children after their parent, siblings threads
+// first, then decisions, numeric within a kind.
 const nodesUnder = (state: State, parent: string, depth = 1): Placed[] =>
   state.nodes
     .filter(node => node.parent === parent)
+    .sort(bySiblingOrder)
     .flatMap(node => [
       { node, depth },
       ...nodesUnder(state, node.id, depth + 1),
     ])
+
+// Every node as the pane draws them, goal by goal.
+export const nodesInTreeOrder = (state: State): Node[] =>
+  state.goals.flatMap(goal =>
+    nodesUnder(state, goal.id).map(placed => placed.node),
+  )
 
 // Where a closed thread went: its outcome, or the thread it merged into.
 export const nodeArrow = (node: Node): string | undefined =>
@@ -56,17 +89,21 @@ export const nodeArrow = (node: Node): string | undefined =>
 export const actionArrow = (action: Action): string | undefined =>
   action.status === 'exported' ? `→ ${action.ref}` : undefined
 
-const nodeLine = ({ node, depth }: Placed, mark: string): Line => {
+// How a closed node ended, after its title: where it went, or why it was
+// cancelled.
+export const nodeEnd = (node: Node): string => {
   const arrow = nodeArrow(node)
-  const end =
-    arrow !== undefined
-      ? ` ${arrow}`
-      : node.status === 'cancelled' && node.reason !== undefined
-        ? ` · ${node.reason}`
-        : ''
 
+  return arrow !== undefined
+    ? ` ${arrow}`
+    : node.status === 'cancelled' && node.reason !== undefined
+      ? ` · ${node.reason}`
+      : ''
+}
+
+const nodeLine = ({ node, depth }: Placed, mark: string): Line => {
   return {
-    text: `${'  '.repeat(depth)}${mark} ${node.id} ${node.title}${end}`,
+    text: `${'  '.repeat(depth)}${mark} ${node.id} ${node.title}${nodeEnd(node)}`,
     isOpen: node.status === 'open',
     item: node.id,
   }
@@ -176,7 +213,7 @@ export const overview = (state: State): Line[] =>
 // handoff when one is written.
 export const fullView = (state: State): string => {
   const lines = view(state, one => [
-    nodeLine(one, NODE_MARK[one.node.status]),
+    nodeLine(one, nodeMark(one.node)),
     ...mergedFromLines(state, one),
     ...replyLines(state, one.node.id, '  '.repeat(one.depth + 1)),
   ]).map(line => line.text)

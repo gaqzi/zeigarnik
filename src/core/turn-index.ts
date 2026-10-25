@@ -15,9 +15,11 @@ const cut = (text: string) => {
 
 export const turnIndex = (state: State): string | undefined => {
   if (!state.goals.some(goal => goal.status === 'open')) return undefined
-  const threads = state.nodes
-    .filter(node => node.status === 'open')
-    .map(node => `${node.id} ${cut(node.title)}`)
+  const open = (kind: 'thread' | 'decision') =>
+    state.nodes.filter(node => node.status === 'open' && node.kind === kind)
+  const threads = [...open('thread'), ...open('decision')].map(
+    node => `${node.id} ${cut(node.title)}`,
+  )
   const actions = state.actions
     .filter(action => action.status === 'open')
     .map(action => `${action.id} ${cut(action.text)}`)

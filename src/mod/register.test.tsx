@@ -966,3 +966,289 @@ test('a /clear ends the selection with the session', async ($, on) => {
 
   expect(pane).toEqual(tree)
 })
+
+// Decisions and options (zg-bam.5.1). The new events are written as literals
+// until their builders exist in src/core/a.ts.
+
+const greece = [
+  a.goalOpened(),
+  a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+  a.nodeReplied({ node: 'T2' }),
+]
+
+const decisionOpened = {
+  type: 'DecisionOpened',
+  at: AT,
+  decision: 'D1',
+  parent: 'G',
+  title: 'Which holiday do we book?',
+}
+
+const greekVillage = {
+  type: 'OptionAdded',
+  at: AT,
+  option: 'D1.1',
+  decision: 'D1',
+  title: 'Greek village',
+}
+
+const paphos = {
+  type: 'OptionAdded',
+  at: AT,
+  option: 'D1.2',
+  decision: 'D1',
+  title: 'Paphos',
+}
+
+type Test = Extract<Parameters<typeof test>[1], (...args: never[]) => unknown>
+
+const holiday = async (...[$, on]: Parameters<Test>) => {
+  const world = host(on, { [LOG]: log(greece) })
+  await $.session.start(START)
+
+  const answers = [
+    await $.tool.call({
+      tool: 'mcp__zg__decision',
+      op: 'open',
+      parent: 'G',
+      title: 'Which holiday do we book?',
+    }),
+    await $.tool.call({
+      tool: 'mcp__zg__decision',
+      op: 'option',
+      id: 'D1',
+      title: 'Greek village',
+    }),
+    await $.tool.call({
+      tool: 'mcp__zg__decision',
+      op: 'option',
+      id: 'D1',
+      title: 'Paphos',
+    }),
+    await $.tool.call({
+      tool: 'mcp__zg__node',
+      op: 'reply',
+      id: 'D1.1',
+      author: 'human',
+      text: 'best beach of the lot, but 2h by bus',
+    }),
+    await $.tool.call({
+      tool: 'mcp__zg__thread',
+      op: 'add',
+      parent: 'D1.2',
+      title: 'Check Paphos flights',
+    }),
+  ]
+
+  return { world, answers }
+}
+
+test('a decision with its options, a reply and a thread under an option are logged in order and the tools name the new IDs', async ($, on) => {
+  const { world, answers } = await holiday($, on)
+
+  expect({ answers, files: world.files }).toEqual({
+    answers: [
+      { result: 'DecisionOpened D1' },
+      { result: 'OptionAdded D1.1' },
+      { result: 'OptionAdded D1.2' },
+      { result: 'NodeReplied D1.1' },
+      { result: 'ThreadOpened T3' },
+    ],
+    files: {
+      [LOG]: log([
+        ...greece,
+        decisionOpened,
+        greekVillage,
+        paphos,
+        a.nodeReplied({
+          node: 'D1.1',
+          text: 'best beach of the lot, but 2h by bus',
+        }),
+        a.threadOpened({
+          thread: 'T3',
+          parent: 'D1.2',
+          title: 'Check Paphos flights',
+        }),
+      ]),
+    },
+  })
+})
+
+test('the pane draws the decision as a tree of its options, new until the human writes to it', async ($, on) => {
+  await holiday($, on)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => ({
+    text: text.text,
+    isDim: text.props.dimColor,
+  }))
+
+  expect(pane).toEqual([
+    { text: '○ G Pick a holiday', isDim: false },
+    { text: '5 open · 0 closed', isDim: false },
+    { text: '  ○ T2 Places in Greece', isDim: false },
+    { text: '  ◆ D1 Which holiday do we book?', isDim: false },
+    { text: '    ◇ D1.1 Greek village', isDim: false },
+    { text: '    ✦ D1.2 Paphos', isDim: false },
+    { text: '      ✦ T3 Check Paphos flights', isDim: false },
+  ])
+})
+
+test('show with the decision’s ID lists its options with their replies and threads', async ($, on) => {
+  await holiday($, on)
+
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'D1' })
+
+  expect(shown).toEqual({
+    result: [
+      'D1 Decision: Which holiday do we book?',
+      '   Options:',
+      '     ◇ D1.1 Greek village',
+      '         #1 human: best beach of the lot, but 2h by bus',
+      '     ◇ D1.2 Paphos',
+      '         T3 Check Paphos flights ○',
+    ].join('\n'),
+  })
+})
+
+const options = [...greece, decisionOpened, greekVillage, paphos]
+
+const dropped = async (...[$, on]: Parameters<Test>) => {
+  const world = host(on, { [LOG]: log(options) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__node',
+    op: 'cancel',
+    id: 'D1.1',
+    source: 'chat',
+    reason: 'too far with the kids',
+  })
+
+  return { world, answer }
+}
+
+test('an option dropped in the human’s words is cancelled with the reason verbatim', async ($, on) => {
+  const { world, answer } = await dropped($, on)
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: { result: 'NodeCancelled D1.1' },
+    files: {
+      [LOG]: log([
+        ...options,
+        a.nodeCancelled({ node: 'D1.1', reason: 'too far with the kids' }),
+      ]),
+    },
+  })
+})
+
+test('a dropped option shows dimmed in the pane with the reason', async ($, on) => {
+  await dropped($, on)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => ({
+    text: text.text,
+    isDim: text.props.dimColor,
+  }))
+
+  expect(pane).toEqual([
+    { text: '○ G Pick a holiday', isDim: false },
+    { text: '3 open · 1 closed', isDim: false },
+    { text: '  ○ T2 Places in Greece', isDim: false },
+    { text: '  ✦ D1 Which holiday do we book?', isDim: false },
+    {
+      text: '    ✗ D1.1 Greek village · too far with the kids',
+      isDim: true,
+    },
+    { text: '    ✦ D1.2 Paphos', isDim: false },
+  ])
+})
+
+test('show with the decision’s ID lists a dropped option with the reason', async ($, on) => {
+  await dropped($, on)
+
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'D1' })
+
+  expect(shown).toEqual({
+    result: [
+      'D1 Decision: Which holiday do we book?',
+      '   Options:',
+      '     ✗ D1.1 Greek village · too far with the kids',
+      '     ◇ D1.2 Paphos',
+    ].join('\n'),
+  })
+})
+
+test('show with an ID that names nothing says so and appends nothing', async ($, on) => {
+  const world = host(on, { [LOG]: log(bus) })
+  await $.session.start(START)
+
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'T9' })
+
+  expect({ shown, files: world.files }).toEqual({
+    shown: { result: 'There is no item T9.' },
+    files: { [LOG]: log(bus) },
+  })
+})
+
+test('show with a thread’s ID answers the thread’s details', async ($, on) => {
+  host(on, { [LOG]: log(bus) })
+  await $.session.start(START)
+
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'T5' })
+
+  expect(shown).toEqual({ result: t5.join('\n') })
+})
+
+test('show with an action’s ID answers the action’s details', async ($, on) => {
+  const given = [
+    a.goalOpened(),
+    a.actionAdded(),
+    a.actionExported({ reason: 'do this after' }),
+  ]
+  host(on, { [LOG]: log(given) })
+  await $.session.start(START)
+
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'A1' })
+
+  expect(shown).toEqual({
+    result: [
+      'A1 Check school dates',
+      'owner: human',
+      'exported → handoff',
+      'do this after',
+    ].join('\n'),
+  })
+})
+
+test('an option added to a thread is refused as an error and traced, and nothing is logged', async ($, on) => {
+  const given = [a.goalOpened(), a.threadOpened({ thread: 'T1' })]
+  const world = host(on, { [LOG]: log(given) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__decision',
+    op: 'option',
+    id: 'T1',
+    title: 'X',
+  })
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: {
+      deny: 'One parent: T1 is a thread, and only a decision holds options. Open a decision under T1, and add the option there.',
+    },
+    files: {
+      [LOG]: log(given),
+      [TRACE]: log([
+        {
+          type: 'CommandRefused',
+          at: AT,
+          command: { type: 'AddOption', at: AT, decision: 'T1', title: 'X' },
+          reason:
+            'One parent: T1 is a thread, and only a decision holds options.',
+          fix: 'Open a decision under T1, and add the option there.',
+        },
+      ]),
+    },
+  })
+})

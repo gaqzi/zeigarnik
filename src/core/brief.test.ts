@@ -66,6 +66,56 @@ test('the open threads with their parents, between the goal and the actions', ()
   )
 })
 
+describe('the open nodes are listed in the pane’s sibling order, whatever the log order', () => {
+  test('threads before decisions, options right under their decision, and what is under an option after it', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.optionAdded(),
+      a.optionAdded({ option: 'D1.2', title: 'Paphos' }),
+      a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+      a.threadOpened({
+        thread: 'T3',
+        parent: 'D1.1',
+        title: 'Check village buses',
+      }),
+    ])
+
+    expect(brief(state)).toBe(
+      [
+        'zg: the goal is G Pick a holiday',
+        'Open threads:',
+        '- T2 Places in Greece (under G)',
+        '- D1 Which holiday do we book? (under G)',
+        '- D1.1 Greek village (under D1)',
+        '- T3 Check village buses (under D1.1)',
+        '- D1.2 Paphos (under D1)',
+        'Full view: mcp__zg__show.',
+      ].join('\n'),
+    )
+  })
+
+  test('options are numeric, so D1.9 comes before D1.10', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.optionAdded({ option: 'D1.10', title: 'Tenth' }),
+      a.optionAdded({ option: 'D1.9', title: 'Ninth' }),
+    ])
+
+    expect(brief(state)).toBe(
+      [
+        'zg: the goal is G Pick a holiday',
+        'Open threads:',
+        '- D1 Which holiday do we book? (under G)',
+        '- D1.9 Ninth (under D1)',
+        '- D1.10 Tenth (under D1)',
+        'Full view: mcp__zg__show.',
+      ].join('\n'),
+    )
+  })
+})
+
 test('has no thread header when no thread is open', () => {
   const state = fold([
     a.goalOpened(),

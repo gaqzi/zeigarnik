@@ -46,9 +46,20 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('tool.call', { tool: `mcp__zg__${SHOW}` }, async $ => ({
-    result: fullView(await current($, await $.session.id())),
-  }))
+  on('tool.call', { tool: `mcp__zg__${SHOW}` }, async ($, e) => {
+    const state = await current($, await $.session.id())
+    if (typeof e.id !== 'string' || e.id.trim() === '') {
+      return { result: fullView(state) }
+    }
+    const lines = details(state, e.id.trim())
+
+    return {
+      result:
+        lines.length === 0
+          ? `There is no item ${e.id.trim()}.`
+          : lines.map(line => line.text).join('\n'),
+    }
+  })
 
   on('tool.call', { tool: /^mcp__zg__/ }, async ($, e) => {
     const tool = e.tool.replace('mcp__zg__', '')
@@ -72,6 +83,11 @@ export const register: Register = on => {
             'goal' in event ? event.goal : '',
             'action' in event ? event.action : '',
             'thread' in event ? event.thread : '',
+            'option' in event
+              ? event.option
+              : 'decision' in event
+                ? event.decision
+                : '',
             'node' in event ? event.node : '',
             'into' in event ? event.into : '',
           ]

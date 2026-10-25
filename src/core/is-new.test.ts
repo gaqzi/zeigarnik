@@ -100,3 +100,95 @@ describe('a thread is new until the human has replied on it', () => {
     })
   }
 })
+
+describe('a decision is new until the human has replied on it or on one of its options', () => {
+  const rows: {
+    name: string
+    events: Event[]
+    node: string
+    isNew: boolean
+  }[] = [
+    {
+      name: 'nobody has written to it or its options',
+      events: [],
+      node: 'D1',
+      isNew: true,
+    },
+    {
+      name: 'the human replied on one of its options',
+      events: [a.nodeReplied({ node: 'D1.1' })],
+      node: 'D1',
+      isNew: false,
+    },
+    {
+      name: 'the human replied on the decision itself',
+      events: [a.nodeReplied({ node: 'D1' })],
+      node: 'D1',
+      isNew: false,
+    },
+    {
+      name: 'only Claude replied on one of its options',
+      events: [
+        a.nodeReplied({ node: 'D1.1', author: 'claude', text: 'Noted' }),
+      ],
+      node: 'D1',
+      isNew: true,
+    },
+    {
+      name: 'the human replied on an option that has since moved under another decision',
+      events: [
+        a.decisionOpened({ decision: 'D3' }),
+        a.nodeReplied({ node: 'D1.1' }),
+        a.nodeMoved({ node: 'D1.1', parent: 'D3', source: 'claude' }),
+      ],
+      node: 'D1',
+      isNew: true,
+    },
+    {
+      name: 'the human replied on an option that moved under it',
+      events: [
+        a.decisionOpened({ decision: 'D3' }),
+        a.nodeReplied({ node: 'D1.1' }),
+        a.nodeMoved({ node: 'D1.1', parent: 'D3', source: 'claude' }),
+      ],
+      node: 'D3',
+      isNew: false,
+    },
+    {
+      name: 'its option has a human reply',
+      events: [a.nodeReplied({ node: 'D1.1' })],
+      node: 'D1.1',
+      isNew: false,
+    },
+    {
+      name: 'its option has only a Claude reply',
+      events: [
+        a.nodeReplied({ node: 'D1.1', author: 'claude', text: 'Noted' }),
+      ],
+      node: 'D1.1',
+      isNew: true,
+    },
+    {
+      name: 'a sibling option has a human reply',
+      events: [
+        a.optionAdded({ option: 'D1.2', title: 'Paphos' }),
+        a.nodeReplied({ node: 'D1.1' }),
+      ],
+      node: 'D1.2',
+      isNew: true,
+    },
+  ]
+  for (const row of rows) {
+    test(`${row.node} is ${row.isNew ? 'new' : 'not new'} when ${row.name}`, () => {
+      const state = fold([
+        a.goalOpened(),
+        a.decisionOpened(),
+        a.optionAdded(),
+        ...row.events,
+      ])
+      const node = state.nodes.find(one => one.id === row.node)!
+
+      expect(isNew(node, state)).toBe(row.isNew)
+    })
+  }
+})

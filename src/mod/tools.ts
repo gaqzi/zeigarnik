@@ -75,8 +75,26 @@ export const specs: RegisteredToolSpec[] = [
     },
   },
   {
+    name: 'decision',
+    description:
+      'Records a decision: a choice the human has to make. open one when a choice comes up, naming the choice as the title (parent: the goal, a thread or an option). option adds a candidate as it is named, numbered under the decision (D1.1). A candidate that needs exploring gets a thread under its option. A question that ends with an answer is a thread, not a decision. Dropping an option is node cancel.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        op: { enum: ['open', 'option'] },
+        parent: { ...text, description: 'open: G…, T… or D…' },
+        title: {
+          ...text,
+          description: 'open: the choice; option: the candidate',
+        },
+        id: { ...text, description: 'option: D…' },
+      },
+      required: ['op'],
+    },
+  },
+  {
     name: 'node',
-    description: `Acts on any node (a thread so far). cancel closes it when it is no longer worth pursuing. ${CLOSED_BY} nest moves it under parent when the human says it belongs elsewhere, or when you put it in the wrong place yourself; say so in your reply. source: chat for the human's words, claude for your own correction. merge folds the from threads that turned out to be the same into the thread into, when the human says so; source and reason as for closing. reply records what is said to a node: when the human writes a line beginning with a node's ID and a colon (any case), a reply runs from it to the next such line or the message's end, paragraphs included; a range like T4–T6: gives each the same words; quoted or fenced lines are not replies. Reply author human with those words exactly, marker excluded, then author claude with your part about that node only; one of each per node per message, even when the words also close it (reply first, then close if they do). Text before the first marker is on no existing node: leave it, or open a thread for what it starts, with the text as its first human reply. move_reply moves a reply that landed on the wrong thread to thread to: ordinal is its number as show lists it, the latest when left out.`,
+    description: `Acts on any node (a thread, decision or option). cancel closes it when it is no longer worth pursuing. ${CLOSED_BY} nest moves it under parent when the human says it belongs elsewhere, or when you put it in the wrong place yourself; say so in your reply. source: chat for the human's words, claude for your own correction. merge folds the from threads that turned out to be the same into the thread into, when the human says so; source and reason as for closing. reply records what is said to a node: when the human writes a line beginning with a node's ID and a colon (any case), a reply runs from it to the next such line or the message's end, paragraphs included; a range like T4–T6: gives each the same words; quoted or fenced lines are not replies. Reply author human with those words exactly, marker excluded, then author claude with your part about that node only; one of each per node per message, even when the words also close it (reply first, then close if they do). Text before the first marker is on no existing node: leave it, or open a thread for what it starts, with the text as its first human reply. move_reply moves a reply that landed on the wrong thread to thread to: ordinal is its number as show lists it, the latest when left out.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -137,8 +155,13 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: SHOW,
     description:
-      "Shows zg's full view of this session from its log: the goal, actions, threads with what was said on them, and handoff.",
-    inputSchema: { type: 'object', properties: {} },
+      "Shows zg's full view, or everything about one item (T4, D1, D1.2, A1).",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { ...text, description: 'one item, else the full view' },
+      },
+    },
   },
 ]
 
@@ -259,6 +282,31 @@ export const toCommand = (
       const title = str(input, 'title')
       if (title === undefined) return { missing: 'add needs the title.' }
       return { type: 'OpenThread', at, parent, title }
+    }
+    case 'decision': {
+      if (input.op === 'option') {
+        const id = str(input, 'id')
+        if (id === undefined)
+          return { missing: "option needs the id: the decision's." }
+        const title = str(input, 'title')
+        if (title === undefined) return { missing: 'option needs the title.' }
+        return { type: 'AddOption', at, decision: id, title }
+      }
+      if (input.op !== 'open') {
+        return { missing: 'decision needs op: open or option.' }
+      }
+      const parent = str(input, 'parent')
+      if (parent === undefined) {
+        return {
+          missing:
+            "open needs the parent: the goal's ID, a thread's or an option's.",
+        }
+      }
+      const title = str(input, 'title')
+      if (title === undefined) {
+        return { missing: 'open needs the title: the choice to make.' }
+      }
+      return { type: 'OpenDecision', at, parent, title }
     }
     case 'node': {
       if (input.op === 'reply') {

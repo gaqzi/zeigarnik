@@ -58,6 +58,8 @@ export type Command =
     }
   | { type: 'CloseSession'; at: string; via: 'clear' }
   | { type: 'OpenThread'; at: string; parent: string; title: string }
+  | { type: 'OpenDecision'; at: string; parent: string; title: string }
+  | { type: 'AddOption'; at: string; decision: string; title: string }
   | {
       type: 'ResolveThread'
       at: string

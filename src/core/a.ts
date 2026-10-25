@@ -82,6 +82,16 @@ export const a = {
     reason: 'T4–T7 are the same as T5',
   }),
   replyMoved: event('ReplyMoved', { node: 'T5', reply: AT, to: 'T3' }),
+  decisionOpened: event('DecisionOpened', {
+    decision: 'D1',
+    parent: 'G',
+    title: 'Which holiday do we book?',
+  }),
+  optionAdded: event('OptionAdded', {
+    option: 'D1.1',
+    decision: 'D1',
+    title: 'Greek village',
+  }),
 
   openGoal: command('OpenGoal', { text: 'Pick a holiday' }),
   addAction: command('AddAction', {
@@ -134,4 +144,9 @@ export const a = {
     reason: 'T4–T7 are the same as T5',
   }),
   moveReply: command('MoveReply', { node: 'T5', to: 'T3' }),
+  openDecision: command('OpenDecision', {
+    parent: 'G',
+    title: 'Which holiday do we book?',
+  }),
+  addOption: command('AddOption', { decision: 'D1', title: 'Greek village' }),
 }

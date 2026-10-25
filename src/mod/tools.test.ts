@@ -69,6 +69,18 @@ const moveReply = (overrides: Input = {}) => ({
   to: 'T3',
   ...overrides,
 })
+const decisionOpen = (overrides: Input = {}) => ({
+  op: 'open',
+  parent: 'G',
+  title: 'Which holiday do we book?',
+  ...overrides,
+})
+const decisionOption = (overrides: Input = {}) => ({
+  op: 'option',
+  id: 'D1',
+  title: 'Greek village',
+  ...overrides,
+})
 const closeGoal = (overrides: Input = {}) => ({
   as: 'achieved',
   source: 'chat',
@@ -170,6 +182,24 @@ describe('a tool call becomes', () => {
       tool: 'thread',
       input: thread(),
       command: a.openThread(),
+    },
+    {
+      name: 'a decision opened under its parent',
+      tool: 'decision',
+      input: decisionOpen(),
+      command: a.openDecision(),
+    },
+    {
+      name: 'a decision opened under an option',
+      tool: 'decision',
+      input: decisionOpen({ parent: 'D1.2' }),
+      command: a.openDecision({ parent: 'D1.2' }),
+    },
+    {
+      name: 'an option added to a decision',
+      tool: 'decision',
+      input: decisionOption(),
+      command: a.addOption(),
     },
     {
       name: 'a thread resolved with its outcome',
@@ -298,6 +328,38 @@ describe('a tool call becomes', () => {
   for (const { name, tool, input, command } of cases) {
     test(name, () => {
       expect(toCommand(tool, input, AT)).toEqual(command)
+    })
+  }
+})
+
+// toCommand only reads the call's shape; decide holds the rule. These pin that
+// dotted IDs pass through untouched, so decide sees them as they were named.
+describe('one parent: nest and merge carry dotted IDs through', () => {
+  const cases: { name: string; input: Input; command: Command }[] = [
+    {
+      name: 'an option nested under a thread',
+      input: nest({ id: 'D1.1', parent: 'T2' }),
+      command: a.nestNode({ node: 'D1.1', parent: 'T2' }),
+    },
+    {
+      name: 'an option nested under another option',
+      input: nest({ id: 'D1.1', parent: 'D1.2' }),
+      command: a.nestNode({ node: 'D1.1', parent: 'D1.2' }),
+    },
+    {
+      name: 'an option merged into an option of another decision',
+      input: merge({ from: ['D1.1'], into: 'D3.1' }),
+      command: a.mergeNodes({ from: ['D1.1'], into: 'D3.1' }),
+    },
+    {
+      name: 'a decision merged into another decision',
+      input: merge({ from: ['D1'], into: 'D3' }),
+      command: a.mergeNodes({ from: ['D1'], into: 'D3' }),
+    },
+  ]
+  for (const { name, input, command } of cases) {
+    test(name, () => {
+      expect(toCommand('node', input, AT)).toEqual(command)
     })
   }
 })
@@ -487,6 +549,43 @@ describe('a tool call missing what it needs is refused', () => {
         tool: 'thread',
         input: thread({ title: undefined }),
         missing: 'add needs the title.',
+      },
+      {
+        name: 'a decision call with no op zg has a name for',
+        tool: 'decision',
+        input: decisionOpen({ op: 'decide' }),
+        missing: 'decision needs op: open or option.',
+      },
+      {
+        name: 'a decision opened without its parent',
+        tool: 'decision',
+        input: decisionOpen({ parent: ' ' }),
+        missing:
+          "open needs the parent: the goal's ID, a thread's or an option's.",
+      },
+      {
+        name: 'a decision opened without the choice to make',
+        tool: 'decision',
+        input: decisionOpen({ title: undefined }),
+        missing: 'open needs the title: the choice to make.',
+      },
+      {
+        name: 'a decision opened with a blank title',
+        tool: 'decision',
+        input: decisionOpen({ title: '  ' }),
+        missing: 'open needs the title: the choice to make.',
+      },
+      {
+        name: 'an option added without its decision',
+        tool: 'decision',
+        input: decisionOption({ id: undefined }),
+        missing: "option needs the id: the decision's.",
+      },
+      {
+        name: 'an option added without its title',
+        tool: 'decision',
+        input: decisionOption({ title: undefined }),
+        missing: 'option needs the title.',
       },
       {
         name: 'a goal closed without how it ended',

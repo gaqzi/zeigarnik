@@ -27,7 +27,7 @@ export type Action = {
 
 export type Node = {
   id: string
-  kind: 'thread'
+  kind: 'thread' | 'decision' | 'option'
   parent: string
   title: string
   status: 'open' | 'resolved' | 'cancelled' | 'merged'
@@ -173,6 +173,34 @@ const happened = (state: State, event: Event): State => {
             id: event.thread,
             kind: 'thread',
             parent: event.parent,
+            title: event.title,
+            status: 'open',
+          },
+        ],
+      }
+    case 'DecisionOpened':
+      return {
+        ...state,
+        nodes: [
+          ...state.nodes,
+          {
+            id: event.decision,
+            kind: 'decision',
+            parent: event.parent,
+            title: event.title,
+            status: 'open',
+          },
+        ],
+      }
+    case 'OptionAdded':
+      return {
+        ...state,
+        nodes: [
+          ...state.nodes,
+          {
+            id: event.option,
+            kind: 'option',
+            parent: event.decision,
             title: event.title,
             status: 'open',
           },
