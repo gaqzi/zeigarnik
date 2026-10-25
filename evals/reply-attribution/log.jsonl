@@ -1,0 +1,4 @@
+{"type":"GoalOpened","at":"2026-10-25T03:47:24.404Z","goal":"G","text":"Plan a family day trip to the coast this summer, with the kids."}
+{"type":"ThreadOpened","at":"2026-10-25T03:48:07.727Z","thread":"T1","parent":"G","title":"Boat tour"}
+{"type":"ThreadOpened","at":"2026-10-25T03:48:08.765Z","thread":"T2","parent":"G","title":"Lunch"}
+{"type":"ThreadOpened","at":"2026-10-25T03:48:08.782Z","thread":"T3","parent":"G","title":"Which beaches"}

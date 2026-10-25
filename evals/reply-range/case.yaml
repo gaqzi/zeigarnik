@@ -1,0 +1,47 @@
+schema_version: "1.1"
+name: reply-range
+description: The human addresses a range of threads in one line, "t4–t6" with an en dash and a lowercase t, over the three candidate venues. Claude records the same words, "all three are out, too far", as a human reply on each of T4, T5 and T6, and on no other thread; it may also cancel them, which no grader forbids. The guardrail graders are the three replies and the absence, on any thread other than T4, T5 and T6 (including a thread Claude opens in the run), of a human reply or of a reply of any author with the range's words. The case has no no-plugin arm, because the runner yields only the with arm for a resumed case and a history holding the plugin's command expansion means nothing without the plugin, so its baseline is the with arm. Not exercised - the setup turns, which are recorded and not live (the goal and six threads, with where each venue is said in chat only, so no reply sits on any thread), whether Claude cancels the three venues and with what reason, a range mixed with single IDs or with a preamble (reply-attribution), a range written with a hyphen or with "through", and ranges across a gap in the numbering.
+tags: [guardrail, slice-2b, replies]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "t4–t6: all three are out, too far"
+  max_turns: 10
+  allowed_tools:
+    [
+      mcp__zg__open,
+      mcp__zg__thread,
+      mcp__zg__node,
+      mcp__zg__action,
+      mcp__zg__show,
+    ]
+graders:
+  # Guardrail.
+  - name: T4-human-reply-is-the-ranges-words
+    type: regex
+    target: {source: file, path: .zg/sessions/8297d3e0-0ddc-46af-ac7c-34f946fb653d.jsonl}
+    pattern: '"type":"NodeReplied"(?=[^\n]*"node":"T4")(?=[^\n]*"author":"human")(?=[^\n]*"text":"all three are out, too far"[,}])'
+    match: contains
+  # Guardrail.
+  - name: T5-human-reply-is-the-ranges-words
+    type: regex
+    target: {source: file, path: .zg/sessions/8297d3e0-0ddc-46af-ac7c-34f946fb653d.jsonl}
+    pattern: '"type":"NodeReplied"(?=[^\n]*"node":"T5")(?=[^\n]*"author":"human")(?=[^\n]*"text":"all three are out, too far"[,}])'
+    match: contains
+  # Guardrail.
+  - name: T6-human-reply-is-the-ranges-words
+    type: regex
+    target: {source: file, path: .zg/sessions/8297d3e0-0ddc-46af-ac7c-34f946fb653d.jsonl}
+    pattern: '"type":"NodeReplied"(?=[^\n]*"node":"T6")(?=[^\n]*"author":"human")(?=[^\n]*"text":"all three are out, too far"[,}])'
+    match: contains
+  # Guardrail. "On no other thread" is read as a reply on a node that is not
+  # T4, T5 or T6, so T1, T2, T3, G and any thread opened in the run all count.
+  # One alternation covers both ways to break it: any human reply there, or a
+  # reply of any author there whose text is exactly the range's words.
+  - name: no-other-thread-gets-a-human-reply-or-the-ranges-words
+    type: regex
+    target: {source: file, path: .zg/sessions/8297d3e0-0ddc-46af-ac7c-34f946fb653d.jsonl}
+    pattern: '"type":"NodeReplied"(?=[^\n]*"node":"(?!T[456]")[^"]*")(?:(?=[^\n]*"author":"human")|(?=[^\n]*"text":"all three are out, too far"[,}]))'
+    match: not_contains

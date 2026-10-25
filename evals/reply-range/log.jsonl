@@ -1,0 +1,7 @@
+{"type":"GoalOpened","at":"2026-10-25T03:48:41.965Z","goal":"G","text":"Plan my sister's 40th birthday dinner, for about twenty people."}
+{"type":"ThreadOpened","at":"2026-10-25T03:48:58.267Z","thread":"T1","parent":"G","title":"Guest list"}
+{"type":"ThreadOpened","at":"2026-10-25T03:48:59.008Z","thread":"T2","parent":"G","title":"Date"}
+{"type":"ThreadOpened","at":"2026-10-25T03:48:59.863Z","thread":"T3","parent":"G","title":"Budget"}
+{"type":"ThreadOpened","at":"2026-10-25T03:49:00.702Z","thread":"T4","parent":"G","title":"Harbour Grill"}
+{"type":"ThreadOpened","at":"2026-10-25T03:49:02.107Z","thread":"T5","parent":"G","title":"Rooftop Terrace"}
+{"type":"ThreadOpened","at":"2026-10-25T03:49:02.113Z","thread":"T6","parent":"G","title":"Vineyard Barn"}

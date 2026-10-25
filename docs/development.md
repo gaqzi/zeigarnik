@@ -85,6 +85,7 @@ Guardrails (no rule broken, nothing done without the human's confirmation)
 must pass every time. Behaviours start at the baseline the first run
 measures, and the bar only ratchets up; slice 4 closes at 80% or better.
 `claude plugin eval` also runs a no-plugin baseline, which shows what zg adds.
+A resumed case has no no-plugin arm (the runner's ablation yields only the with arm, and a history holding the plugin's command expansion means nothing without it), so its baseline is the with arm.
 
 ### Context budgets
 

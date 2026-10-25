@@ -1,0 +1,100 @@
+schema_version: "1.1"
+name: reply-attribution
+description: In one message the human puts a preamble about something new, replies to T1 over two paragraphs, and replies to T3, while T2 is not addressed. Claude records each reply on its own thread word for word, with the second paragraph on T1 and the preamble on neither, nothing on T2, then answers T1 and T3 each on its own thread; the preamble may be dropped from the log or become the first human reply of a thread Claude opens for it. Guardrails are the exact T1 and T3 replies (each also forbids any other human reply on its thread, though a second human reply with the identical text is not caught and is unexercised, zg-b8o), nothing on T2, and the preamble in no human reply on G, T1, T2 or T3, where the preamble guardrail fails on a human reply there holding either half of it, verbatim ("Quick thought first" or "check ferry times"), so a split second reply is caught; it does not cover Claude's replies, action quotes, cancel or resolve reasons, or any line naming a thread opened in the run, and it does not catch a paraphrase. The two behaviours are Claude's own reply on T1 and on T3, each about its thread, and a ferry-times thread whose first human reply holds the preamble. The case has no no-plugin arm, because the runner yields only the with arm for a resumed case and a history holding the plugin's command expansion means nothing without the plugin, so its baseline is the with arm. Not exercised - the setup turns, which are recorded and not live (the goal and the three threads, with the boat tour and the beach list proposed in chat only, so no reply sits on any thread), Claude's reply to T2 or to the preamble in chat, a range of IDs (reply-range), the preamble settling other threads (across-propagation, slice 4), and replies to threads other than T1 and T3.
+tags: [guardrail, slice-2b, replies]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Quick thought first: we should also check ferry times.\n\nT1: no, two hours is too much.\n\nAnd the kids won't sit still.\n\nT3: skip the inland ones"
+  max_turns: 10
+  allowed_tools:
+    [
+      mcp__zg__open,
+      mcp__zg__thread,
+      mcp__zg__node,
+      mcp__zg__action,
+      mcp__zg__show,
+    ]
+graders:
+  # Guardrail.
+  - name: T1-human-reply-is-both-paragraphs-verbatim
+    type: regex
+    target: {source: file, path: .zg/sessions/3bf8991c-0f82-4e39-bbe0-c6f6655e5ed0.jsonl}
+    pattern: '"type":"NodeReplied"(?=[^\n]*"node":"T1")(?=[^\n]*"author":"human")(?=[^\n]*"text":"no, two hours is too much\.\\n\\nAnd the kids won''t sit still\."[,}])'
+    match: contains
+  # Guardrail. Any human reply on T1 whose text is not exactly the value above.
+  - name: T1-no-other-human-reply
+    type: regex
+    target: {source: file, path: .zg/sessions/3bf8991c-0f82-4e39-bbe0-c6f6655e5ed0.jsonl}
+    pattern: '"type":"NodeReplied"(?=[^\n]*"node":"T1")(?=[^\n]*"author":"human")(?![^\n]*"text":"no, two hours is too much\.\\n\\nAnd the kids won''t sit still\."[,}])'
+    match: not_contains
+  # Guardrail.
+  - name: T3-human-reply-is-its-line-verbatim
+    type: regex
+    target: {source: file, path: .zg/sessions/3bf8991c-0f82-4e39-bbe0-c6f6655e5ed0.jsonl}
+    pattern: '"type":"NodeReplied"(?=[^\n]*"node":"T3")(?=[^\n]*"author":"human")(?=[^\n]*"text":"skip the inland ones"[,}])'
+    match: contains
+  # Guardrail. Any human reply on T3 whose text is not exactly the value above.
+  - name: T3-no-other-human-reply
+    type: regex
+    target: {source: file, path: .zg/sessions/3bf8991c-0f82-4e39-bbe0-c6f6655e5ed0.jsonl}
+    pattern: '"type":"NodeReplied"(?=[^\n]*"node":"T3")(?=[^\n]*"author":"human")(?![^\n]*"text":"skip the inland ones"[,}])'
+    match: not_contains
+  # Guardrail.
+  - name: T2-nothing-replied
+    type: regex
+    target: {source: file, path: .zg/sessions/3bf8991c-0f82-4e39-bbe0-c6f6655e5ed0.jsonl}
+    pattern: '"type":"NodeReplied"[^\n]*"node":"T2"'
+    match: not_contains
+  # Guardrail. The fixture holds only G, T1, T2 and T3; any other node exists
+  # because this run opened it. Only a human NodeReplied on G, T1, T2 or T3
+  # whose text value holds either half of the preamble ("Quick thought first"
+  # or "check ferry times") fails, so a split second reply is caught. The
+  # lookaheads fix the event, node and author; the text match stays inside the
+  # string value. Claude's replies, action quotes, cancel and resolve reasons,
+  # and every line on a thread opened in the run are exempt. A paraphrase is
+  # not caught.
+  - name: no-human-reply-on-G-T1-T2-T3-holds-the-preamble
+    type: regex
+    target: {source: file, path: .zg/sessions/3bf8991c-0f82-4e39-bbe0-c6f6655e5ed0.jsonl}
+    pattern: '"type":"NodeReplied"(?=[^\n]*"node":"(?:G|T1|T2|T3)")(?=[^\n]*"author":"human")(?=[^\n]*"text":"(?:[^"\\\n]|\\.)*(?:[Qq]uick thought first|check ferry times))'
+    match: not_contains
+  # Behaviour, baseline then ratchet. A thread whose title names ferries opens,
+  # and the first human reply on that same thread is the preamble verbatim.
+  # \1 is that thread's ID. The tempered loop skips every line that is not a
+  # human reply on that thread, so the first human reply on it is the one checked.
+  - name: ferry-thread-opened-and-its-first-human-reply-is-the-preamble
+    type: regex
+    target: {source: file, path: .zg/sessions/3bf8991c-0f82-4e39-bbe0-c6f6655e5ed0.jsonl}
+    pattern: '"type":"ThreadOpened"[^\n]*"thread":"(T\d+)"[^\n]*"title":"[^"]*[Ff][Ee][Rr][Rr](?:[Yy]|[Ii][Ee][Ss])[^\n]*\n(?:(?!\{"type":"NodeReplied"[^\n]*"node":"\1"[^\n]*"author":"human")[^\n]*\n)*\{"type":"NodeReplied"[^\n]*"node":"\1"[^\n]*"author":"human"[^\n]*"text":"Quick thought first: we should also check ferry times\."[,}]'
+    match: contains
+  - name: T1-T3-claude-answers-each-on-its-own-thread
+    type: llm
+    focus: trace
+    criteria: |
+      Behaviour, baseline then ratchet. The human's only message is,
+      verbatim: "Quick thought first: we should also check ferry times.\n\nT1:
+      no, two hours is too much.\n\nAnd the kids won't sit still.\n\nT3: skip
+      the inland ones". The trace does not repeat it. In the session so far
+      Claude proposed on T1 a two-hour boat tour ("Book the earliest
+      sailing" was part of that proposal, so sailing and departure times are
+      T1's own subject) and on T3 a list of beaches, two of them inland.
+      Grade only the calls to the zg node tool with op "reply" and author
+      "claude" that are on T1 or on T3; ignore every other call, including
+      Claude's replies on any other thread. Pass when there is one on T1 and
+      one on T3, and each is only about its own thread: the T1 reply responds
+      to the boat tour being too long and the kids not sitting still (a
+      shorter option, a break, an earlier sailing, anything about the boat
+      tour), and the T3 reply responds to dropping the inland beaches (the
+      coastal ones that remain, anything about the beach list). Naming a ferry
+      or a boat as part of a thread's own subject is fine: a short
+      foot-passenger ferry hop offered as an alternative to the boat tour is
+      a T1 reply about the boat tour. Fail when either reply is missing, when
+      a reply takes up the preamble's question, which is checking ferry
+      crossing or travel times to get there (not the boat tour's own sailings
+      or departure times), or when a reply takes up the other thread's
+      subject (the beach list on T1, the boat tour on T3). Treat Claude's own
+      account of what it recorded in its final message as a claim to check
+      against the calls, not as evidence.
