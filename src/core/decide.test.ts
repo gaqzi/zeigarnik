@@ -1656,3 +1656,472 @@ describe('moving a reply', () => {
     })
   })
 })
+
+describe('closing says how, for a decision', () => {
+  const holiday = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.nodeCancelled({ node: 'D1.1', reason: 'too far with the kids' }),
+  ]
+
+  test('a pick appends exactly the DecisionMade, and nothing for the options', () => {
+    expect(when(holiday, a.makeDecision())).toEqual({
+      events: [a.decisionMade()],
+    })
+  })
+
+  const outline = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.nodeCancelled({ node: 'D1.1', reason: 'too far with the kids' }),
+    a.decisionOpened({ decision: 'D3', title: 'Which flights?' }),
+    a.optionAdded({ option: 'D3.1', decision: 'D3', title: 'Direct' }),
+    a.decisionMade({ decision: 'D3', option: 'D3.1' }),
+    a.threadOpened({ thread: 'T1' }),
+  ]
+  const fix = "D1's open options are D1.2."
+  const rows: {
+    name: string
+    given: Event[]
+    command: Command
+    reason: string
+    fix: string
+  }[] = [
+    {
+      name: 'refuses a pick of an option already cancelled',
+      given: outline,
+      command: a.makeDecision({ option: 'D1.1' }),
+      reason: 'Closing says how: D1.1 is already cancelled.',
+      fix,
+    },
+    {
+      name: 'refuses a pick of an option the decision does not have',
+      given: outline,
+      command: a.makeDecision({ option: 'D1.9' }),
+      reason: 'D1 has no option D1.9.',
+      fix,
+    },
+    {
+      name: 'refuses a pick of another decision’s option',
+      given: outline,
+      command: a.makeDecision({ option: 'D3.1' }),
+      reason: "D3.1 is not one of D1's options.",
+      fix,
+    },
+    {
+      name: 'refuses deciding a decision that is already decided',
+      given: outline,
+      command: a.makeDecision({ decision: 'D3', option: 'D3.1' }),
+      reason: 'D3 is already decided.',
+      fix: 'The open decisions are D1.',
+    },
+    {
+      name: 'refuses deciding a thread',
+      given: outline,
+      command: a.makeDecision({ decision: 'T1', option: 'D1.2' }),
+      reason: 'T1 is a thread, not a decision.',
+      fix: 'Resolve T1 with an outcome, or decide D1.',
+    },
+    {
+      name: 'refuses deciding a decision with no open option',
+      given: [...outline, a.nodeCancelled({ node: 'D1.2' })],
+      command: a.makeDecision({ option: 'D1.2' }),
+      reason: 'Closing says how: D1 has no open option.',
+      fix: 'Add one, or cancel D1.',
+    },
+    {
+      name: 'refuses deciding with an option as the decision',
+      given: holiday,
+      command: a.makeDecision({ decision: 'D1.3' }),
+      reason: 'D1.3 is an option, not a decision.',
+      fix: 'Decide D1 with option D1.3.',
+    },
+    {
+      name: 'refuses resolving a decision',
+      given: outline,
+      command: a.resolveThread({ thread: 'D1', outcome: 'Paphos' }),
+      reason: 'Closing says how: D1 is a decision.',
+      fix: 'Decide it with an option, or cancel it.',
+    },
+    {
+      name: 'refuses resolving an option',
+      given: outline,
+      command: a.resolveThread({ thread: 'D1.2', outcome: 'Costa del Sol' }),
+      reason: 'Closing says how: D1.2 is an option.',
+      fix: 'Decide D1, or cancel D1.2.',
+    },
+  ]
+  for (const { name, given, command, reason, fix } of rows) {
+    test(name, () => {
+      expect(when(given, command)).toEqual({ refusal: { reason, fix } })
+    })
+  }
+})
+
+describe('children close first, for a decision', () => {
+  const holiday = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+  ]
+  const fix =
+    'Show the human the open children and ask how each ends, or propose one outcome that settles them for the human to confirm.'
+  const flights = (parent: string) =>
+    a.threadOpened({
+      thread: 'T6',
+      parent,
+      title: 'Check Paphos flights',
+    })
+
+  test('its options being open does not stop it being decided', () => {
+    expect(when(holiday, a.makeDecision())).toEqual({
+      events: [a.decisionMade()],
+    })
+  })
+
+  test('its options being open does not stop it being cancelled, and only it is cancelled', () => {
+    expect(when(holiday, a.cancelNode({ node: 'D1' }))).toEqual({
+      events: [a.nodeCancelled({ node: 'D1' })],
+    })
+  })
+
+  test('a pick is refused while a thread is open under the option picked', () => {
+    expect(when([...holiday, flights('D1.3')], a.makeDecision())).toEqual({
+      refusal: {
+        reason:
+          'Children close first: T6 Check Paphos flights is still open under D1.3.',
+        fix,
+      },
+    })
+  })
+
+  test('a pick is refused while a thread is open under an option not picked', () => {
+    expect(when([...holiday, flights('D1.2')], a.makeDecision())).toEqual({
+      refusal: {
+        reason:
+          'Children close first: T6 Check Paphos flights is still open under D1.2.',
+        fix,
+      },
+    })
+  })
+
+  test('cancelling the decision is refused while a thread is open under an option', () => {
+    expect(
+      when([...holiday, flights('D1.3')], a.cancelNode({ node: 'D1' })),
+    ).toEqual({
+      refusal: {
+        reason:
+          'Children close first: T6 Check Paphos flights is still open under D1.3.',
+        fix,
+      },
+    })
+  })
+
+  const costaFlights = a.threadOpened({
+    thread: 'T7',
+    parent: 'D1.2',
+    title: 'Check Costa flights',
+  })
+  const bothOpen = [...holiday, costaFlights, flights('D1.3')]
+  const bothRefused = {
+    refusal: {
+      reason:
+        'Children close first: T7 Check Costa flights is still open under D1.2. T6 Check Paphos flights is still open under D1.3.',
+      fix,
+    },
+  }
+
+  test('a pick is refused with every option’s open threads, one sentence per option in ID order', () => {
+    expect(when(bothOpen, a.makeDecision())).toEqual(bothRefused)
+  })
+
+  test('cancelling the decision is refused with every option’s open threads, one sentence per option in ID order', () => {
+    expect(when(bothOpen, a.cancelNode({ node: 'D1' }))).toEqual(bothRefused)
+  })
+
+  test('options are listed in sibling order, not log order, when an option nested under the decision was opened first', () => {
+    const given = [
+      a.goalOpened(),
+      a.decisionOpened({ decision: 'D2', title: 'Which flights?' }),
+      a.optionAdded({ option: 'D2.1', decision: 'D2', title: 'Rhodes' }),
+      a.decisionOpened(),
+      a.optionAdded({ option: 'D1.1', title: 'Paphos' }),
+      a.nodeMoved({ node: 'D2.1', parent: 'D1', source: 'chat' }),
+      a.threadOpened({
+        thread: 'T1',
+        parent: 'D2.1',
+        title: 'Check Rhodes flights',
+      }),
+      a.threadOpened({
+        thread: 'T2',
+        parent: 'D1.1',
+        title: 'Check Paphos flights',
+      }),
+    ]
+
+    expect(when(given, a.makeDecision({ option: 'D1.1' }))).toEqual({
+      refusal: {
+        reason:
+          'Children close first: T2 Check Paphos flights is still open under D1.1. T1 Check Rhodes flights is still open under D2.1.',
+        fix,
+      },
+    })
+  })
+
+  test('a pick goes through once the thread under the option has closed', () => {
+    const given = [
+      ...holiday,
+      flights('D1.3'),
+      a.threadResolved({ thread: 'T6' }),
+    ]
+
+    expect(when(given, a.makeDecision())).toEqual({
+      events: [a.decisionMade()],
+    })
+  })
+})
+
+describe('a decided or cancelled decision and its ended options take nothing more', () => {
+  const decided = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.threadOpened({ thread: 'T1', title: 'Places in Greece' }),
+    a.decisionOpened({ decision: 'D2', title: 'Which flights?' }),
+    a.decisionMade(),
+  ]
+  const cancelled = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.threadOpened({ thread: 'T1', title: 'Places in Greece' }),
+    a.decisionOpened({ decision: 'D2', title: 'Which flights?' }),
+    a.nodeCancelled({ node: 'D1' }),
+  ]
+  const decidedWide = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.nodeReplied({ node: 'D1.2', text: 'bars, easy flights' }),
+    a.threadOpened({ thread: 'T1', title: 'Places in Greece' }),
+    a.nodeReplied({ node: 'T1', text: 'Rhodes first' }),
+    a.decisionOpened({ decision: 'D2', title: 'Which flights?' }),
+    a.optionAdded({ option: 'D2.1', decision: 'D2', title: 'Direct' }),
+    a.optionAdded({ option: 'D2.2', decision: 'D2', title: 'Via Athens' }),
+    a.decisionMade(),
+  ]
+  const rows: {
+    name: string
+    given: Event[]
+    command: Command
+    reason: string
+    fix: string
+  }[] = [
+    {
+      name: 'a reply to a decided decision',
+      given: decided,
+      command: a.replyToNode({ node: 'D1' }),
+      reason: 'D1 is already decided.',
+      fix: "Open a new thread under D1's parent for what's new; the open nodes are T1, D2.",
+    },
+    {
+      name: 'a reply to the option chosen',
+      given: decided,
+      command: a.replyToNode({ node: 'D1.3' }),
+      reason: 'D1.3 is already chosen.',
+      fix: "Open a new thread beside D1, under G, for what's new; the open nodes are T1, D2.",
+    },
+    {
+      name: 'a reply to an option not chosen',
+      given: decided,
+      command: a.replyToNode({ node: 'D1.2' }),
+      reason: 'D1.2 is already not chosen.',
+      fix: "Open a new thread beside D1, under G, for what's new; the open nodes are T1, D2.",
+    },
+    {
+      name: 'an option added to a decided decision',
+      given: decided,
+      command: a.addOption({ title: 'Rhodes' }),
+      reason: 'D1 is already decided.',
+      fix: 'The open decisions are D2.',
+    },
+    {
+      name: 'a thread opened under a decided decision',
+      given: decided,
+      command: a.openThread({ parent: 'D1' }),
+      reason: 'One parent: D1 is already decided.',
+      fix: 'Open it under G or T1.',
+    },
+    {
+      name: 'a thread opened under the option chosen',
+      given: decided,
+      command: a.openThread({ parent: 'D1.3' }),
+      reason: 'One parent: D1.3 is already chosen.',
+      fix: 'Open it under G or T1.',
+    },
+    {
+      name: 'a decision opened under a decided decision',
+      given: decided,
+      command: a.openDecision({ parent: 'D1', title: 'X' }),
+      reason: 'D1 is already decided.',
+      fix: 'Open it under G or T1.',
+    },
+    {
+      name: 'a decision opened under an option not chosen',
+      given: decided,
+      command: a.openDecision({ parent: 'D1.2', title: 'X' }),
+      reason: 'D1.2 is already not chosen.',
+      fix: 'Open it under G or T1.',
+    },
+    {
+      name: 'a decided decision nested under a thread',
+      given: decided,
+      command: a.nestNode({ node: 'D1', parent: 'T1' }),
+      reason: 'D1 is already decided.',
+      fix: 'Leave D1 where it is; the open nodes are T1, D2.',
+    },
+    {
+      name: 'an option not chosen nested under another decision',
+      given: decidedWide,
+      command: a.nestNode({ node: 'D1.2', parent: 'D2' }),
+      reason: 'D1.2 is already not chosen.',
+      fix: 'Leave D1.2 where it is; the open nodes are T1, D2, D2.1, D2.2.',
+    },
+    {
+      name: 'a thread nested under a decided decision',
+      given: decidedWide,
+      command: a.nestNode({ node: 'T1', parent: 'D1' }),
+      reason: 'One parent: D1 is already decided.',
+      fix: 'Nest T1 under D2.1 or D2.2.',
+    },
+    {
+      name: 'a thread nested under the option chosen',
+      given: decidedWide,
+      command: a.nestNode({ node: 'T1', parent: 'D1.3' }),
+      reason: 'One parent: D1.3 is already chosen.',
+      fix: 'Nest T1 under D2.1 or D2.2.',
+    },
+    {
+      name: 'an option not chosen merged into the option chosen',
+      given: decidedWide,
+      command: a.mergeNodes({ from: ['D1.2'], into: 'D1.3' }),
+      reason: 'D1.2 is already not chosen.',
+      fix: 'Leave D1.2 where it is; the open nodes are T1, D2, D2.1, D2.2.',
+    },
+    {
+      name: 'an option of another decision merged into the option chosen',
+      given: decidedWide,
+      command: a.mergeNodes({ from: ['D2.1'], into: 'D1.3' }),
+      reason: 'D1.3 is already chosen.',
+      fix: 'Merge D2.1 into another open option of D2, or leave it where it is.',
+    },
+    {
+      name: 'a reply moved off an option not chosen',
+      given: decidedWide,
+      command: a.moveReply({ node: 'D1.2', to: 'T1' }),
+      reason: 'D1.2 is already not chosen.',
+      fix: 'D1.2 keeps its replies; reply with the words on the right node instead: the open nodes are T1, D2, D2.1, D2.2.',
+    },
+    {
+      name: 'a reply moved onto an option not chosen',
+      given: decidedWide,
+      command: a.moveReply({ node: 'T1', to: 'D1.2' }),
+      reason: 'D1.2 is already not chosen.',
+      fix: 'The open nodes are T1, D2, D2.1, D2.2.',
+    },
+    {
+      name: 'a reply to a cancelled decision',
+      given: cancelled,
+      command: a.replyToNode({ node: 'D1' }),
+      reason: 'D1 is already cancelled.',
+      fix: "Open a new thread under D1's parent for what's new; the open nodes are T1, D2.",
+    },
+    {
+      name: 'a reply to an option cancelled with its decision',
+      given: cancelled,
+      command: a.replyToNode({ node: 'D1.2' }),
+      reason: 'D1.2 is already cancelled.',
+      fix: "Open a new thread beside D1, under G, for what's new; the open nodes are T1, D2.",
+    },
+    {
+      name: 'an option added to a cancelled decision',
+      given: cancelled,
+      command: a.addOption({ title: 'Rhodes' }),
+      reason: 'D1 is already cancelled.',
+      fix: 'The open decisions are D2.',
+    },
+    {
+      name: 'a thread opened under a cancelled decision',
+      given: cancelled,
+      command: a.openThread({ parent: 'D1' }),
+      reason: 'One parent: D1 is already cancelled.',
+      fix: 'Open it under G or T1.',
+    },
+    {
+      name: 'a thread opened under an option cancelled with its decision',
+      given: cancelled,
+      command: a.openThread({ parent: 'D1.2' }),
+      reason: 'One parent: D1.2 is already cancelled.',
+      fix: 'Open it under G or T1.',
+    },
+    {
+      name: 'a decision opened under a cancelled decision',
+      given: cancelled,
+      command: a.openDecision({ parent: 'D1', title: 'X' }),
+      reason: 'D1 is already cancelled.',
+      fix: 'Open it under G or T1.',
+    },
+    {
+      name: 'a decision opened under an option cancelled with its decision',
+      given: cancelled,
+      command: a.openDecision({ parent: 'D1.2', title: 'X' }),
+      reason: 'D1.2 is already cancelled.',
+      fix: 'Open it under G or T1.',
+    },
+    {
+      name: 'a cancelled decision nested under a thread',
+      given: cancelled,
+      command: a.nestNode({ node: 'D1', parent: 'T1' }),
+      reason: 'D1 is already cancelled.',
+      fix: 'Leave D1 where it is; the open nodes are T1, D2.',
+    },
+  ]
+  for (const { name, given, command, reason, fix } of rows) {
+    test(`refuses ${name}`, () => {
+      expect(when(given, command)).toEqual({ refusal: { reason, fix } })
+    })
+  }
+})
+
+describe('a decided decision with its options counts as closed', () => {
+  const decided = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.decisionMade(),
+  ]
+
+  test('the goal closes', () => {
+    expect(when(decided, a.closeGoal())).toEqual({
+      events: [a.goalAchieved()],
+    })
+  })
+
+  test('the handoff is written once the goal is closed', () => {
+    const given = [...decided, a.goalAchieved()]
+
+    expect(when(given, a.writeHandoff())).toEqual({
+      events: [a.handoffWritten()],
+    })
+  })
+})

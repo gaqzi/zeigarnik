@@ -26,6 +26,9 @@ const ACTION_MARK: Record<Action['status'], string> = {
 
 const CLOSED_MARK: Record<Exclude<Node['status'], 'open'>, string> = {
   resolved: '✓',
+  decided: '✓',
+  chosen: '✓',
+  'not chosen': '·',
   cancelled: '✗',
   merged: '→',
 }
@@ -61,21 +64,33 @@ export const bySiblingOrder = (one: Node, other: Node): number => {
   return (x[0] ?? 0) - (y[0] ?? 0) || (x[1] ?? 0) - (y[1] ?? 0)
 }
 
+// What the pane folds: a closed decision's options go into its line.
+const collapsesChildren = (node: Node): boolean =>
+  node.kind === 'decision' && node.status !== 'open'
+
+const collapsesNothing = () => false
+
 // The nodes under a parent, children after their parent, siblings threads
-// first, then decisions, numeric within a kind.
-const nodesUnder = (state: State, parent: string, depth = 1): Placed[] =>
+// first, then decisions, numeric within a kind. Nothing is listed under a
+// node for which `folds` is true.
+const nodesUnder = (
+  state: State,
+  parent: string,
+  folds: (node: Node) => boolean,
+  depth = 1,
+): Placed[] =>
   state.nodes
     .filter(node => node.parent === parent)
     .sort(bySiblingOrder)
     .flatMap(node => [
       { node, depth },
-      ...nodesUnder(state, node.id, depth + 1),
+      ...(folds(node) ? [] : nodesUnder(state, node.id, folds, depth + 1)),
     ])
 
 // Every node as the pane draws them, goal by goal.
 export const nodesInTreeOrder = (state: State): Node[] =>
   state.goals.flatMap(goal =>
-    nodesUnder(state, goal.id).map(placed => placed.node),
+    nodesUnder(state, goal.id, collapsesNothing).map(placed => placed.node),
   )
 
 // Where a closed thread went: its outcome, or the thread it merged into.
@@ -96,14 +111,32 @@ export const nodeEnd = (node: Node): string => {
 
   return arrow !== undefined
     ? ` ${arrow}`
-    : node.status === 'cancelled' && node.reason !== undefined
-      ? ` · ${node.reason}`
-      : ''
+    : node.status !== 'cancelled'
+      ? ''
+      : node.reason !== undefined
+        ? ` · ${node.reason}`
+        : node.kind === 'option'
+          ? ` · with ${node.parent}`
+          : ''
 }
 
-const nodeLine = ({ node, depth }: Placed, mark: string): Line => {
+// A decided decision names its latest pick.
+const decisionEnd = (state: State, node: Node): string => {
+  const option = state.nodes.find(one => one.id === node.picks?.at(-1)?.option)
+
+  return option === undefined ? '' : ` → ${option.id} ${option.title}`
+}
+
+const nodeLine = (
+  state: State,
+  { node, depth }: Placed,
+  mark: string,
+): Line => {
+  const end =
+    node.status === 'decided' ? decisionEnd(state, node) : nodeEnd(node)
+
   return {
-    text: `${'  '.repeat(depth)}${mark} ${node.id} ${node.title}${nodeEnd(node)}`,
+    text: `${'  '.repeat(depth)}${mark} ${node.id} ${node.title}${end}`,
     isOpen: node.status === 'open',
     item: node.id,
   }
@@ -178,7 +211,12 @@ const mergedFromLines = (state: State, { node, depth }: Placed): Line[] => {
     : [{ text: `${'  '.repeat(depth + 1)}${text}`, isOpen: false }]
 }
 
-const view = (state: State, linesOf: (one: Placed) => Line[]): Line[] => {
+// The count always covers every node; `folds` only shortens what is drawn.
+const view = (
+  state: State,
+  folds: (node: Node) => boolean,
+  linesOf: (one: Placed) => Line[],
+): Line[] => {
   if (state.goals.length === 0) return [{ text: 'No goal yet.', isOpen: false }]
   const actions =
     state.actions.length === 0
@@ -197,9 +235,10 @@ const view = (state: State, linesOf: (one: Placed) => Line[]): Line[] => {
         ]
 
   const goals = state.goals.flatMap(goal => {
-    const placed = nodesUnder(state, goal.id)
+    const placed = nodesUnder(state, goal.id, collapsesNothing)
+    const drawn = nodesUnder(state, goal.id, folds)
 
-    return [goalLine(goal), countLine(placed, goal), ...placed.flatMap(linesOf)]
+    return [goalLine(goal), countLine(placed, goal), ...drawn.flatMap(linesOf)]
   })
 
   return [...goals, ...actions, ...written]
@@ -207,13 +246,15 @@ const view = (state: State, linesOf: (one: Placed) => Line[]): Line[] => {
 
 // The pane lines: threads without what was said on them.
 export const overview = (state: State): Line[] =>
-  view(state, one => [nodeLine(one, paneMark(one.node, state))])
+  view(state, collapsesChildren, one => [
+    nodeLine(state, one, paneMark(one.node, state)),
+  ])
 
 // What `show` answers: the overview with each thread's replies, and the
 // handoff when one is written.
 export const fullView = (state: State): string => {
-  const lines = view(state, one => [
-    nodeLine(one, nodeMark(one.node)),
+  const lines = view(state, collapsesNothing, one => [
+    nodeLine(state, one, nodeMark(one.node)),
     ...mergedFromLines(state, one),
     ...replyLines(state, one.node.id, '  '.repeat(one.depth + 1)),
   ]).map(line => line.text)

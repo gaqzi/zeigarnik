@@ -1252,3 +1252,207 @@ test('an option added to a thread is refused as an error and traced, and nothing
     },
   })
 })
+
+// Deciding by a pick (zg-bam.5.2).
+
+const costaDelSol = {
+  type: 'OptionAdded',
+  at: AT,
+  option: 'D1.2',
+  decision: 'D1',
+  title: 'Costa del Sol',
+}
+
+const paphosOption = {
+  type: 'OptionAdded',
+  at: AT,
+  option: 'D1.3',
+  decision: 'D1',
+  title: 'Paphos',
+}
+
+const checkFlights = a.threadOpened({
+  thread: 'T6',
+  parent: 'D1.3',
+  title: 'Check Paphos flights',
+})
+
+const PAPHOS_THEN = 'Paphos then, the 20 min transfer settles it'
+
+const undecided = [
+  a.goalOpened(),
+  decisionOpened,
+  greekVillage,
+  costaDelSol,
+  paphosOption,
+  a.nodeCancelled({ node: 'D1.1', reason: 'too far with the kids' }),
+]
+
+const pick = {
+  tool: 'mcp__zg__decision',
+  op: 'decide',
+  id: 'D1',
+  option: 'D1.3',
+  source: 'chat',
+  reason: PAPHOS_THEN,
+} as const
+
+const picked = async (...[$, on]: Parameters<Test>) => {
+  const world = host(on, { [LOG]: log(undecided) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call(pick)
+
+  return { world, answer }
+}
+
+test('a pick decides the decision and appends exactly one DecisionMade', async ($, on) => {
+  const { world, answer } = await picked($, on)
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: { result: 'DecisionMade D1' },
+    files: { [LOG]: log([...undecided, a.decisionMade()]) },
+  })
+})
+
+test('a decided decision shows dimmed in the pane with its pick and no options, and the goal counts them closed', async ($, on) => {
+  await picked($, on)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => ({
+    text: text.text,
+    isDim: text.props.dimColor,
+  }))
+
+  expect(pane).toEqual([
+    { text: '○ G Pick a holiday', isDim: false },
+    { text: '0 open · 4 closed', isDim: false },
+    {
+      text: '  ✓ D1 Which holiday do we book? → D1.3 Paphos',
+      isDim: true,
+    },
+  ])
+})
+
+test('show with the decided decision’s ID lists the pick, the words behind it and the options as they ended', async ($, on) => {
+  await picked($, on)
+
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'D1' })
+
+  expect(shown).toEqual({
+    result: [
+      'D1 Decision: Which holiday do we book?',
+      '   Decision: D1.3 Paphos',
+      `   because (chat): ${PAPHOS_THEN}`,
+      '   Options:',
+      '     ✗ D1.1 Greek village · too far with the kids',
+      '     · D1.2 Costa del Sol',
+      '     ✓ D1.3 Paphos',
+    ].join('\n'),
+  })
+})
+
+const exploring = [...undecided, checkFlights]
+
+const refusedChildren =
+  'Children close first: T6 Check Paphos flights is still open under D1.3.'
+const childrenFix =
+  'Show the human the open children and ask how each ends, or propose one outcome that settles them for the human to confirm.'
+
+test('a pick with an open thread under the option is refused and traced, and nothing is appended', async ($, on) => {
+  const world = host(on, { [LOG]: log(exploring) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call(pick)
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: { deny: `${refusedChildren} ${childrenFix}` },
+    files: {
+      [LOG]: log(exploring),
+      [TRACE]: log([
+        {
+          type: 'CommandRefused',
+          at: AT,
+          command: a.makeDecision(),
+          reason: refusedChildren,
+          fix: childrenFix,
+        },
+      ]),
+    },
+  })
+})
+
+const WHY = "we're not going this year"
+
+const everyOptionOpen = [
+  a.goalOpened(),
+  decisionOpened,
+  costaDelSol,
+  paphosOption,
+]
+
+const cancelD1 = {
+  tool: 'mcp__zg__node',
+  op: 'cancel',
+  id: 'D1',
+  source: 'chat',
+  reason: WHY,
+} as const
+
+test('cancelling a decision appends the one NodeCancelled and nothing for its options', async ($, on) => {
+  const world = host(on, { [LOG]: log(everyOptionOpen) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call(cancelD1)
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: { result: 'NodeCancelled D1' },
+    files: {
+      [LOG]: log([
+        ...everyOptionOpen,
+        a.nodeCancelled({ node: 'D1', reason: WHY }),
+      ]),
+    },
+  })
+})
+
+test('show lists the options of a cancelled decision as cancelled with it', async ($, on) => {
+  host(on, { [LOG]: log(everyOptionOpen) })
+  await $.session.start(START)
+  await $.tool.call(cancelD1)
+
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'D1' })
+
+  expect(
+    String((shown as { result: string }).result)
+      .split('\n')
+      .filter(line => /D1\.\d/.test(line)),
+  ).toEqual([
+    '     ✗ D1.2 Costa del Sol · with D1',
+    '     ✗ D1.3 Paphos · with D1',
+  ])
+})
+
+test('cancelling a decision with an open thread under an option is refused and traced, and nothing is appended', async ($, on) => {
+  const given = [...everyOptionOpen, checkFlights]
+  const world = host(on, { [LOG]: log(given) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call(cancelD1)
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: { deny: `${refusedChildren} ${childrenFix}` },
+    files: {
+      [LOG]: log(given),
+      [TRACE]: log([
+        {
+          type: 'CommandRefused',
+          at: AT,
+          command: a.cancelNode({ node: 'D1', reason: WHY }),
+          reason: refusedChildren,
+          fix: childrenFix,
+        },
+      ]),
+    },
+  })
+})

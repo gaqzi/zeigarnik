@@ -100,6 +100,14 @@ export type Event =
       title: string
     }
   | {
+      type: 'DecisionMade'
+      at: string
+      decision: string
+      option: string
+      source: Source
+      reason: string
+    }
+  | {
       type: 'ThreadResolved'
       at: string
       thread: string

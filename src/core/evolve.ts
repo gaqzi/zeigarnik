@@ -4,6 +4,7 @@ import type {
   MoveSource,
   NodeSource,
   Owner,
+  Source,
 } from './events.ts'
 
 // The session as the events leave it: a fold, with no rules of its own.
@@ -30,10 +31,28 @@ export type Node = {
   kind: 'thread' | 'decision' | 'option'
   parent: string
   title: string
-  status: 'open' | 'resolved' | 'cancelled' | 'merged'
+  status:
+    | 'open'
+    | 'resolved'
+    | 'decided'
+    | 'chosen'
+    | 'not chosen'
+    | 'cancelled'
+    | 'merged'
   into?: string
   outcome?: string
   reason?: string
+  // A decision's picks in log order; the latest is the last.
+  picks?: DecisionPick[]
+  // The source of the cancel, for any node; shown for decisions, to say whose words.
+  cancelSource?: NodeSource
+}
+
+export type DecisionPick = {
+  option: string
+  source: Source
+  reason: string
+  at: string
 }
 
 export type Reply = { node: string; author: Owner; text: string; at: string }
@@ -212,11 +231,54 @@ const happened = (state: State, event: Event): State => {
         outcome: event.outcome,
         reason: event.reason,
       })
+    case 'DecisionMade':
+      return {
+        ...state,
+        nodes: state.nodes.map(node => {
+          if (node.id === event.decision) {
+            return {
+              ...node,
+              status: 'decided',
+              picks: [
+                ...(node.picks ?? []),
+                {
+                  option: event.option,
+                  source: event.source,
+                  reason: event.reason,
+                  at: event.at,
+                },
+              ],
+            }
+          }
+          if (node.parent !== event.decision) return node
+          if (node.id === event.option) return { ...node, status: 'chosen' }
+
+          return node.status === 'open'
+            ? { ...node, status: 'not chosen' }
+            : node
+        }),
+      }
     case 'NodeCancelled':
-      return setNode(state, event.node, {
-        status: 'cancelled',
-        reason: event.reason,
-      })
+      // A decision's open options end with it, with no words of their own.
+      return {
+        ...state,
+        nodes: state.nodes.map(node => {
+          if (node.id === event.node) {
+            return {
+              ...node,
+              status: 'cancelled',
+              reason: event.reason,
+              cancelSource: event.source,
+            }
+          }
+
+          return node.kind === 'option' &&
+            node.parent === event.node &&
+            node.status === 'open'
+            ? { ...node, status: 'cancelled' }
+            : node
+        }),
+      }
     case 'NodeReplied':
       return {
         ...state,

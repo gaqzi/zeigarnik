@@ -586,7 +586,9 @@ when you say so, and it can move a reply it put on the wrong thread. The pane ma
 haven't written to yet. Decisions and options exist too: Claude opens a
 decision for a choice you have to make and adds its options under it (D1.1,
 D1.2), explorations go in threads under an option, and you drop an option in
-your own words. `show` takes an item's ID (`show D1`) for everything about
-that item. Deciding and criteria come next. To try it from a
+your own words. When you pick an option, Claude decides the decision with your
+words: the option is chosen, the others not chosen, and the pane folds the
+decision into one line. `show` takes an item's ID (`show D1`) for everything
+about that item. Criteria come next. To try it from a
 clone, run `script/bootstrap`, then start Claude Code with
 `claude --plugin-dir .` in the clone.

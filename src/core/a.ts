@@ -87,6 +87,12 @@ export const a = {
     parent: 'G',
     title: 'Which holiday do we book?',
   }),
+  decisionMade: event('DecisionMade', {
+    decision: 'D1',
+    option: 'D1.3',
+    source: 'chat',
+    reason: 'Paphos then, the 20 min transfer settles it',
+  }),
   optionAdded: event('OptionAdded', {
     option: 'D1.1',
     decision: 'D1',
@@ -149,4 +155,10 @@ export const a = {
     title: 'Which holiday do we book?',
   }),
   addOption: command('AddOption', { decision: 'D1', title: 'Greek village' }),
+  makeDecision: command('MakeDecision', {
+    decision: 'D1',
+    option: 'D1.3',
+    source: 'chat',
+    reason: 'Paphos then, the 20 min transfer settles it',
+  }),
 }

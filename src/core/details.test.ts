@@ -2,6 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { a } from './a.ts'
 import { details } from './details.ts'
+import type { Event } from './events.ts'
 import { fold } from './evolve.ts'
 
 // What zg knows about one item: its block of lines, each dim once the item is
@@ -209,6 +210,81 @@ describe('show lists in the pane’s sibling order, whatever the log order', () 
         'under D1',
         'open',
         'children: T5 ○ Bus times, D4 ◆ Which bus?',
+      ),
+    )
+  })
+})
+
+describe('a closed decision’s details', () => {
+  const holiday = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.threadOpened({
+      thread: 'T6',
+      parent: 'D1.3',
+      title: 'Check Paphos flights',
+    }),
+    a.threadResolved({ thread: 'T6', outcome: 'direct, Thursday and Sunday' }),
+    a.nodeCancelled({ node: 'D1.1', reason: 'too far with the kids' }),
+  ]
+
+  test('a decided decision lists the pick, the words behind it and each option as it ended, in ID order', () => {
+    expect(details(fold([...holiday, a.decisionMade()]), 'D1')).toEqual(
+      block(
+        false,
+        'D1 Decision: Which holiday do we book?',
+        '   Decision: D1.3 Paphos',
+        '   because (chat): Paphos then, the 20 min transfer settles it',
+        '   Options:',
+        '     ✗ D1.1 Greek village · too far with the kids',
+        '     · D1.2 Costa del Sol',
+        '     ✓ D1.3 Paphos',
+        '         T6 direct, Thursday and Sunday ✓',
+      ),
+    )
+  })
+
+  // The decision's own lines are not pinned here, only its options'.
+  const optionLines = (events: Event[]) =>
+    details(fold(events), 'D1').filter(line => /^ {5}\S/.test(line.text))
+
+  test('a cancelled decision lists its open options cancelled with it, and one dropped before with its own reason', () => {
+    const given = [...holiday, a.nodeCancelled({ node: 'D1' })]
+
+    expect(optionLines(given)).toEqual(
+      block(
+        false,
+        '     ✗ D1.1 Greek village · too far with the kids',
+        '     ✗ D1.2 Costa del Sol · with D1',
+        '     ✗ D1.3 Paphos · with D1',
+      ),
+    )
+  })
+})
+
+describe('a cancelled decision’s details', () => {
+  const cancelled = fold([
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.nodeCancelled({ node: 'D1.1', reason: 'too far with the kids' }),
+    a.nodeCancelled({ node: 'D1', reason: "we're not going this year" }),
+  ])
+
+  test('say so and keep the human’s words, above its options', () => {
+    expect(details(cancelled, 'D1')).toEqual(
+      block(
+        false,
+        'D1 Decision: Which holiday do we book?',
+        '   Cancelled',
+        "   because (chat): we're not going this year",
+        '   Options:',
+        '     ✗ D1.1 Greek village · too far with the kids',
+        '     ✗ D1.2 Costa del Sol · with D1',
       ),
     )
   })

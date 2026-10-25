@@ -83,7 +83,7 @@ export const register: Register = on => {
             'goal' in event ? event.goal : '',
             'action' in event ? event.action : '',
             'thread' in event ? event.thread : '',
-            'option' in event
+            'option' in event && event.type !== 'DecisionMade'
               ? event.option
               : 'decision' in event
                 ? event.decision

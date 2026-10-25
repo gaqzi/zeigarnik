@@ -65,9 +65,36 @@ const optionLines = (state: State, option: Node): string[] => {
   ]
 }
 
+// Once made: the pick and the words behind it.
+const pickLines = (state: State, decision: Node): string[] => {
+  const pick = decision.picks?.at(-1)
+  const option = state.nodes.find(one => one.id === pick?.option)
+  if (pick === undefined || option === undefined) return []
+
+  return [
+    `   Decision: ${option.id} ${option.title}`,
+    `   because (${pick.source}): ${pick.reason}`,
+  ]
+}
+
+// Once cancelled: that, and the words behind it.
+const cancelLines = (decision: Node): string[] =>
+  decision.status !== 'cancelled'
+    ? []
+    : [
+        '   Cancelled',
+        ...optional(
+          decision.reason === undefined
+            ? undefined
+            : `   because (${decision.cancelSource}): ${decision.reason}`,
+        ),
+      ]
+
 const decisionDetails = (state: State, decision: Node): Line[] =>
   [
     `${decision.id} Decision: ${decision.title}`,
+    ...pickLines(state, decision),
+    ...cancelLines(decision),
     '   Options:',
     ...childrenOf(state, decision.id).flatMap(option =>
       optionLines(state, option),

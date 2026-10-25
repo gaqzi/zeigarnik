@@ -553,8 +553,8 @@ describe('a tool call missing what it needs is refused', () => {
       {
         name: 'a decision call with no op zg has a name for',
         tool: 'decision',
-        input: decisionOpen({ op: 'decide' }),
-        missing: 'decision needs op: open or option.',
+        input: decisionOpen({ op: 'drop' }),
+        missing: 'decision needs op: open, option or decide.',
       },
       {
         name: 'a decision opened without its parent',
@@ -709,5 +709,75 @@ describe('a tool call whose source is absent or not chat, dialog or claude is re
         expect(toCommand(tool, input(source), AT)).toEqual({ missing })
       })
     }
+  }
+})
+
+describe('a decision decided', () => {
+  const decide = (overrides: Input = {}) => ({
+    op: 'decide',
+    id: 'D1',
+    option: 'D1.3',
+    source: 'chat',
+    reason: 'Paphos then, the 20 min transfer settles it',
+    ...overrides,
+  })
+
+  test('is the pick, its source and the human’s words as the command', () => {
+    expect(toCommand('decision', decide(), AT)).toEqual(a.makeDecision())
+  })
+
+  test('from a dialog pick keeps the words asked for in chat', () => {
+    expect(toCommand('decision', decide({ source: 'dialog' }), AT)).toEqual(
+      a.makeDecision({ source: 'dialog' }),
+    )
+  })
+
+  const reasonMissing =
+    "decide needs the reason: the human's words on why, verbatim; after a bare dialog pick, ask why in chat."
+  const missing: {
+    name: string
+    input: Input
+    missing: string
+  }[] = [
+    {
+      name: 'a dialog pick with no reason',
+      input: decide({ source: 'dialog', reason: undefined }),
+      missing: reasonMissing,
+    },
+    {
+      name: 'a chat pick with no reason',
+      input: decide({ reason: undefined }),
+      missing: reasonMissing,
+    },
+    {
+      name: 'a pick with a blank reason',
+      input: decide({ reason: '  ' }),
+      missing: reasonMissing,
+    },
+    {
+      name: 'a pick with no source',
+      input: decide({ source: undefined }),
+      missing: 'decide needs source: chat or dialog.',
+    },
+    {
+      name: 'a pick on Claude’s own word',
+      input: decide({ source: 'claude' }),
+      missing: 'decide needs source: chat or dialog.',
+    },
+    {
+      name: 'a pick from the pane',
+      input: decide({ source: 'pane' }),
+      missing: 'decide needs source: chat or dialog.',
+    },
+    {
+      name: 'a pick with no option',
+      input: decide({ option: undefined }),
+      missing: 'decide needs the option picked.',
+    },
+  ]
+  for (const { name, input, missing: reason } of missing) {
+    test(`${name} is refused`, () => {
+      expect(toCommand('decision', input, AT)).toEqual({ missing: reason })
+    })
   }
 })

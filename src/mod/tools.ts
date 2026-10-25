@@ -77,17 +77,20 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: 'decision',
     description:
-      'Records a decision: a choice the human has to make. open one when a choice comes up, naming the choice as the title (parent: the goal, a thread or an option). option adds a candidate as it is named, numbered under the decision (D1.1). A candidate that needs exploring gets a thread under its option. A question that ends with an answer is a thread, not a decision. Dropping an option is node cancel.',
+      "Records a decision: a choice the human has to make. open one when a choice comes up, naming the choice as the title (parent: the goal, a thread or an option). option adds a candidate as it is named, numbered under the decision (D1.1). A candidate that needs exploring gets a thread under its option. A question that ends with an answer is a thread, not a decision. Dropping an option is node cancel. decide: id is the decision, option the ID of the option picked, only on the human's words: source chat or dialog, reason their words on why, verbatim, hedges included. A dialog pick alone isn't enough: ask why in chat and record those words with source chat. Never decide on your own judgment: propose and wait.",
     inputSchema: {
       type: 'object',
       properties: {
-        op: { enum: ['open', 'option'] },
+        op: { enum: ['open', 'option', 'decide'] },
         parent: { ...text, description: 'open: G…, T… or D…' },
         title: {
           ...text,
           description: 'open: the choice; option: the candidate',
         },
-        id: { ...text, description: 'option: D…' },
+        id: { ...text, description: 'option, decide: D…' },
+        option: { ...text, description: 'decide: the option picked, D….n' },
+        source: { enum: SOURCES },
+        reason: text,
       },
       required: ['op'],
     },
@@ -292,8 +295,35 @@ export const toCommand = (
         if (title === undefined) return { missing: 'option needs the title.' }
         return { type: 'AddOption', at, decision: id, title }
       }
+      if (input.op === 'decide') {
+        const id = str(input, 'id')
+        if (id === undefined) return { missing: 'decide needs the id.' }
+        const option = str(input, 'option')
+        if (option === undefined) {
+          return { missing: 'decide needs the option picked.' }
+        }
+        const source = sourceOf(input)
+        if (source === undefined) {
+          return { missing: 'decide needs source: chat or dialog.' }
+        }
+        const reason = str(input, 'reason')
+        if (reason === undefined) {
+          return {
+            missing:
+              "decide needs the reason: the human's words on why, verbatim; after a bare dialog pick, ask why in chat.",
+          }
+        }
+        return {
+          type: 'MakeDecision',
+          at,
+          decision: id,
+          option,
+          source,
+          reason,
+        }
+      }
       if (input.op !== 'open') {
-        return { missing: 'decision needs op: open or option.' }
+        return { missing: 'decision needs op: open, option or decide.' }
       }
       const parent = str(input, 'parent')
       if (parent === undefined) {

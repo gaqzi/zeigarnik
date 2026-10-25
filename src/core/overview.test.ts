@@ -404,3 +404,94 @@ describe('a decision and its options', () => {
     )
   })
 })
+
+describe('a closed decision collapses its options into its line', () => {
+  const holiday = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.nodeCancelled({ node: 'D1.1', reason: 'too far with the kids' }),
+  ]
+
+  test('a decided decision is drawn ✓ with its pick, dimmed, with no option lines, and the goal counts all four closed', () => {
+    expect(overview(fold([...holiday, a.decisionMade()]))).toEqual([
+      { text: '○ G Pick a holiday', isOpen: true },
+      { text: '0 open · 4 closed', isOpen: true },
+      {
+        text: '  ✓ D1 Which holiday do we book? → D1.3 Paphos',
+        isOpen: false,
+        item: 'D1',
+      },
+    ])
+  })
+
+  test('nothing under the options is drawn either, though it counts', () => {
+    const given = [
+      ...holiday,
+      a.threadOpened({
+        thread: 'T6',
+        parent: 'D1.3',
+        title: 'Check Paphos flights',
+      }),
+      a.threadResolved({ thread: 'T6' }),
+      a.decisionMade(),
+    ]
+
+    expect(overview(fold(given)).map(line => line.text)).toEqual([
+      '○ G Pick a holiday',
+      '0 open · 5 closed',
+      '  ✓ D1 Which holiday do we book? → D1.3 Paphos',
+    ])
+  })
+
+  test('a cancelled decision is drawn ✗ with the human’s reason, dimmed, with no option lines', () => {
+    const given = [
+      ...holiday,
+      a.nodeCancelled({ node: 'D1', reason: "we're not going this year" }),
+    ]
+
+    expect(overview(fold(given))).toEqual([
+      { text: '○ G Pick a holiday', isOpen: true },
+      { text: '0 open · 4 closed', isOpen: true },
+      {
+        text: "  ✗ D1 Which holiday do we book? · we're not going this year",
+        isOpen: false,
+        item: 'D1',
+      },
+    ])
+  })
+})
+
+describe('the full view lists what the pane folds', () => {
+  const decided = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.threadOpened({
+      thread: 'T6',
+      parent: 'D1.3',
+      title: 'Check Paphos flights',
+    }),
+    a.threadResolved({ thread: 'T6', outcome: 'direct, Thursday and Sunday' }),
+    a.nodeCancelled({ node: 'D1.1', reason: 'too far with the kids' }),
+    a.decisionMade(),
+  ]
+
+  test('a decided decision is listed with its options as they ended and the exploration under the option chosen', () => {
+    expect(fullView(fold(decided))).toEqual(
+      [
+        '○ G Pick a holiday',
+        '0 open · 5 closed',
+        '  ✓ D1 Which holiday do we book? → D1.3 Paphos',
+        '    ✗ D1.1 Greek village · too far with the kids',
+        '    · D1.2 Costa del Sol',
+        '    ✓ D1.3 Paphos',
+        '      ✓ T6 Check Paphos flights → direct, Thursday and Sunday',
+      ].join('\n'),
+    )
+  })
+})

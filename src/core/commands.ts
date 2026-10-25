@@ -61,6 +61,14 @@ export type Command =
   | { type: 'OpenDecision'; at: string; parent: string; title: string }
   | { type: 'AddOption'; at: string; decision: string; title: string }
   | {
+      type: 'MakeDecision'
+      at: string
+      decision: string
+      option: string
+      source: Source
+      reason: string
+    }
+  | {
       type: 'ResolveThread'
       at: string
       thread: string

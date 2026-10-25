@@ -4,6 +4,7 @@ import type { Action, Goal, Node, State } from './evolve.ts'
 import { type Holder, holds } from './containment.ts'
 import { nextId, nextOptionId } from './ids.ts'
 import { joinList } from './join-list.ts'
+import { bySiblingOrder } from './overview.ts'
 import { repliesOn } from './replies-on.ts'
 import { type Child, stillOpenUnder } from './still-open.ts'
 
@@ -239,6 +240,31 @@ const openChildrenOf = (state: State, parent: string): Child[] =>
     .filter(node => node.parent === parent && node.status === 'open')
     .map(node => ({ id: node.id, label: node.title }))
 
+const threadChildrenFix =
+  'Show the human the open children and ask how each ends, or propose one outcome that settles them for the human to confirm.'
+
+// A decision's options are its defined effect, so they are exempt; what is
+// open under any of them is not.
+const refuseOpenUnderOptions = (
+  state: State,
+  decision: string,
+): Decided | undefined => {
+  const options = state.nodes
+    .filter(node => node.kind === 'option' && node.parent === decision)
+    .sort(bySiblingOrder)
+  const sentences = options
+    .map(option => ({
+      option: option.id,
+      children: openChildrenOf(state, option.id),
+    }))
+    .filter(one => one.children.length > 0)
+    .map(one => stillOpenUnder(one.children, one.option))
+
+  return sentences.length === 0
+    ? undefined
+    : refuse(`Children close first: ${sentences.join(' ')}`, threadChildrenFix)
+}
+
 const onAction = (
   state: State,
   id: string,
@@ -299,6 +325,14 @@ const decideAdd = (state: State, command: Command & { type: 'AddAction' }) => {
   }
 }
 
+// A closed decision, or an option of one: neither takes anything more, and
+// there is no parent of theirs to send the new node beside. An option dropped
+// from a decision that is still open is not that.
+const isEndedWithDecision = (state: State, closed: Node): boolean =>
+  closed.kind === 'decision' ||
+  (closed.kind === 'option' &&
+    state.nodes.find(one => one.id === closed.parent)?.status !== 'open')
+
 const decideOpenThread = (
   state: State,
   command: Command & { type: 'OpenThread' },
@@ -316,7 +350,10 @@ const decideOpenThread = (
       openKind(state) === 'thread'
         ? openThreadsFix(state)
         : openParentsFix(state, goal, 'thread'),
-    closed: target => closedParentFix(state, target, 'thread', 'thread'),
+    closed: target =>
+      isEndedWithDecision(state, target)
+        ? openParentsFix(state, goal, 'thread')
+        : closedParentFix(state, target, 'thread', 'thread'),
   })
   if (blocked !== undefined) return blocked
   const misplaced = refuseDecisionParent(
@@ -368,7 +405,9 @@ const decideOpenDecision = (
       : refuseNotOpen(target, closed =>
           refuse(
             `${parent} is already ${closed.status}.`,
-            closedParentFix(state, closed, 'decision', 'node'),
+            isEndedWithDecision(state, closed)
+              ? openParentsFix(state, goal, 'decision')
+              : closedParentFix(state, closed, 'decision', 'node'),
           ),
         )
   if (blocked !== undefined) return blocked
@@ -396,12 +435,38 @@ const decideOpenDecision = (
   }
 }
 
+const openDecisions = (state: State) =>
+  openNodes(state).filter(node => node.kind === 'decision')
+
 const openDecisionsFix = (state: State) => {
-  const open = openNodes(state).filter(node => node.kind === 'decision')
+  const open = openDecisions(state)
 
   return open.length === 0
     ? 'There are no open decisions.'
     : `The open decisions are ${ids(open)}.`
+}
+
+const aKind = (node: Node) =>
+  `${node.kind === 'option' ? 'an' : 'a'} ${node.kind}`
+
+// A command on a decision names one that exists and is still open; what
+// refusing a node that is no decision says is the caller's.
+const findOpenDecision = (
+  state: State,
+  id: string,
+  notADecision: (found: Node) => { refusal: Refusal },
+): { node: Node } | { refusal: Refusal } => {
+  const found = state.nodes.find(node => node.id === id)
+  if (found === undefined) {
+    return refuse(`There is no decision ${id}.`, openDecisionsFix(state))
+  }
+  if (found.kind !== 'decision') return notADecision(found)
+  const blocked = refuseNotOpen(found, closed =>
+    refuse(`${id} is already ${closed.status}.`, openDecisionsFix(state)),
+  )
+  if (blocked !== undefined) return blocked
+
+  return { node: found }
 }
 
 const decideAddOption = (
@@ -409,20 +474,13 @@ const decideAddOption = (
   command: Command & { type: 'AddOption' },
 ): Decided => {
   const { at, decision, title } = command
-  const found = state.nodes.find(node => node.id === decision)
-  if (found === undefined) {
-    return refuse(`There is no decision ${decision}.`, openDecisionsFix(state))
-  }
-  if (found.kind !== 'decision') {
-    return refuse(
-      `One parent: ${decision} is ${found.kind === 'option' ? 'an' : 'a'} ${found.kind}, and only a decision holds options.`,
+  const found = findOpenDecision(state, decision, notADecision =>
+    refuse(
+      `One parent: ${decision} is ${aKind(notADecision)}, and only a decision holds options.`,
       `Open a decision under ${decision}, and add the option there.`,
-    )
-  }
-  const blocked = refuseNotOpen(found, closed =>
-    refuse(`${decision} is already ${closed.status}.`, openDecisionsFix(state)),
+    ),
   )
-  if (blocked !== undefined) return blocked
+  if ('refusal' in found) return found
   const twin = openNodes(state).find(
     node => node.parent === decision && node.title === title,
   )
@@ -449,9 +507,6 @@ const decideAddOption = (
   }
 }
 
-const threadChildrenFix =
-  'Show the human the open children and ask how each ends, or propose one outcome that settles them for the human to confirm.'
-
 const decideResolveThread = (
   state: State,
   command: Command & { type: 'ResolveThread' },
@@ -459,6 +514,18 @@ const decideResolveThread = (
   const { at, thread, outcome, source, reason } = command
   const found = findOpenNode(state, thread)
   if ('refusal' in found) return found
+  if (found.node.kind === 'decision') {
+    return refuse(
+      `Closing says how: ${thread} is a decision.`,
+      'Decide it with an option, or cancel it.',
+    )
+  }
+  if (found.node.kind === 'option') {
+    return refuse(
+      `Closing says how: ${thread} is an option.`,
+      `Decide ${found.node.parent}, or cancel ${thread}.`,
+    )
+  }
   const blocked = refuseOpenChildren(
     openChildrenOf(state, thread),
     thread,
@@ -477,6 +544,68 @@ const decideResolveThread = (
   }
 }
 
+const decideMakeDecision = (
+  state: State,
+  command: Command & { type: 'MakeDecision' },
+): Decided => {
+  const { at, decision, option, source, reason } = command
+  const found = findOpenDecision(state, decision, notADecision => {
+    const reason = `${decision} is ${aKind(notADecision)}, not a decision.`
+    if (notADecision.kind === 'option') {
+      return refuse(
+        reason,
+        `Decide ${notADecision.parent} with option ${decision}.`,
+      )
+    }
+    const open = openDecisions(state)
+    const instead =
+      open.length === 0
+        ? ''
+        : `, or decide ${joinList(
+            open.map(node => node.id),
+            'or',
+          )}`
+
+    return refuse(reason, `Resolve ${decision} with an outcome${instead}.`)
+  })
+  if ('refusal' in found) return found
+  const open = state.nodes.filter(
+    node =>
+      node.kind === 'option' &&
+      node.parent === decision &&
+      node.status === 'open',
+  )
+  if (open.length === 0) {
+    return refuse(
+      `Closing says how: ${decision} has no open option.`,
+      `Add one, or cancel ${decision}.`,
+    )
+  }
+  const fix = `${decision}'s open options are ${joinList(
+    open.map(node => node.id),
+    'and',
+  )}.`
+  const picked = state.nodes.find(node => node.id === option)
+  if (picked === undefined) {
+    return refuse(`${decision} has no option ${option}.`, fix)
+  }
+  if (picked.kind !== 'option' || picked.parent !== decision) {
+    return refuse(`${option} is not one of ${decision}'s options.`, fix)
+  }
+  if (picked.status !== 'open') {
+    return refuse(
+      `Closing says how: ${option} is already ${picked.status}.`,
+      fix,
+    )
+  }
+  const unfinished = refuseOpenUnderOptions(state, decision)
+  if (unfinished !== undefined) return unfinished
+
+  return {
+    events: [{ type: 'DecisionMade', at, decision, option, source, reason }],
+  }
+}
+
 const decideCancelNode = (
   state: State,
   command: Command & { type: 'CancelNode' },
@@ -484,11 +613,10 @@ const decideCancelNode = (
   const { at, node, source, reason } = command
   const found = findOpenNode(state, node)
   if ('refusal' in found) return found
-  const blocked = refuseOpenChildren(
-    openChildrenOf(state, node),
-    node,
-    threadChildrenFix,
-  )
+  const blocked =
+    found.node.kind === 'decision'
+      ? refuseOpenUnderOptions(state, node)
+      : refuseOpenChildren(openChildrenOf(state, node), node, threadChildrenFix)
   if (blocked !== undefined) return blocked
 
   return { events: [{ type: 'NodeCancelled', at, node, source, reason }] }
@@ -529,6 +657,24 @@ const isBelow = (state: State, id: string, ancestor: string): boolean => {
 
   return false
 }
+
+// A closed thread stays where it rolled up, and says so (`threadReason`); a
+// decision or option that ended is simply ended, and the fix lists what is
+// open.
+const refuseEndedMove = (
+  state: State,
+  closed: Node,
+  threadReason: string,
+): { refusal: Refusal } =>
+  closed.kind === 'thread'
+    ? refuse(
+        threadReason,
+        `Leave ${closed.id} where it is; if it comes up again, open a new thread.`,
+      )
+    : refuse(
+        `${closed.id} is already ${closed.status}.`,
+        `Leave ${closed.id} where it is; ${openNodesClause(state)}.`,
+      )
 
 // The parents nest would accept for a node: the open goal unless the node is
 // already under it, then the open threads outside its branch.
@@ -574,9 +720,10 @@ const decideNestNode = (
     )
   }
   const movingBlocked = refuseNotOpen(moving, closed =>
-    refuse(
+    refuseEndedMove(
+      state,
+      closed,
       `One parent: ${node} is already ${closed.status}; a closed thread stays where it rolled up.`,
-      `Leave ${node} where it is; if it comes up again, open a new thread.`,
     ),
   )
   if (movingBlocked !== undefined) return movingBlocked
@@ -626,9 +773,10 @@ const decideMergeNodes = (
       )
     }
     const blocked = refuseNotOpen(folding, closed =>
-      refuse(
+      refuseEndedMove(
+        state,
+        closed,
         `${id} is already ${closed.status}; a closed thread stays where it rolled up.`,
-        `Leave ${id} where it is; if it comes up again, open a new thread.`,
       ),
     )
     if (blocked !== undefined) return blocked
@@ -650,8 +798,15 @@ const decideMergeNodes = (
       openNodesFix(state),
     )
   }
+  const firstOption = from
+    .map(id => state.nodes.find(one => one.id === id))
+    .find(one => one?.kind === 'option')
+  const targetFix =
+    firstOption === undefined
+      ? fix
+      : `Merge ${firstOption.id} into another open option of ${firstOption.parent}, or leave it where it is.`
   const blocked = refuseNotOpen(target, closed =>
-    refuse(`${into} is already ${closed.status}.`, fix),
+    refuse(`${into} is already ${closed.status}.`, targetFix),
   )
   if (blocked !== undefined) return blocked
   for (const id of from) {
@@ -693,10 +848,15 @@ const decideMoveReply = (
     )
   }
   const sourceBlocked = refuseNotOpen(source, closed =>
-    refuse(
-      `${node} is already ${closed.status}.`,
-      'A closed thread keeps its replies; reply on the right thread with the words instead.',
-    ),
+    closed.kind === 'thread'
+      ? refuse(
+          `${node} is already ${closed.status}.`,
+          'A closed thread keeps its replies; reply on the right thread with the words instead.',
+        )
+      : refuse(
+          `${node} is already ${closed.status}.`,
+          `${node} keeps its replies; reply with the words on the right node instead: ${openNodesClause(state)}.`,
+        ),
   )
   if (sourceBlocked !== undefined) return sourceBlocked
   const found = findOpenNode(state, to)
@@ -903,6 +1063,8 @@ export const decide = (state: State, command: Command): Decided => {
       return decideOpenDecision(state, command)
     case 'AddOption':
       return decideAddOption(state, command)
+    case 'MakeDecision':
+      return decideMakeDecision(state, command)
     case 'ResolveThread':
       return decideResolveThread(state, command)
     case 'CancelNode':

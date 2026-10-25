@@ -71,3 +71,56 @@ describe('a moved reply', () => {
     expect(fold([...given, moved])).toEqual(fold(given))
   })
 })
+
+describe('a decision and its options end together, derived from the decision’s events (zg-ww9)', () => {
+  const holiday = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.nodeCancelled({ node: 'D1.1', reason: 'too far with the kids' }),
+  ]
+  // The options' standing alone: a reason that was not said is absent.
+  const options = (events: Event[]) =>
+    fold(events)
+      .nodes.filter(node => node.kind === 'option')
+      .map(({ id, status, reason }) => ({ id, status, reason }))
+
+  test('after a pick the option picked is chosen, the open others not chosen, and one dropped before stays cancelled with its own reason', () => {
+    expect(options([...holiday, a.decisionMade()])).toEqual([
+      { id: 'D1.1', status: 'cancelled', reason: 'too far with the kids' },
+      { id: 'D1.2', status: 'not chosen', reason: undefined },
+      { id: 'D1.3', status: 'chosen', reason: undefined },
+    ])
+  })
+
+  test('after a pick the decision is decided, with the option and the words behind it', () => {
+    const decision = fold([...holiday, a.decisionMade()]).nodes.find(
+      node => node.id === 'D1',
+    )
+
+    expect({
+      status: decision?.status,
+      picks: (decision as { picks?: unknown }).picks,
+    }).toEqual({
+      status: 'decided',
+      picks: [
+        {
+          option: 'D1.3',
+          source: 'chat',
+          reason: 'Paphos then, the 20 min transfer settles it',
+          at: a.decisionMade().at,
+        },
+      ],
+    })
+  })
+
+  test('when the decision is cancelled its open options are cancelled with it and carry no reason, while one dropped before keeps its own', () => {
+    expect(options([...holiday, a.nodeCancelled({ node: 'D1' })])).toEqual([
+      { id: 'D1.1', status: 'cancelled', reason: 'too far with the kids' },
+      { id: 'D1.2', status: 'cancelled', reason: undefined },
+      { id: 'D1.3', status: 'cancelled', reason: undefined },
+    ])
+  })
+})
