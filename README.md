@@ -459,8 +459,8 @@ instructions on when to use them.
 Claude errs on the side of more threads ("→ new T12 under T4"). The point of
 numbering is to make ideas easy to refer to and group, so a thread too many is
 cheap, and a missed one is how things get lost. You tidy up when you like, in
-the pane or in chat: "T4–T7 are the same as T5: merge them and reword T5 to
-cover all of them." The bet is that tidying after is less work than approving every
+chat: "T4–T7 are the same as T5: merge them and reword T5 to cover all of
+them." The bet is that tidying after is less work than approving every
 thread before it exists.
 
 Tidying up means one of three things:
@@ -513,18 +513,18 @@ goal. Nothing is left hanging.
 |---|---|
 | Start a session | `/zg:open <text>`, or accept Claude's proposed goal |
 | See the structure | the pane: zg opens it when Claude Code starts, including `claude --resume`, shown once the terminal is 144 columns wide; `ctrl+x x` closes it until Claude Code next starts |
-| Reply to a node | `T4: …` in chat, or type in the pane |
+| Reply to a node | `T4: …` in chat |
 | Reply to several | several `T4:` blocks in one message |
 | Merge, nest or cancel nodes | `T4–T7 merge T5`, `T5 under T2`, `T4 cancel` in chat |
 | Move a reply to the right thread | `T5 #2 to T3` in chat; without a number, the latest reply moves |
 | Change the goal | `/zg:open <text>` again; Claude asks whether it's a revision or a replacement |
-| Revisit a thread | select it in the pane, or `T4` alone; Claude recaps |
-| See a thread's history | expand it in the pane |
+| Revisit a thread | `T4` alone; Claude recaps |
+| See a thread's history | select it in the pane |
 | See what's new | ✦ marks nodes you haven't written to yet; nesting or merging into one counts as writing to it |
 | Close the session | `/zg:close` |
 | Copy the handoff, to paste after `/clear` | `/zg:copy-handoff` |
 
-Later: tidying from the pane.
+Later: replying and tidying from the pane.
 
 ## Configuration
 
@@ -578,10 +578,11 @@ with every prompt. Threads exist too: Claude opens them under the goal or
 another thread and they show in the pane as a tree, and Claude closes them,
 resolved with an outcome or cancelled, each with the reason and whose words it
 is. Each thread keeps what both sides said about it, word for word, and `show`
-lists it under the thread; the pane doesn't show it yet. Claude can move a
-thread to another parent when you say so, or to fix its own mistake, and
-merge threads that turned out to be the same into one when you say so, and it
-can move a reply it put on the wrong thread. The pane marks ✦ a thread you
+lists it under the thread. Selecting a thread or an action in the pane shows
+everything zg knows about it there, its replies included, without asking
+Claude. Claude can move a thread to another parent when you say so, or to fix
+its own mistake, and merge threads that turned out to be the same into one
+when you say so, and it can move a reply it put on the wrong thread. The pane marks ✦ a thread you
 haven't written to yet. Decisions and criteria come next. To try it from a
 clone, run `script/bootstrap`, then start Claude Code with
 `claude --plugin-dir .` in the clone.

@@ -24,10 +24,14 @@ test('shows each goal and action with how it stands', () => {
     { text: '○ G Pick a holiday (zg-bam.2)', isOpen: true },
     { text: '0 open · 0 closed', isOpen: true },
     { text: 'Actions', isOpen: false },
-    { text: '☐ A1 Check school dates (human)', isOpen: true },
-    { text: '✓ A2 Book flights (claude)', isOpen: false },
-    { text: '✗ A3 Rent a car (human) · taxis are fine', isOpen: false },
-    { text: '→ A4 Pack (human) → handoff', isOpen: false },
+    { text: '☐ A1 Check school dates (human)', isOpen: true, item: 'A1' },
+    { text: '✓ A2 Book flights (claude)', isOpen: false, item: 'A2' },
+    {
+      text: '✗ A3 Rent a car (human) · taxis are fine',
+      isOpen: false,
+      item: 'A3',
+    },
+    { text: '→ A4 Pack (human) → handoff', isOpen: false, item: 'A4' },
   ])
 })
 
@@ -42,9 +46,9 @@ test('shows the threads as a tree under the goal, with how many are open', () =>
   expect(overview(state)).toEqual([
     { text: '○ G Pick a holiday', isOpen: true },
     { text: '3 open · 0 closed', isOpen: true },
-    { text: '  ✦ T1 Places in Greece', isOpen: true },
-    { text: '    ✦ T2 Rhodes', isOpen: true },
-    { text: '  ✦ T3 Flights', isOpen: true },
+    { text: '  ✦ T1 Places in Greece', isOpen: true, item: 'T1' },
+    { text: '    ✦ T2 Rhodes', isOpen: true, item: 'T2' },
+    { text: '  ✦ T3 Flights', isOpen: true, item: 'T3' },
   ])
 })
 
@@ -61,9 +65,9 @@ test('shows closed threads dimmed at their depth, with the outcome or the reason
   expect(overview(state)).toEqual([
     { text: '○ G Pick a holiday', isOpen: true },
     { text: '1 open · 2 closed', isOpen: true },
-    { text: '  ✦ T1 Places in Greece', isOpen: true },
-    { text: '    ✓ T2 Rhodes → Rhodes and Crete', isOpen: false },
-    { text: '  ✗ T3 Flights · not going to Greece', isOpen: false },
+    { text: '  ✦ T1 Places in Greece', isOpen: true, item: 'T1' },
+    { text: '    ✓ T2 Rhodes → Rhodes and Crete', isOpen: false, item: 'T2' },
+    { text: '  ✗ T3 Flights · not going to Greece', isOpen: false, item: 'T3' },
   ])
 })
 
@@ -81,10 +85,11 @@ test('shows the reason after any outcome that has one', () => {
     { text: '✓ G Pick a holiday · achieved: good enough', isOpen: false },
     { text: '0 open · 0 closed', isOpen: false },
     { text: 'Actions', isOpen: false },
-    { text: '✓ A2 Book flights (claude) · shipped', isOpen: false },
+    { text: '✓ A2 Book flights (claude) · shipped', isOpen: false, item: 'A2' },
     {
       text: '→ A4 Pack (human) → handoff · for the next trip',
       isOpen: false,
+      item: 'A4',
     },
   ])
 })
@@ -194,10 +199,10 @@ describe('threads merged into another', () => {
     expect(overview(merged)).toEqual([
       { text: '○ G Pick a holiday', isOpen: true },
       { text: '2 open · 2 closed', isOpen: true },
-      { text: '  → T4 Spain trip → T5', isOpen: false },
-      { text: '  ○ T5 Places in Spain', isOpen: true },
-      { text: '    ✦ T7 Ferries', isOpen: true },
-      { text: '  → T6 Spain, again → T5', isOpen: false },
+      { text: '  → T4 Spain trip → T5', isOpen: false, item: 'T4' },
+      { text: '  ○ T5 Places in Spain', isOpen: true, item: 'T5' },
+      { text: '    ✦ T7 Ferries', isOpen: true, item: 'T7' },
+      { text: '  → T6 Spain, again → T5', isOpen: false, item: 'T6' },
     ])
   })
 

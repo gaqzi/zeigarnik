@@ -7,7 +7,8 @@ import { repliesOn } from './replies-on.ts'
 // on request, and the pane draws a subset (zg-zo2), except that the pane also
 // marks a new thread ✦, which `show` does not.
 
-export type Line = { text: string; isOpen: boolean }
+// `item` is the node or action a pane row draws, which can be selected.
+export type Line = { text: string; isOpen: boolean; item?: string }
 
 const GOAL_MARK: Record<Goal['status'], string> = {
   open: '○',
@@ -23,7 +24,7 @@ const ACTION_MARK: Record<Action['status'], string> = {
   exported: '→',
 }
 
-const NODE_MARK: Record<Node['status'], string> = {
+export const NODE_MARK: Record<Node['status'], string> = {
   open: '○',
   resolved: '✓',
   cancelled: '✗',
@@ -44,19 +45,30 @@ const nodesUnder = (state: State, parent: string, depth = 1): Placed[] =>
       ...nodesUnder(state, node.id, depth + 1),
     ])
 
+// Where a closed thread went: its outcome, or the thread it merged into.
+export const nodeArrow = (node: Node): string | undefined =>
+  node.status === 'resolved' && node.outcome !== undefined
+    ? `→ ${node.outcome}`
+    : node.status === 'merged'
+      ? `→ ${node.into}`
+      : undefined
+
+export const actionArrow = (action: Action): string | undefined =>
+  action.status === 'exported' ? `→ ${action.ref}` : undefined
+
 const nodeLine = ({ node, depth }: Placed, mark: string): Line => {
+  const arrow = nodeArrow(node)
   const end =
-    node.status === 'resolved' && node.outcome !== undefined
-      ? ` → ${node.outcome}`
+    arrow !== undefined
+      ? ` ${arrow}`
       : node.status === 'cancelled' && node.reason !== undefined
         ? ` · ${node.reason}`
-        : node.status === 'merged'
-          ? ` → ${node.into}`
-          : ''
+        : ''
 
   return {
     text: `${'  '.repeat(depth)}${mark} ${node.id} ${node.title}${end}`,
     isOpen: node.status === 'open',
+    item: node.id,
   }
 }
 
@@ -83,43 +95,50 @@ const goalLine = (goal: Goal): Line => {
 }
 
 const actionLine = (action: Action): Line => {
+  const arrow = actionArrow(action)
   const end =
-    (action.status === 'exported' ? ` → ${action.ref}` : '') +
+    (arrow === undefined ? '' : ` ${arrow}`) +
     (action.reason === undefined ? '' : ` · ${action.reason}`)
 
   return {
     text: `${ACTION_MARK[action.status]} ${action.id} ${action.text} (${action.owner})${end}`,
     isOpen: action.status === 'open',
+    item: action.id,
   }
 }
 
-// A thread's replies, numbered from 1 in log order, one level under its line;
-// a reply's later lines sit under its text.
-const replyLines = (state: State, { node, depth }: Placed): Line[] =>
-  repliesOn(state, node.id).map(({ ordinal, reply }) => {
-    const prefix = `${'  '.repeat(depth + 1)}#${ordinal} ${reply.author}: `
-    const indent = ' '.repeat(prefix.length)
+// A thread's replies, numbered from 1 in log order, each line starting with
+// `indent`; a reply's later lines sit under its text.
+export const replyLines = (
+  state: State,
+  node: string,
+  indent: string,
+): Line[] =>
+  repliesOn(state, node).map(({ ordinal, reply }) => {
+    const prefix = `${indent}#${ordinal} ${reply.author}: `
+    const under = ' '.repeat(prefix.length)
 
     return {
-      text: prefix + reply.text.replaceAll('\n', `\n${indent}`),
+      text: prefix + reply.text.replaceAll('\n', `\n${under}`),
       isOpen: false,
     }
   })
 
-// What was merged into a thread, in the order merged, one level under it.
-const mergedFromLines = (state: State, { node, depth }: Placed): Line[] => {
+// What was merged into a thread, in the order merged: "merged from T4, T6".
+export const mergedFrom = (state: State, node: string): string | undefined => {
   const from = state.merges
-    .filter(merge => merge.into === node.id)
+    .filter(merge => merge.into === node)
     .flatMap(merge => merge.from)
 
-  return from.length === 0
+  return from.length === 0 ? undefined : `merged from ${from.join(', ')}`
+}
+
+const mergedFromLines = (state: State, { node, depth }: Placed): Line[] => {
+  const text = mergedFrom(state, node.id)
+
+  return text === undefined
     ? []
-    : [
-        {
-          text: `${'  '.repeat(depth + 1)}merged from ${from.join(', ')}`,
-          isOpen: false,
-        },
-      ]
+    : [{ text: `${'  '.repeat(depth + 1)}${text}`, isOpen: false }]
 }
 
 const view = (state: State, linesOf: (one: Placed) => Line[]): Line[] => {
@@ -159,7 +178,7 @@ export const fullView = (state: State): string => {
   const lines = view(state, one => [
     nodeLine(one, NODE_MARK[one.node.status]),
     ...mergedFromLines(state, one),
-    ...replyLines(state, one),
+    ...replyLines(state, one.node.id, '  '.repeat(one.depth + 1)),
   ]).map(line => line.text)
   const written = state.handoff === undefined ? [] : ['', handoff(state)]
 

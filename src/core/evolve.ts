@@ -224,7 +224,12 @@ const happened = (state: State, event: Event): State => {
         ...state,
         nodes: state.nodes.map(node =>
           event.from.includes(node.id)
-            ? { ...node, status: 'merged', into: event.into }
+            ? {
+                ...node,
+                status: 'merged',
+                into: event.into,
+                reason: event.reason,
+              }
             : event.from.includes(node.parent)
               ? { ...node, parent: event.into }
               : node,

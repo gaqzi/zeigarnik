@@ -856,3 +856,113 @@ test('a reply moved to the right thread is logged and show lists it there, numbe
     },
   })
 })
+
+// Selecting an item: view state only. Pressing a row records nothing and
+// asks nothing of the focus ring, so the chat input keeps it. A second press
+// on the same row hides the details again; the tree stays visible throughout.
+const bus = [
+  a.goalOpened(),
+  a.threadOpened({ thread: 'T2', title: 'Places in Spain' }),
+  a.threadOpened({ thread: 'T5', parent: 'T2', title: '2h bus?' }),
+  a.threadOpened({ thread: 'T8', parent: 'T5', title: 'Which village?' }),
+  a.threadResolved({ thread: 'T8', outcome: 'village is out' }),
+  a.nodeReplied({
+    node: 'T5',
+    author: 'claude',
+    text: 'The bus takes two hours each way',
+  }),
+  a.nodeReplied({ node: 'T5', text: 'no, two hours with the kids is a no' }),
+]
+
+const tree = [
+  '○ G Pick a holiday',
+  '2 open · 1 closed',
+  '  ✦ T2 Places in Spain',
+  '    ○ T5 2h bus?',
+  '      ✓ T8 Which village? → village is out',
+]
+
+const t5 = [
+  'T5 2h bus?',
+  'under T2',
+  'open',
+  'children: T8 ✓ village is out',
+  '#1 claude: The bus takes two hours each way',
+  '#2 human: no, two hours with the kids is a no',
+]
+
+test('selecting a thread’s line shows its details under the tree, records nothing and asks for no focus', async ($, on) => {
+  const world = host(on, { [LOG]: log(bus) })
+  await $.session.start(START)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  await ui.press({ key: 'T5' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+
+  // Focus belongs to the engine; zg's only effect on it is a request, so
+  // "asked for none" is how the kit shows the chat input keeps focus.
+  expect({ pane, files: world.files, focused: world.focused }).toEqual({
+    pane: [...tree, '', ...t5],
+    files: { [LOG]: log(bus) },
+    focused: [],
+  })
+})
+
+test('pressing the selected line again hides the details, and the tree was visible throughout', async ($, on) => {
+  host(on, { [LOG]: log(bus) })
+  await $.session.start(START)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  await ui.press({ key: 'T5' })
+  await ui.press({ key: 'T5' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+
+  expect(pane).toEqual(tree)
+})
+
+test('the details follow the log: a reply recorded on the selected thread shows at once', async ($, on) => {
+  host(on, { [LOG]: log(bus) })
+  await $.session.start(START)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  await ui.press({ key: 'T5' })
+  await $.tool.call({
+    tool: 'mcp__zg__node',
+    op: 'reply',
+    id: 'T5',
+    author: 'claude',
+    text: 'Noted: the village is out',
+  })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+
+  expect(pane).toEqual([
+    ...tree,
+    '',
+    ...t5,
+    '#3 claude: Noted: the village is out',
+  ])
+})
+
+test('a new session starts with nothing selected', async ($, on) => {
+  host(on, { [LOG]: log(bus) })
+  await $.session.start(START)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  await ui.press({ key: 'T5' })
+  await $.session.start(START)
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+
+  expect(pane).toEqual(tree)
+})
+
+test('a /clear ends the selection with the session', async ($, on) => {
+  host(on, { [LOG]: log(bus) })
+  await $.session.start(START)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  await ui.press({ key: 'T5' })
+  await $.session.end(CLEAR)
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+
+  expect(pane).toEqual(tree)
+})

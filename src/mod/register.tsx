@@ -1,11 +1,12 @@
-import { atom, read, type Register } from 'claude-code'
+import { atom, read, type Register, update } from 'claude-code'
 
 import { brief } from '../core/brief.ts'
+import { details } from '../core/details.ts'
 import { handoff } from '../core/handoff.ts'
 import { fullView } from '../core/overview.ts'
 import { title } from '../core/title.ts'
 import { turnIndex } from '../core/turn-index.ts'
-import { current, now, run, show } from './session.ts'
+import { current, now, run, select, show } from './session.ts'
 import { HANDOFF_TOOL, SHOW, specs, toCommand } from './tools.ts'
 
 // Hooks only: each turns its input into a core command or a view, and
@@ -18,6 +19,7 @@ const OPENING = /^\/zg:open\s+(\S[\s\S]*)$/
 const titled = { plugin: 'zg', key: 'titled' } as const
 // The scan reads a state reference only from a const in the file using it.
 const pane = atom({ plugin: 'zg', key: 'lines' } as const, [])
+const selection = atom({ plugin: 'zg', key: 'selected' } as const, '')
 
 // zg-n27: every prompt, slash commands included, brings the index of what is
 // open.
@@ -37,6 +39,7 @@ export const register: Register = on => {
     for (const spec of specs) {
       await $.tool.register({ ...spec, isDeferred: false })
     }
+    await update($, selection, () => '')
     await show($, await current($, await $.session.id()))
     void $.ui.open({ id: PANE, title: 'zg' })
 
@@ -115,6 +118,9 @@ export const register: Register = on => {
   // stands) is only traced, as nobody is left to tell.
   on('session.end', async ($, e, next) => {
     if (e.reason === 'clear') {
+      // After a /clear the process goes on under a new session id without a
+      // session.start, so the selection is cleared here as well.
+      await update($, selection, () => '')
       const state = await current($, e.sessionId)
       if (state.goals.length > 0) {
         await run($, e.sessionId, {
@@ -145,12 +151,29 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Text, Button } = $.ui.resolve(e)
     const lines = await read($, pane)
+    const selected = await read($, selection)
+    // The details stay current because every command's show writes the pane
+    // atom this render reads.
+    const shown =
+      selected === ''
+        ? []
+        : details(await current($, await $.session.id()), selected)
 
     return (
       <Box flexDirection="column">
-        {lines.map(line => (
+        {lines.map(({ item, text, isOpen }) =>
+          item === undefined ? (
+            <Text dimColor={!isOpen}>{text}</Text>
+          ) : (
+            <Button key={item} plain onPress={() => select($, item)}>
+              <Text dimColor={!isOpen}>{text}</Text>
+            </Button>
+          ),
+        )}
+        {shown.length === 0 ? null : <Text>{''}</Text>}
+        {shown.map(line => (
           <Text dimColor={!line.isOpen}>{line.text}</Text>
         ))}
       </Box>

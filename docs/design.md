@@ -11,7 +11,7 @@ zg is a Claude Code mod written in TypeScript.
 | Directory | Holds |
 |---|---|
 | `src/core/` | the domain: commands, events, `decide`, `evolve` and views, as pure functions (zg-orj) |
-| `src/mod/` | hooks, tools, the pane, context injection (zg-5mi, zg-zo2) |
+| `src/mod/` | hooks, tools, the pane and its selection hook, context injection (zg-5mi, zg-zo2) |
 | `src/storage/` | the session log and the refusal trace (zg-r1g, zg-vgk) |
 | `evals/` | model-behaviour evals (zg-egt) |
 
@@ -23,8 +23,8 @@ merge (zg-8ld).
 
 ```
 Claude's tool call ┐
-reply in chat      ┼─▶ command ─▶ decide(state, command)
-press in the pane  ┘                │
+reply in chat      └─▶ command ─▶ decide(state, command)
+                                    │
                         ┌───────────┴───────────┐
                      events                  refusal
                         │                       │
@@ -38,8 +38,10 @@ press in the pane  ┘                │
 
 - Claude interprets the conversation and records what it means through
   tools; zg's code only records and enforces (zg-7zf).
-- Every input becomes the same command, so the rules live only in `decide`
-  (zg-kux), which refuses anything that would break one (zg-su8).
+- Every input that records something becomes the same command, so the rules
+  live only in `decide` (zg-kux), which refuses anything that would break one
+  (zg-su8). Selecting a row in the pane records nothing: it is view state, not
+  a command.
 - The session is the only aggregate: one event stream, one `decide` over the
   whole session (zg-orj, after Chassaing's
   [Functional Event Sourcing Decider](https://thinkbeforecoding.com/post/2021/12/17/functional-event-sourcing-decider)).
@@ -52,6 +54,12 @@ press in the pane  ┘                │
   (zg-r1g). Refusals: `.zg/sessions/<session-id>.refusals.jsonl` (zg-vgk).
 - Each command loads the log, folds it and decides; the pane draws the
   overview from `$.state`, which only mirrors the log.
+- Pressing a row in the pane selects it: view state, not a command, so it
+  records nothing. `$.state` keeps only the selected ID, cleared when a
+  session starts and on a `/clear`; the pane's render hook derives the item's details
+  (`src/core/details.ts`) from the log and draws them below the tree, so
+  what was said never sits in `$.state`, which any plugin can read. Pressing
+  it again hides them. It is pane-only and costs no model tokens (zg-n27).
 - `/zg:open` and `/zg:close` are prompt commands (`commands/`), so Claude
   records through the tools; `/zg:open`'s typed line also reaches
   UserPromptSubmit, where the session is renamed. `/zg:copy-handoff` is a

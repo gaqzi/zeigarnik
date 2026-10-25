@@ -73,6 +73,11 @@ the behaviour is new or changed, not for a case that copies a proven shape.
 The acceptance itself never carries any of this: it describes what the human
 does and what zg records, and this section holds the recipe.
 
+The wiring kit presses a pane Button but cannot report which site holds the
+keyboard after the press. A wiring test pins that zg asks for no focus move;
+that the chat input keeps the focus is checked by hand (zg-b8o), until the
+harness gap zg-477 is closed.
+
 ### Eval pass bars
 
 From zg-egt. Each case runs 5 times, since the model isn't deterministic.

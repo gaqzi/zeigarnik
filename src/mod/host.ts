@@ -12,6 +12,9 @@ type Host = {
   files: Record<string, string>
   copied: string[]
   tools: RegisteredToolSpec[]
+  // Every move of the focus ring zg asked for: a `ui.focus`, or a `ui.open`
+  // that carries `focus`. Focus belongs to the engine; zg can only ask.
+  focused: unknown[]
 }
 
 // The engine hands `$.fs` hooks absolute paths, resolved against the test's
@@ -24,7 +27,12 @@ export const host = (
   files: Record<string, string> = {},
   clipboard: UiCopyResult = { isCopied: true },
 ): Host => {
-  const world: Host = { files: { ...files }, copied: [], tools: [] }
+  const world: Host = {
+    files: { ...files },
+    copied: [],
+    tools: [],
+    focused: [],
+  }
   on('session.id', () => ({ value: SESSION }))
   on('clock.now', () => ({ value: NOW }))
   on('fs.exists', (_, e) => ({ value: inside(e.path) in world.files }))
@@ -45,7 +53,14 @@ export const host = (
     return { value: { tool: `mcp__zg__${e.name}` } }
   })
   on('command.register', (_, e) => ({ value: { command: e.name } }))
-  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.open', (_, e) => {
+    if ('focus' in e && e.focus) world.focused.push(e)
+    return { value: { isPlaced: true } }
+  })
+  on('ui.focus', (_, e) => {
+    world.focused.push(e)
+    return {}
+  })
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.end', (_, e) => ({ sessionId: e.sessionId }))
   on('classic.UserPromptSubmit', () => ({}))
