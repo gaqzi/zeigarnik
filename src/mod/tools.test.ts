@@ -732,6 +732,12 @@ describe('a decision decided', () => {
     )
   })
 
+  test('with a new option’s title instead of an option is that title, its source and the words as the command', () => {
+    expect(
+      toCommand('decision', decide({ option: undefined, title: 'Rhodes' }), AT),
+    ).toEqual(a.pickNewOption())
+  })
+
   const reasonMissing =
     "decide needs the reason: the human's words on why, verbatim; after a bare dialog pick, ask why in chat."
   const missing: {
@@ -770,9 +776,19 @@ describe('a decision decided', () => {
       missing: 'decide needs source: chat or dialog.',
     },
     {
-      name: 'a pick with no option',
+      name: 'a pick with neither an option nor a new option’s title',
       input: decide({ option: undefined }),
-      missing: 'decide needs the option picked.',
+      missing: "decide needs the option picked, or a new option's title.",
+    },
+    {
+      name: 'a new option’s title with no reason, which shares the option form’s long text',
+      input: decide({ option: undefined, title: 'Rhodes', reason: undefined }),
+      missing: reasonMissing,
+    },
+    {
+      name: 'a pick with both an option and a new option’s title',
+      input: decide({ title: 'Rhodes' }),
+      missing: "decide takes an option or a new option's title, not both.",
     },
   ]
   for (const { name, input, missing: reason } of missing) {

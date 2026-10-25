@@ -116,6 +116,41 @@ describe('a decision and its options end together, derived from the decision’s
     })
   })
 
+  test('after a second pick the earlier option is not chosen, the new one chosen, and both picks are kept in order', () => {
+    const given = [
+      ...holiday,
+      a.decisionMade(),
+      a.decisionMade({
+        option: 'D1.2',
+        reason: 'Paphos flights got cancelled, Costa del Sol it is',
+      }),
+    ]
+    const decision = fold(given).nodes.find(node => node.id === 'D1')
+
+    expect({
+      options: options(given),
+      status: decision?.status,
+      picks: decision?.picks?.map(({ option, reason }) => ({ option, reason })),
+    }).toEqual({
+      options: [
+        { id: 'D1.1', status: 'cancelled', reason: 'too far with the kids' },
+        { id: 'D1.2', status: 'chosen', reason: undefined },
+        { id: 'D1.3', status: 'not chosen', reason: undefined },
+      ],
+      status: 'decided',
+      picks: [
+        {
+          option: 'D1.3',
+          reason: 'Paphos then, the 20 min transfer settles it',
+        },
+        {
+          option: 'D1.2',
+          reason: 'Paphos flights got cancelled, Costa del Sol it is',
+        },
+      ],
+    })
+  })
+
   test('when the decision is cancelled its open options are cancelled with it and carry no reason, while one dropped before keeps its own', () => {
     expect(options([...holiday, a.nodeCancelled({ node: 'D1' })])).toEqual([
       { id: 'D1.1', status: 'cancelled', reason: 'too far with the kids' },

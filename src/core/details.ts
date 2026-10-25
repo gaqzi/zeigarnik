@@ -113,7 +113,7 @@ const optionLines = (state: State, option: Node): string[] => {
   ]
 }
 
-// Once made: the pick and the words behind it.
+// Once made: the latest pick and its words.
 const pickLines = (state: State, decision: Node): string[] => {
   const pick = decision.picks?.at(-1)
   const option = state.nodes.find(one => one.id === pick?.option)
@@ -124,6 +124,21 @@ const pickLines = (state: State, decision: Node): string[] => {
     `   because (${pick.source}): ${pick.reason}`,
   ]
 }
+
+// Once decided again: the earlier picks and their words, newest first.
+const earlierPickLines = (state: State, decision: Node): string[] =>
+  (decision.picks ?? [])
+    .slice(0, -1)
+    .reverse()
+    .flatMap(past => {
+      const was = state.nodes.find(one => one.id === past.option)
+
+      return was === undefined
+        ? []
+        : [
+            `   earlier: ${was.id} ${was.title} · because (${past.source}): ${past.reason}`,
+          ]
+    })
 
 // Once cancelled: that, and the words behind it.
 const cancelLines = (decision: Node): string[] =>
@@ -148,6 +163,7 @@ const decisionDetails = (state: State, decision: Node): Line[] =>
     ...childrenOf(state, decision.id).flatMap(option =>
       optionLines(state, option),
     ),
+    ...earlierPickLines(state, decision),
   ].map(text => ({ text, isOpen: decision.status === 'open' }))
 
 const criterionDetails = (state: State, criterion: Criterion): Line[] => {

@@ -172,6 +172,12 @@ export const a = {
     source: 'chat',
     reason: 'Paphos then, the 20 min transfer settles it',
   }),
+  pickNewOption: command('PickNewOption', {
+    decision: 'D1',
+    title: 'Rhodes',
+    source: 'chat',
+    reason: 'Paphos then, the 20 min transfer settles it',
+  }),
   recordDecision: command('RecordDecision', {
     parent: 'G',
     title: 'Which holiday do we book?',

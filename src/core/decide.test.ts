@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { a } from './a.ts'
+import { AT, a } from './a.ts'
 import type { Command } from './commands.ts'
 import { decide } from './decide.ts'
 import type { Event } from './events.ts'
@@ -1799,11 +1799,11 @@ describe('closing says how, for a decision', () => {
       fix,
     },
     {
-      name: 'refuses deciding a decision that is already decided',
+      name: 'refuses picking the option a decided decision already has chosen',
       given: outline,
       command: a.makeDecision({ decision: 'D3', option: 'D3.1' }),
-      reason: 'D3 is already decided.',
-      fix: 'The open decisions are D1.',
+      reason: 'D3.1 is already chosen.',
+      fix: 'Pick another option, or a new one.',
     },
     {
       name: 'refuses deciding a thread',
@@ -2037,7 +2037,7 @@ describe('a decided or cancelled decision and its ended options take nothing mor
       given: decided,
       command: a.addOption({ title: 'Rhodes' }),
       reason: 'D1 is already decided.',
-      fix: 'The open decisions are D2.',
+      fix: 'Pick a new option with decide, which adds it chosen.',
     },
     {
       name: 'a thread opened under a decided decision',
@@ -2396,4 +2396,264 @@ describe('a revision names what changed it', () => {
       },
     })
   })
+})
+
+describe('a decision is decided again', () => {
+  const decided = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.decisionMade(),
+  ]
+  const again = 'Paphos flights got cancelled, Costa del Sol it is'
+
+  test('with one of its options that was not chosen, appends exactly the DecisionMade', () => {
+    expect(
+      when(decided, a.makeDecision({ option: 'D1.2', reason: again })),
+    ).toEqual({
+      events: [a.decisionMade({ option: 'D1.2', reason: again })],
+    })
+  })
+
+  test('with a new option, appends OptionAdded then DecisionMade at the command’s time', () => {
+    const at = '2026-10-23T09:30:00.000Z'
+
+    expect(
+      when(decided, a.pickNewOption({ at, title: 'Rhodes', reason: again })),
+    ).toEqual({
+      events: [
+        a.optionAdded({ at, option: 'D1.4', title: 'Rhodes' }),
+        a.decisionMade({ at, option: 'D1.4', reason: again }),
+      ],
+    })
+  })
+
+  test('with a new option on an open decision, adds it and decides it in one command', () => {
+    const open = [
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.optionAdded({ option: 'D1.1', title: 'Greek village' }),
+    ]
+
+    expect(when(open, a.pickNewOption({ title: 'Rhodes' }))).toEqual({
+      events: [
+        a.optionAdded({ option: 'D1.2', title: 'Rhodes' }),
+        a.decisionMade({ option: 'D1.2' }),
+      ],
+    })
+  })
+
+  test('children close first does not apply: an open thread under an option of the decided decision stops neither pick', () => {
+    const exploring = [
+      ...decided,
+      a.threadOpened({
+        thread: 'T6',
+        parent: 'D1.2',
+        title: 'Check Costa flights',
+      }),
+    ]
+
+    expect([
+      when(exploring, a.makeDecision({ option: 'D1.2' })),
+      when(exploring, a.pickNewOption({ title: 'Rhodes' })),
+    ]).toEqual([
+      { events: [a.decisionMade({ option: 'D1.2' })] },
+      {
+        events: [
+          a.optionAdded({ option: 'D1.4', title: 'Rhodes' }),
+          a.decisionMade({ option: 'D1.4' }),
+        ],
+      },
+    ])
+  })
+})
+
+describe('a rediscussion that needs exploring is a thread, and the decision is unchanged', () => {
+  const given = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+    a.decisionOpened({
+      decision: 'D2',
+      parent: 'T5',
+      title: 'How long may the transfer be?',
+    }),
+    a.optionAdded({
+      option: 'D2.1',
+      decision: 'D2',
+      title: 'transfers ≤ 30 min',
+    }),
+    a.decisionMade({ decision: 'D2', option: 'D2.1' }),
+    a.threadResolved({ thread: 'T5' }),
+  ]
+  const revisit = a.threadOpened({
+    thread: 'T6',
+    title: 'Revisit the transfer limit (D2)',
+  })
+
+  test('opens under the goal and appends only the ThreadOpened', () => {
+    expect(
+      when(
+        given,
+        a.openThread({ parent: 'G', title: 'Revisit the transfer limit (D2)' }),
+      ),
+    ).toEqual({ events: [revisit] })
+  })
+
+  test('leaves D2 decided with its pick', () => {
+    const state = fold([...given, revisit])
+    const decision = state.nodes.find(node => node.id === 'D2')
+
+    expect({ status: decision?.status, picks: decision?.picks }).toEqual({
+      status: 'decided',
+      picks: [
+        {
+          option: 'D2.1',
+          source: 'chat',
+          reason: 'Paphos then, the 20 min transfer settles it',
+          at: AT,
+        },
+      ],
+    })
+  })
+})
+
+describe('the past is not rewritten', () => {
+  const outline = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded(),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.nodeCancelled({ node: 'D1.1', reason: 'too far with the kids' }),
+    a.decisionMade(),
+    a.decisionOpened({ decision: 'D7', title: 'Which flights?' }),
+    a.nodeCancelled({ node: 'D7' }),
+    a.threadOpened({ thread: 'T1', title: 'Places in Greece' }),
+  ]
+  const rows: {
+    name: string
+    command: Command
+    reason: string
+    fix: string
+  }[] = [
+    {
+      name: 'a new option on a cancelled decision',
+      command: a.pickNewOption({ decision: 'D7', title: 'X' }),
+      reason: 'D7 is already cancelled.',
+      fix: 'Open a new decision, naming D7.',
+    },
+    {
+      name: 'a pick on a cancelled decision',
+      command: a.makeDecision({ decision: 'D7', option: 'D7.1' }),
+      reason: 'D7 is already cancelled.',
+      fix: 'Open a new decision, naming D7.',
+    },
+    {
+      name: 'a pick of an option already cancelled',
+      command: a.makeDecision({ option: 'D1.1' }),
+      reason: 'Closing says how: D1.1 is already cancelled.',
+      fix: "D1's other options are D1.3; or name a new one.",
+    },
+    {
+      name: 'a pick of the option already chosen',
+      command: a.makeDecision({ option: 'D1.3' }),
+      reason: 'D1.3 is already chosen.',
+      fix: 'Pick another option, or a new one.',
+    },
+    {
+      name: 'a new option with the title of an existing one',
+      command: a.pickNewOption({ title: 'Paphos' }),
+      reason: 'D1 already has the option Paphos (D1.3).',
+      fix: 'Pick D1.3, or name a different option.',
+    },
+    {
+      name: 'an option added to a decided decision',
+      command: a.addOption({ title: 'X' }),
+      reason: 'D1 is already decided.',
+      fix: 'Pick a new option with decide, which adds it chosen.',
+    },
+  ]
+  for (const { name, command, reason, fix } of rows) {
+    test(`refuses ${name}`, () => {
+      expect(when(outline, command)).toEqual({ refusal: { reason, fix } })
+    })
+  }
+})
+
+describe('a new option’s title is a twin only of options that are not cancelled', () => {
+  const decided = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded({ option: 'D1.1', title: 'Greek village' }),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.nodeCancelled({ node: 'D1.1', reason: 'too far with the kids' }),
+    a.decisionMade(),
+  ]
+
+  test('accepts the title of an option that was dropped, as the next option', () => {
+    expect(when(decided, a.pickNewOption({ title: 'Greek village' }))).toEqual({
+      events: [
+        a.optionAdded({ option: 'D1.4', title: 'Greek village' }),
+        a.decisionMade({ option: 'D1.4' }),
+      ],
+    })
+  })
+
+  test('refuses the title of an option that was not chosen, naming it', () => {
+    expect(when(decided, a.pickNewOption({ title: 'Costa del Sol' }))).toEqual({
+      refusal: {
+        reason: 'D1 already has the option Costa del Sol (D1.2).',
+        fix: 'Pick D1.2, or name a different option.',
+      },
+    })
+  })
+})
+
+describe('one parent: a decision is decided again only within the open goal’s tree', () => {
+  const closed = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+    a.decisionMade(),
+    a.goalAchieved(),
+  ]
+  const commands: { name: string; command: Command }[] = [
+    {
+      name: 'a pick of an option that was not chosen',
+      command: a.makeDecision({ option: 'D1.2' }),
+    },
+    {
+      name: 'a new option',
+      command: a.pickNewOption({ title: 'Rhodes' }),
+    },
+  ]
+  const rows: {
+    name: string
+    given: Event[]
+    reason: string
+    fix: string
+  }[] = [
+    {
+      name: 'no goal is open',
+      given: closed,
+      reason:
+        "One parent: a decision belongs to the open goal's tree, and no goal is open.",
+      fix: 'Open a goal first: the human starts one with /zg:open.',
+    },
+    {
+      name: 'another goal is open',
+      given: [...closed, a.goalOpened({ goal: 'G2' })],
+      reason: 'D1 belongs to a closed goal.',
+      fix: 'Open a new decision under the open goal, naming D1.',
+    },
+  ]
+  for (const { name, given, reason, fix } of rows) {
+    for (const { name: what, command } of commands) {
+      test(`refuses ${what} on a decision whose goal is closed when ${name}`, () => {
+        expect(when(given, command)).toEqual({ refusal: { reason, fix } })
+      })
+    }
+  }
 })

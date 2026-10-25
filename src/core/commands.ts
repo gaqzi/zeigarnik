@@ -69,6 +69,14 @@ export type Command =
       reason: string
     }
   | {
+      type: 'PickNewOption'
+      at: string
+      decision: string
+      title: string
+      source: Source
+      reason: string
+    }
+  | {
       type: 'RecordDecision'
       at: string
       parent: string

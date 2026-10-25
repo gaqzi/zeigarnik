@@ -295,7 +295,7 @@ const happened = (state: State, event: Event): State => {
           if (node.parent !== event.decision) return node
           if (node.id === event.option) return { ...node, status: 'chosen' }
 
-          return node.status === 'open'
+          return node.status === 'open' || node.status === 'chosen'
             ? { ...node, status: 'not chosen' }
             : node
         }),

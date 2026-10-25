@@ -1534,6 +1534,66 @@ test('a recorded decision shows dimmed under its thread with its pick, and the t
   ])
 })
 
+// A decision decided again with a new option (zg-bam.5.6).
+
+const TAXI_WORDS = "actually 45 min is fine if it's a taxi"
+
+const decidedOnce = [...recordedGiven, ...recordedEvents]
+
+const decideAgain = {
+  tool: 'mcp__zg__decision',
+  op: 'decide',
+  id: 'D2',
+  title: '45 min by taxi',
+  source: 'chat',
+  reason: TAXI_WORDS,
+} as const
+
+test('a decision decided again with a new option appends OptionAdded then DecisionMade, the pane shows the latest pick and show keeps the earlier one', async ($, on) => {
+  const world = host(on, { [LOG]: log(decidedOnce) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call(decideAgain)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' }))
+    .map(text => text.text)
+    .filter(text => text.includes('D2'))
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'D2' })
+
+  expect({ answer, files: world.files, pane, shown }).toEqual({
+    answer: { result: 'OptionAdded D2.2, DecisionMade D2' },
+    files: {
+      [LOG]: log([
+        ...decidedOnce,
+        {
+          type: 'OptionAdded',
+          at: AT,
+          option: 'D2.2',
+          decision: 'D2',
+          title: '45 min by taxi',
+        },
+        a.decisionMade({
+          decision: 'D2',
+          option: 'D2.2',
+          reason: TAXI_WORDS,
+        }),
+      ]),
+    },
+    pane: ['    ✓ D2 How long may the transfer be? → D2.2 45 min by taxi'],
+    shown: {
+      result: [
+        'D2 Decision: How long may the transfer be?',
+        '   Decision: D2.2 45 min by taxi',
+        `   because (chat): ${TAXI_WORDS}`,
+        '   Options:',
+        '     · D2.1 transfers ≤ 30 min',
+        '     ✓ D2.2 45 min by taxi',
+        `   earlier: D2.1 transfers ≤ 30 min · because (chat): ${TRANSFER_WORDS}`,
+      ].join('\n'),
+    },
+  })
+})
+
 // Criteria on a decision (zg-bam.5.4).
 
 const add = (on: string, text: string, origin?: string) =>

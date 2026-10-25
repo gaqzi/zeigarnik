@@ -457,12 +457,13 @@ const aKind = (node: Node) =>
   `${node.kind === 'option' ? 'an' : 'a'} ${node.kind}`
 
 // A command on a decision names one that exists and whose status it accepts;
-// what refusing a node that is no decision says is the caller's. An open
-// decision is always accepted.
+// what refusing a node that is no decision, or a closed one, says is the
+// caller's. An open decision is always accepted.
 const findDecision = (
   state: State,
   id: string,
   notADecision: (found: Node) => { refusal: Refusal },
+  closed: (found: Node) => { refusal: Refusal },
   accepts: readonly Node['status'][],
 ): { node: Node } | { refusal: Refusal } => {
   const found = state.nodes.find(node => node.id === id)
@@ -471,30 +472,37 @@ const findDecision = (
   }
   if (found.kind !== 'decision') return notADecision(found)
   if (accepts.includes(found.status)) return { node: found }
-  const blocked = refuseNotOpen(found, closed =>
-    refuse(`${id} is already ${closed.status}.`, openDecisionsFix(state)),
-  )
+  const blocked = refuseNotOpen(found, closed)
 
   return blocked ?? { node: found }
 }
 
-// A command on a decision names one that exists and is still open.
-const findOpenDecision = (
-  state: State,
-  id: string,
-  notADecision: (found: Node) => { refusal: Refusal },
-) => findDecision(state, id, notADecision, ['open'])
+// The wording of a closed decision for commands with nothing more to say: it
+// is closed, and the fix lists the open ones.
+const refuseClosedDecision = (state: State, closed: Node) =>
+  refuse(`${closed.id} is already ${closed.status}.`, openDecisionsFix(state))
 
 const decideAddOption = (
   state: State,
   command: Command & { type: 'AddOption' },
 ): Decided => {
   const { at, decision, title } = command
-  const found = findOpenDecision(state, decision, notADecision =>
-    refuse(
-      `One parent: ${decision} is ${aKind(notADecision)}, and only a decision holds options.`,
-      `Open a decision under ${decision}, and add the option there.`,
-    ),
+  const found = findDecision(
+    state,
+    decision,
+    notADecision =>
+      refuse(
+        `One parent: ${decision} is ${aKind(notADecision)}, and only a decision holds options.`,
+        `Open a decision under ${decision}, and add the option there.`,
+      ),
+    closed =>
+      closed.status === 'decided'
+        ? refuse(
+            `${decision} is already decided.`,
+            'Pick a new option with decide, which adds it chosen.',
+          )
+        : refuseClosedDecision(state, closed),
+    ['open'],
   )
   if ('refusal' in found) return found
   const twin = openNodes(state).find(
@@ -553,6 +561,7 @@ const decideAddCriterion = (
         `Open the decision it serves under ${on}${attach}.`,
       )
     },
+    closed => refuseClosedDecision(state, closed),
     ['open', 'decided'],
   )
   if ('refusal' in found) return found
@@ -615,6 +624,7 @@ const decideReviseCriterion = (
     criterion.on,
     notADecision =>
       refuse(`${id} is on ${notADecision.id}, which is not a decision.`, ''),
+    closed => refuseClosedDecision(state, closed),
     ['open', 'decided'],
   )
   if ('refusal' in found) return found
@@ -661,47 +671,86 @@ const decideResolveThread = (
   }
 }
 
+// What refusing a node that is no decision says, for deciding.
+const refuseNotDecidable = (state: State, decision: string, found: Node) => {
+  const reason = `${decision} is ${aKind(found)}, not a decision.`
+  if (found.kind === 'option') {
+    return refuse(reason, `Decide ${found.parent} with option ${decision}.`)
+  }
+  const open = openDecisions(state)
+  const instead =
+    open.length === 0
+      ? ''
+      : `, or decide ${joinList(
+          open.map(node => node.id),
+          'or',
+        )}`
+
+  return refuse(reason, `Resolve ${decision} with an outcome${instead}.`)
+}
+
+// A decision that is open or decided can be decided, within the open goal's
+// tree; a cancelled one is past, and the fix opens a new one.
+const findDecidable = (
+  state: State,
+  decision: string,
+): { node: Node } | { refusal: Refusal } => {
+  const goal = openGoal(state)
+  if (goal === undefined) {
+    return refuse(
+      "One parent: a decision belongs to the open goal's tree, and no goal is open.",
+      'Open a goal first: the human starts one with /zg:open.',
+    )
+  }
+  const found = findDecision(
+    state,
+    decision,
+    node => refuseNotDecidable(state, decision, node),
+    node =>
+      refuse(
+        `${decision} is already ${node.status}.`,
+        `Open a new decision, naming ${decision}.`,
+      ),
+    ['open', 'decided'],
+  )
+  if ('refusal' in found) return found
+  if (!isBelow(state, decision, goal.id)) {
+    return refuse(
+      `${decision} belongs to a closed goal.`,
+      `Open a new decision under the open goal, naming ${decision}.`,
+    )
+  }
+
+  return found
+}
+
 const decideMakeDecision = (
   state: State,
   command: Command & { type: 'MakeDecision' },
 ): Decided => {
   const { at, decision, option, source, reason } = command
-  const found = findOpenDecision(state, decision, notADecision => {
-    const reason = `${decision} is ${aKind(notADecision)}, not a decision.`
-    if (notADecision.kind === 'option') {
-      return refuse(
-        reason,
-        `Decide ${notADecision.parent} with option ${decision}.`,
-      )
-    }
-    const open = openDecisions(state)
-    const instead =
-      open.length === 0
-        ? ''
-        : `, or decide ${joinList(
-            open.map(node => node.id),
-            'or',
-          )}`
-
-    return refuse(reason, `Resolve ${decision} with an outcome${instead}.`)
-  })
+  const found = findDecidable(state, decision)
   if ('refusal' in found) return found
-  const open = state.nodes.filter(
-    node =>
-      node.kind === 'option' &&
-      node.parent === decision &&
-      node.status === 'open',
+  const isDecided = found.node.status === 'decided'
+  const options = state.nodes.filter(
+    node => node.kind === 'option' && node.parent === decision,
   )
-  if (open.length === 0) {
+  const open = options.filter(node => node.status === 'open')
+  if (!isDecided && open.length === 0) {
     return refuse(
       `Closing says how: ${decision} has no open option.`,
       `Add one, or cancel ${decision}.`,
     )
   }
-  const fix = `${decision}'s open options are ${joinList(
+  const otherOptionsFix = `${decision}'s other options are ${joinList(
+    options.filter(node => node.status !== 'cancelled').map(node => node.id),
+    'and',
+  )}; or name a new one.`
+  const openOptionsFix = `${decision}'s open options are ${joinList(
     open.map(node => node.id),
     'and',
   )}.`
+  const fix = isDecided ? otherOptionsFix : openOptionsFix
   const picked = state.nodes.find(node => node.id === option)
   if (picked === undefined) {
     return refuse(`${decision} has no option ${option}.`, fix)
@@ -709,18 +758,68 @@ const decideMakeDecision = (
   if (picked.kind !== 'option' || picked.parent !== decision) {
     return refuse(`${option} is not one of ${decision}'s options.`, fix)
   }
-  if (picked.status !== 'open') {
+  if (picked.status === 'chosen') {
+    return refuse(
+      `${option} is already chosen.`,
+      'Pick another option, or a new one.',
+    )
+  }
+  if (picked.status !== 'open' && picked.status !== 'not chosen') {
     return refuse(
       `Closing says how: ${option} is already ${picked.status}.`,
       fix,
     )
   }
-  const unfinished = refuseOpenUnderOptions(state, decision)
-  if (unfinished !== undefined) return unfinished
+  if (!isDecided) {
+    const unfinished = refuseOpenUnderOptions(state, decision)
+    if (unfinished !== undefined) return unfinished
+  }
 
   return {
     events: [{ type: 'DecisionMade', at, decision, option, source, reason }],
   }
+}
+
+// A new option added and picked in one step, the pick checked on the state
+// the adding left. A decided decision takes a new option only by picking it.
+// The twin check covers closed options too, since the chosen one counts, but
+// not cancelled ones: they cannot be picked, so their title may be named anew.
+const decidePickNewOption = (
+  state: State,
+  command: Command & { type: 'PickNewOption' },
+): Decided => {
+  const { at, decision, title, source, reason } = command
+  const found = findDecidable(state, decision)
+  if ('refusal' in found) return found
+  const twin = state.nodes.find(
+    node =>
+      node.kind === 'option' &&
+      node.parent === decision &&
+      node.status !== 'cancelled' &&
+      node.title === title,
+  )
+  if (twin !== undefined) {
+    return refuse(
+      `${decision} already has the option ${title} (${twin.id}).`,
+      `Pick ${twin.id}, or name a different option.`,
+    )
+  }
+  const option = nextOptionId(
+    decision,
+    state.nodes.map(node => node.id),
+  )
+  const added: Event = { type: 'OptionAdded', at, option, decision, title }
+  const made = decideMakeDecision(evolve(state, added), {
+    type: 'MakeDecision',
+    at,
+    decision,
+    option,
+    source,
+    reason,
+  })
+  if ('refusal' in made) return made
+
+  return { events: [added, ...made.events] }
 }
 
 const decideCancelNode = (
@@ -1225,6 +1324,8 @@ export const decide = (state: State, command: Command): Decided => {
       return decideAddOption(state, command)
     case 'MakeDecision':
       return decideMakeDecision(state, command)
+    case 'PickNewOption':
+      return decidePickNewOption(state, command)
     case 'RecordDecision':
       return decideRecordDecision(state, command)
     case 'AddCriterion':

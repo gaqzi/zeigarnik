@@ -247,6 +247,37 @@ describe('a closed decision’s details', () => {
     )
   })
 
+  test('a decision decided three times lists the latest pick and its words, then criteria and options, then the earlier picks newest first', () => {
+    const given = [
+      ...holiday,
+      a.criterionAdded(),
+      a.decisionMade({ option: 'D1.3', reason: 'first thought' }),
+      a.decisionMade({ option: 'D1.2', reason: 'then the bars won' }),
+      a.decisionMade({
+        option: 'D1.3',
+        source: 'dialog',
+        reason: 'Paphos in the end',
+      }),
+    ]
+
+    expect(details(fold(given), 'D1')).toEqual(
+      block(
+        false,
+        'D1 Decision: Which holiday do we book?',
+        '   Decision: D1.3 Paphos',
+        '   because (dialog): Paphos in the end',
+        '   Criteria: C1 Europe',
+        '   Options:',
+        '     ✗ D1.1 Greek village · too far with the kids',
+        '     · D1.2 Costa del Sol',
+        '     ✓ D1.3 Paphos',
+        '         T6 direct, Thursday and Sunday ✓',
+        '   earlier: D1.2 Costa del Sol · because (chat): then the bars won',
+        '   earlier: D1.3 Paphos · because (chat): first thought',
+      ),
+    )
+  })
+
   // The decision's own lines are not pinned here, only its options'.
   const optionLines = (events: Event[]) =>
     details(fold(events), 'D1').filter(line => /^ {5}\S/.test(line.text))
