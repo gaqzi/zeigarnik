@@ -2297,3 +2297,103 @@ describe('a criterion attaches to a decision', () => {
     })
   })
 })
+
+describe('a revision names what changed it', () => {
+  const outline = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T5' }),
+    a.decisionOpened(),
+    a.decisionOpened({ decision: 'D2', title: 'Which flights?' }),
+    a.optionAdded({ option: 'D2.1', decision: 'D2', title: 'Direct' }),
+    a.decisionMade({ decision: 'D2', option: 'D2.1' }),
+    a.criterionAdded(),
+    a.criterionAdded({ criterion: 'C2', text: 'sea ≥ 18°C' }),
+  ]
+  const refused: {
+    name: string
+    command: Command
+    reason: string
+    fix: string
+  }[] = [
+    {
+      name: 'refuses a criterion that does not exist',
+      command: a.reviseCriterion({ id: 'C9' }),
+      reason: 'There is no criterion C9.',
+      fix: 'The criteria are C1, C2.',
+    },
+    {
+      name: 'refuses an origin that does not exist',
+      command: a.reviseCriterion({ origin: 'T9' }),
+      reason: 'There is no node T9.',
+      fix: 'Name the node the change came from.',
+    },
+    {
+      name: 'refuses the wording the criterion already has',
+      command: a.reviseCriterion({ text: 'sea ≥ 18°C' }),
+      reason: 'C2 already says that.',
+      fix: 'Revise it only when the wording changes.',
+    },
+    {
+      name: 'refuses the wording it already has once trimmed',
+      command: a.reviseCriterion({ text: '  sea ≥ 18°C  ' }),
+      reason: 'C2 already says that.',
+      fix: 'Revise it only when the wording changes.',
+    },
+  ]
+  for (const { name, command, reason, fix } of refused) {
+    test(name, () => {
+      expect(when(outline, command)).toEqual({ refusal: { reason, fix } })
+    })
+  }
+
+  test('a session with no criteria says so in the same shape', () => {
+    expect(when(outline.slice(0, 6), a.reviseCriterion({ id: 'C9' }))).toEqual({
+      refusal: {
+        reason: 'There is no criterion C9.',
+        fix: 'There are no criteria.',
+      },
+    })
+  })
+
+  test('the revision is the criterion, its new text and the node that changed it', () => {
+    expect(when(outline, a.reviseCriterion())).toEqual({
+      events: [a.criterionRevised()],
+    })
+  })
+
+  const origins = [
+    { name: 'an open thread', origin: 'T5' },
+    { name: 'a decided decision', origin: 'D2' },
+    { name: 'the goal', origin: 'G' },
+  ]
+  for (const { name, origin } of origins) {
+    test(`may come from ${name}`, () => {
+      expect(when(outline, a.reviseCriterion({ origin }))).toEqual({
+        events: [a.criterionRevised({ origin })],
+      })
+    })
+  }
+
+  test('is allowed while the criterion’s decision is decided', () => {
+    const given = [
+      ...outline,
+      a.optionAdded({ option: 'D1.1', title: 'Paphos' }),
+      a.decisionMade({ decision: 'D1', option: 'D1.1' }),
+    ]
+
+    expect(when(given, a.reviseCriterion())).toEqual({
+      events: [a.criterionRevised()],
+    })
+  })
+
+  test('is refused while the criterion’s decision is cancelled', () => {
+    const given = [...outline, a.nodeCancelled({ node: 'D1' })]
+
+    expect(when(given, a.reviseCriterion())).toEqual({
+      refusal: {
+        reason: 'D1 is already cancelled.',
+        fix: 'There are no open decisions.',
+      },
+    })
+  })
+})

@@ -99,14 +99,22 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: 'criterion',
     description:
-      "Records a criterion: what a decision is judged on. add one in a few words as soon as the human states or implies it, on the decision it serves; the decisions under its options inherit it. origin: the node where it came up; the human's words are already in that node's history.",
+      "Records a criterion: what a decision is judged on. add one in a few words as soon as the human states or implies it, on the decision it serves; the decisions under its options inherit it. origin: the node where it came up; the human's words are already in that node's history. revise rewords one when the human changes it; origin is required, the node that changed it.",
     inputSchema: {
       type: 'object',
       properties: {
-        op: { enum: ['add'] },
+        op: { enum: ['add', 'revise'] },
+        id: { ...text, description: 'revise: the criterion, C…' },
         on: { ...text, description: 'add: the decision, D…' },
-        text: { ...text, description: 'add: the criterion, briefly' },
-        origin: { ...text, description: 'add: where it came up' },
+        text: {
+          ...text,
+          description: 'add: the criterion, briefly; revise: its new wording',
+        },
+        origin: {
+          ...text,
+          description:
+            'add: where it came up; revise: the node that changed it',
+        },
       },
       required: ['op'],
     },
@@ -394,7 +402,22 @@ export const toCommand = (
       return { type: 'OpenDecision', at, parent, title }
     }
     case 'criterion': {
-      if (input.op !== 'add') return { missing: 'criterion needs op: add.' }
+      if (input.op === 'revise') {
+        const id = str(input, 'id')
+        if (id === undefined) {
+          return { missing: "revise needs id: the criterion's ID." }
+        }
+        const revised = str(input, 'text')
+        if (revised === undefined) return { missing: 'revise needs the text.' }
+        const origin = str(input, 'origin')
+        if (origin === undefined) {
+          return { missing: 'revise needs origin: the node that changed it.' }
+        }
+        return { type: 'ReviseCriterion', at, id, text: revised, origin }
+      }
+      if (input.op !== 'add') {
+        return { missing: 'criterion needs op: add or revise.' }
+      }
       const on = str(input, 'on')
       if (on === undefined) {
         return { missing: "add needs on: the decision's ID." }

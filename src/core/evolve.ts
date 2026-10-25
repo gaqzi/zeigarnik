@@ -252,6 +252,21 @@ const happened = (state: State, event: Event): State => {
           },
         ],
       }
+    case 'CriterionRevised':
+      return {
+        ...state,
+        criteria: state.criteria.map(criterion =>
+          criterion.id === event.criterion
+            ? {
+                ...criterion,
+                versions: [
+                  ...criterion.versions,
+                  { text: event.text, origin: event.origin, at: event.at },
+                ],
+              }
+            : criterion,
+        ),
+      }
     case 'ThreadResolved':
       return setNode(state, event.thread, {
         status: 'resolved',

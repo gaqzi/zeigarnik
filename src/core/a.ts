@@ -104,6 +104,11 @@ export const a = {
     on: 'D1',
     text: 'Europe',
   }),
+  criterionRevised: event('CriterionRevised', {
+    criterion: 'C2',
+    text: 'sea ≥ 20°C',
+    origin: 'T5',
+  }),
 
   openGoal: command('OpenGoal', { text: 'Pick a holiday' }),
   addAction: command('AddAction', {
@@ -175,4 +180,9 @@ export const a = {
     reason: 'Paphos then, the 20 min transfer settles it',
   }),
   addCriterion: command('AddCriterion', { on: 'D1', text: 'Europe' }),
+  reviseCriterion: command('ReviseCriterion', {
+    id: 'C2',
+    text: 'sea ≥ 20°C',
+    origin: 'T5',
+  }),
 }

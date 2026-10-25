@@ -552,3 +552,18 @@ describe('a decision’s criteria', () => {
     )
   })
 })
+
+describe('a revised criterion in the pane', () => {
+  test('is drawn with its current text', () => {
+    const given = [
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.criterionAdded({ criterion: 'C2', text: 'sea ≥ 18°C' }),
+      a.criterionRevised(),
+    ]
+
+    expect(overview(fold(given)).filter(line => line.item === 'C2')).toEqual([
+      { text: '      C2 sea ≥ 20°C', isOpen: true, item: 'C2' },
+    ])
+  })
+})

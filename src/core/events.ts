@@ -116,6 +116,13 @@ export type Event =
       origin?: string
     }
   | {
+      type: 'CriterionRevised'
+      at: string
+      criterion: string
+      text: string
+      origin: string
+    }
+  | {
       type: 'ThreadResolved'
       at: string
       thread: string

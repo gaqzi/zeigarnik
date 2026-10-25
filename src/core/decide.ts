@@ -9,6 +9,7 @@ import {
 } from './evolve.ts'
 import { type Holder, holds } from './containment.ts'
 import { nextId, nextOptionId } from './ids.ts'
+import { currentText } from './in-force.ts'
 import { joinList } from './join-list.ts'
 import { bySiblingOrder } from './overview.ts'
 import { repliesOn } from './replies-on.ts'
@@ -37,7 +38,7 @@ const openActions = (state: State) =>
 const openNodes = (state: State) =>
   state.nodes.filter(node => node.status === 'open')
 
-const ids = (items: readonly (Action | Node)[]) =>
+const ids = (items: readonly { id: string }[]) =>
   items.map(item => item.id).join(', ')
 
 // Commands on an action name one that exists and is still open.
@@ -576,6 +577,50 @@ const decideAddCriterion = (
         ...(origin === undefined ? {} : { origin }),
       },
     ],
+  }
+}
+
+// A revision names the criterion and the node that changed it; its decision
+// may be open or decided, as when adding. A criterion is only ever on a
+// decision (add enforces it), so findDecision only refuses here for a
+// cancelled or merged one.
+const decideReviseCriterion = (
+  state: State,
+  command: Command & { type: 'ReviseCriterion' },
+): Decided => {
+  const { at, id, text, origin } = command
+  const criterion = state.criteria.find(one => one.id === id)
+  if (criterion === undefined) {
+    return refuse(
+      `There is no criterion ${id}.`,
+      state.criteria.length === 0
+        ? 'There are no criteria.'
+        : `The criteria are ${ids(state.criteria)}.`,
+    )
+  }
+  if (!knowsOrigin(state, origin)) {
+    return refuse(
+      `There is no node ${origin}.`,
+      'Name the node the change came from.',
+    )
+  }
+  if (text.trim() === currentText(criterion).trim()) {
+    return refuse(
+      `${id} already says that.`,
+      'Revise it only when the wording changes.',
+    )
+  }
+  const found = findDecision(
+    state,
+    criterion.on,
+    notADecision =>
+      refuse(`${id} is on ${notADecision.id}, which is not a decision.`, ''),
+    ['open', 'decided'],
+  )
+  if ('refusal' in found) return found
+
+  return {
+    events: [{ type: 'CriterionRevised', at, criterion: id, text, origin }],
   }
 }
 
@@ -1184,6 +1229,8 @@ export const decide = (state: State, command: Command): Decided => {
       return decideRecordDecision(state, command)
     case 'AddCriterion':
       return decideAddCriterion(state, command)
+    case 'ReviseCriterion':
+      return decideReviseCriterion(state, command)
     case 'ResolveThread':
       return decideResolveThread(state, command)
     case 'CancelNode':

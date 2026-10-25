@@ -23,7 +23,9 @@ decided by one event; its options' chosen, not chosen and the cancel that
 follows a decision's own are derived in `evolve` from the decision's events
 (zg-ww9). A criterion is attached to an open or decided decision by
 `CriterionAdded`; the criteria in force for a node are derived in `inForce`
-from its ancestor decisions (criteria flow down, zg-ww9).
+from its ancestor decisions (criteria flow down, zg-ww9). `CriterionRevised`
+appends a version with the node that changed it; the current text is the
+last, and earlier ones are kept (zg-64v).
 
 ## How an input flows
 

@@ -85,6 +85,13 @@ export type Command =
       origin?: string
     }
   | {
+      type: 'ReviseCriterion'
+      at: string
+      id: string
+      text: string
+      origin: string
+    }
+  | {
       type: 'ResolveThread'
       at: string
       thread: string

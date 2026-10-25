@@ -488,3 +488,35 @@ describe('criteria in details', () => {
     expect(details(fold(deep), 'C9')).toEqual([])
   })
 })
+
+describe('a revised criterion in details', () => {
+  const revised = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.criterionAdded({ criterion: 'C2', text: 'sea ≥ 18°C' }),
+    a.criterionRevised({ text: 'sea ≥ 19°C', origin: 'G' }),
+    a.criterionRevised(),
+  ]
+
+  test('a criterion lists its current text, then earlier versions newest first with where each came from', () => {
+    expect(details(fold(revised), 'C2')).toEqual(
+      block(
+        true,
+        'C2 sea ≥ 20°C (on D1, from T5)',
+        '  was: sea ≥ 19°C (from G)',
+        '  was: sea ≥ 18°C',
+      ),
+    )
+  })
+
+  test('a decision lists the current text', () => {
+    expect(details(fold(revised), 'D1')).toEqual(
+      block(
+        true,
+        'D1 Decision: Which holiday do we book?',
+        '   Criteria: C2 sea ≥ 20°C (from T5)',
+        '   Options:',
+      ),
+    )
+  })
+})

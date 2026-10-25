@@ -1719,3 +1719,48 @@ test('a criterion on the goal is refused as an error and traced, and nothing is 
     },
   })
 })
+
+// Revising a criterion (zg-bam.5.5).
+
+const revisionGiven = [
+  a.goalOpened(),
+  a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+  decisionOpened,
+  a.criterionAdded(),
+  a.criterionAdded({ criterion: 'C2', text: 'sea ≥ 18°C' }),
+]
+
+test('a revised criterion is logged with its origin, drawn with its new wording, and show keeps the old one', async ($, on) => {
+  const world = host(on, { [LOG]: log(revisionGiven) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__criterion',
+    op: 'revise',
+    id: 'C2',
+    text: 'sea ≥ 20°C',
+    origin: 'T5',
+  })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+  const c2 = await $.tool.call({ tool: 'mcp__zg__show', id: 'C2' })
+  const d1 = await $.tool.call({ tool: 'mcp__zg__show', id: 'D1' })
+
+  expect({ answer, files: world.files, pane, c2, d1 }).toEqual({
+    answer: { result: 'CriterionRevised C2' },
+    files: { [LOG]: log([...revisionGiven, a.criterionRevised()]) },
+    pane: [
+      '○ G Pick a holiday',
+      '2 open · 0 closed',
+      '  ✦ T5 2h bus?',
+      '  ✦ D1 Which holiday do we book?',
+      '      C1 Europe',
+      '      C2 sea ≥ 20°C',
+    ],
+    c2: { result: 'C2 sea ≥ 20°C (on D1, from T5)\n  was: sea ≥ 18°C' },
+    d1: {
+      result:
+        'D1 Decision: Which holiday do we book?\n   Criteria: C1 Europe · C2 sea ≥ 20°C (from T5)\n   Options:',
+    },
+  })
+})

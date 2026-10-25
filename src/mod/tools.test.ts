@@ -931,12 +931,12 @@ describe('a criterion attaches to a decision', () => {
     {
       name: 'a criterion call with no op',
       input: add({ op: undefined }),
-      missing: 'criterion needs op: add.',
+      missing: 'criterion needs op: add or revise.',
     },
     {
       name: 'a criterion call with an op zg has no name for',
-      input: add({ op: 'revise' }),
-      missing: 'criterion needs op: add.',
+      input: add({ op: 'retire' }),
+      missing: 'criterion needs op: add or revise.',
     },
   ]
   for (const { name, input, missing: reason } of missing) {
@@ -958,9 +958,56 @@ describe('a criterion attaches to a decision', () => {
       isDescribed: (spec?.description ?? '') !== '',
     }).toEqual({
       name: 'criterion',
-      ops: { enum: ['add'] },
-      inputs: ['on', 'op', 'origin', 'text'],
+      ops: { enum: ['add', 'revise'] },
+      inputs: ['id', 'on', 'op', 'origin', 'text'],
       isDescribed: true,
     })
   })
+})
+
+describe('a revision names what changed it', () => {
+  const revise = (overrides: Input = {}) => ({
+    op: 'revise',
+    id: 'C2',
+    text: 'sea ≥ 20°C',
+    origin: 'T5',
+    ...overrides,
+  })
+
+  test('is the criterion, its new text and the node that changed it as the command', () => {
+    expect(toCommand('criterion', revise(), AT)).toEqual(a.reviseCriterion())
+  })
+
+  const missing: { name: string; input: Input; missing: string }[] = [
+    {
+      name: 'a revision with no origin',
+      input: revise({ origin: undefined }),
+      missing: 'revise needs origin: the node that changed it.',
+    },
+    {
+      name: 'a revision with a blank origin',
+      input: revise({ origin: ' ' }),
+      missing: 'revise needs origin: the node that changed it.',
+    },
+    {
+      name: 'a revision with no text',
+      input: revise({ text: undefined }),
+      missing: 'revise needs the text.',
+    },
+    {
+      name: 'a revision with a blank text',
+      input: revise({ text: '  ' }),
+      missing: 'revise needs the text.',
+    },
+    {
+      name: 'a revision with no criterion',
+      input: revise({ id: undefined }),
+      missing: "revise needs id: the criterion's ID.",
+    },
+  ]
+  for (const { name, input, missing: reason } of missing) {
+    test(`${name} is refused`, () => {
+      expect(toCommand('criterion', input, AT)).toEqual({ missing: reason })
+    })
+  }
 })

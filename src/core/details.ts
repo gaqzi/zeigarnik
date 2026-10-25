@@ -155,12 +155,18 @@ const criterionDetails = (state: State, criterion: Criterion): Line[] => {
   const where = `on ${criterion.on}${origin === undefined ? '' : `, from ${origin}`}`
   const decision = state.nodes.find(node => node.id === criterion.on)
 
+  const earlier = criterion.versions
+    .slice(0, -1)
+    .reverse()
+    .map(
+      version =>
+        `  was: ${version.text}${version.origin === undefined ? '' : ` (from ${version.origin})`}`,
+    )
+
   return [
-    {
-      text: `${criterion.id} ${currentText(criterion)} (${where})`,
-      isOpen: decision?.status === 'open',
-    },
-  ]
+    `${criterion.id} ${currentText(criterion)} (${where})`,
+    ...earlier,
+  ].map(text => ({ text, isOpen: decision?.status === 'open' }))
 }
 
 const actionDetails = (action: Action): Line[] =>

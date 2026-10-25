@@ -150,3 +150,38 @@ describe('a criterion', () => {
     expect(fold(decided).criteria).toEqual([])
   })
 })
+
+describe('a criterion revised', () => {
+  const LATER = '2026-10-23T09:30:00.000Z'
+
+  const revised = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.criterionAdded({ criterion: 'C2', text: 'sea ≥ 18°C' }),
+  ]
+
+  test('gains a version, the earlier ones kept', () => {
+    expect(
+      fold([...revised, a.criterionRevised({ at: LATER })]).criteria,
+    ).toEqual([
+      {
+        id: 'C2',
+        on: 'D1',
+        versions: [
+          { text: 'sea ≥ 18°C', at: AT },
+          { text: 'sea ≥ 20°C', origin: 'T5', at: LATER },
+        ],
+      },
+    ])
+  })
+
+  test('twice keeps every version in log order', () => {
+    expect(
+      fold([
+        ...revised,
+        a.criterionRevised({ text: 'sea ≥ 19°C', origin: 'G' }),
+        a.criterionRevised(),
+      ]).criteria[0]?.versions.map(version => version.text),
+    ).toEqual(['sea ≥ 18°C', 'sea ≥ 19°C', 'sea ≥ 20°C'])
+  })
+})
