@@ -59,7 +59,7 @@ export const specs: RegisteredToolSpec[] = [
   },
   {
     name: 'thread',
-    description: `Records a thread: each thing we are looking to close, such as a question or a choice, opened under the goal or the thread it came up in. add one as soon as it comes up. parent: the goal's ID or a thread's. resolve closes it with outcome: a short summary, your words are fine. ${CLOSED_BY}`,
+    description: `Records a thread: each thing we are looking to close, such as a question whose answer only informs, opened under the goal or the thread it came up in. add one as soon as it comes up. parent: the goal's ID or a thread's. resolve closes it with outcome: a short summary, your words are fine. Before you resolve: a fact the human tells you is the outcome. An answer they could have given otherwise, a yes or no to what you proposed, a pick, a limit they set, is a decision: decision record (parent the thread; source and reason as for decide); a limit is also criterion add on the decision it serves, origin the new one. ${CLOSED_BY}`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -77,7 +77,7 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: 'decision',
     description:
-      "Records a decision: a choice the human has to make. open one when a choice comes up, naming the choice as the title (parent: the goal, a thread or an option). option adds a candidate as it is named, numbered under the decision (D1.1). A candidate that needs exploring gets a thread under its option. A question that ends with an answer is a thread, not a decision. Dropping an option is node cancel. decide: id is the decision, option the ID of the option picked, only on the human's words: source chat or dialog, reason their words on why, verbatim, hedges included. A dialog pick alone isn't enough: ask why in chat and record those words with source chat. Never decide on your own judgment: propose and wait. record: when the human states a choice outright, it opens the decision (parent, title the choice to make, as for open), adds the option (choice the option picked) and decides it in one step (source, reason as for decide). decide with title instead of option adds that new option and picks it. A decided decision is decided again with decide, never reopened. open, option and decide are for a choice still being worked.",
+      "Records a decision: a choice the human has to make. open one when a choice comes up, naming the choice as the title (parent: the goal, a thread or an option). option adds a candidate as the human or you name it in chat, numbered under the decision (D1.1). A candidate that needs exploring gets a thread under its option. A question whose answer only informs is a thread. An answer that settles a choice is a decision: decision record, the human's words as its one option. Never add options the human has not named. Dropping an option is node cancel. decide: id is the decision, option the ID of the option picked, only on the human's words: source chat or dialog, reason their words on why, verbatim, hedges included. A dialog pick alone isn't enough: ask why in chat and record those words with source chat. Never decide on your own judgment: propose and wait. record: when the human states a choice outright, it opens the decision (parent, title the choice to make, as for open), adds the option (choice the option picked) and decides it in one step (source, reason as for decide). decide with title instead of option adds that new option and picks it. A decided decision is decided again with decide, never reopened. open, option and decide are for a choice still being worked.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -103,7 +103,7 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: 'criterion',
     description:
-      "Records a criterion: what a decision is judged on. add one in a few words as soon as the human states or implies it, on the decision it serves; the decisions under its options inherit it. origin: the node where it came up; the human's words are already in that node's history. revise rewords one when the human changes it; origin is required, the node that changed it.",
+      "Records a criterion: what a decision is judged on. add one in a few words as soon as the human states or implies it, on the decision it serves; the decisions under its options inherit it. origin: the decision recorded from the human's words when there is one, else the node where it came up; their words are already in that node's history. revise rewords one when the human changes it; origin is required, the node that changed it.",
     inputSchema: {
       type: 'object',
       properties: {

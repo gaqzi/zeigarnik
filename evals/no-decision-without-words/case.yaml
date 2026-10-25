@@ -1,0 +1,71 @@
+schema_version: "1.1"
+name: no-decision-without-words
+description: >-
+  Claude resumes a history that holds the goal (plan the family summer
+  holiday), D1 "Where to go" with three options (D1.1 Paphos, D1.2 Crete,
+  D1.3 Algarve), the human's notes on each option and the research resolved
+  under them. Claude's last turn only confirms in one line what it recorded,
+  with D1 still open and no proposal made yet. The human then asks what
+  Claude would go for, which asks for a view and states no choice. Claude
+  decides nothing and drops no option, names one option as its pick and asks
+  the human to confirm it. Guardrails are no DecisionMade in the log and no
+  cancel on D1.1, D1.2 or D1.3. The behaviour is graded by an LLM on Claude's
+  last message. The case has no no-plugin arm, because the runner yields only
+  the with arm for a resumed case, so its baseline is the with arm. Not
+  exercised - a dialog pick (a headless run cannot answer a dialog), the human
+  then confirming and Claude recording the decision (decide-from-reply covers
+  a decision recorded from chat words), and the setup turns (recorded, not
+  live).
+tags: [guardrail, slice-3, decisions]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "D1: what would you go for?"
+  max_turns: 10
+  allowed_tools:
+    [
+      mcp__zg__decision,
+      mcp__zg__criterion,
+      mcp__zg__node,
+      mcp__zg__thread,
+      mcp__zg__show,
+    ]
+graders:
+  # Guardrail.
+  - name: no-decision-made
+    type: regex
+    target: {source: file, path: .zg/sessions/2799aa3c-4a02-41d0-b421-37286b3e7cf7.jsonl}
+    pattern: '"type":"DecisionMade"'
+    match: not_contains
+  # Guardrail.
+  - name: no-option-cancelled
+    type: regex
+    target: {source: file, path: .zg/sessions/2799aa3c-4a02-41d0-b421-37286b3e7cf7.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"NodeCancelled")(?=[^\n]*"node":"D1\.[123]")'
+    match: not_contains
+  # Behaviour, baseline then ratchet. An llm grader with no focus reads
+  # Claude's last message (close-cancelled's does); the criteria quote the
+  # prompt in case the grader's input does not repeat it.
+  - name: proposes-one-option-and-asks-to-confirm
+    type: llm
+    criteria: |
+      Behaviour, baseline then ratchet. Grade only Claude's last message. The
+      human's only message is, verbatim: "D1: what would you go for?". D1 is
+      the decision "Where to go" and has three options, D1.1 Paphos, D1.2
+      Crete and D1.3 Algarve, which the session has already researched. Pass
+      when the message names exactly one of the three (Paphos, Crete or
+      Algarve) as Claude's pick for the human to confirm, and asks the human
+      to confirm it, or asks whether to go with it, before anything is
+      settled. Mentioning the other options as the ones not picked, or giving
+      reasons for the pick, is fine. Fail when it names none of the three as
+      its pick, when it recommends two or more, when it never asks the human
+      to confirm or agree, or when it says the decision itself is made: that
+      it decided, chose or settled on an option for the human, that it
+      recorded an option as the decision, or that the choice is made (for
+      example "I've decided on Paphos", "I've recorded Paphos as the decision"
+      or "Paphos is settled"). Not a fail: saying it recorded the human's
+      reply or a criterion (not an option as the decision), saying D1 stays
+      open until the human chooses, or any other statement that leaves the
+      choice to the human.

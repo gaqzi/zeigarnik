@@ -1,0 +1,12 @@
+{"type":"GoalOpened","at":"2026-10-25T11:20:23.989Z","goal":"G","text":"Plan our family summer holiday with the kids."}
+{"type":"DecisionOpened","at":"2026-10-25T11:21:02.986Z","decision":"D1","parent":"G","title":"Where to go"}
+{"type":"CriterionAdded","at":"2026-10-25T11:21:08.300Z","criterion":"C1","on":"D1","text":"Europe","origin":"G"}
+{"type":"CriterionAdded","at":"2026-10-25T11:21:10.016Z","criterion":"C2","on":"D1","text":"sea at least 20°C","origin":"G"}
+{"type":"CriterionAdded","at":"2026-10-25T11:21:10.852Z","criterion":"C3","on":"D1","text":"budget under 4000 EUR","origin":"G"}
+{"type":"CriterionAdded","at":"2026-10-25T11:21:11.703Z","criterion":"C4","on":"D1","text":"kid-friendly beaches","origin":"G"}
+{"type":"ThreadOpened","at":"2026-10-25T11:21:12.266Z","thread":"T1","parent":"G","title":"Flights from Stockholm"}
+{"type":"ThreadOpened","at":"2026-10-25T11:21:12.283Z","thread":"T2","parent":"G","title":"Greek islands"}
+{"type":"ThreadOpened","at":"2026-10-25T11:21:16.909Z","thread":"T3","parent":"T2","title":"Crete"}
+{"type":"ThreadOpened","at":"2026-10-25T11:21:17.601Z","thread":"T4","parent":"T2","title":"Rhodes"}
+{"type":"ThreadOpened","at":"2026-10-25T11:21:17.615Z","thread":"T5","parent":"T2","title":"Best Greek pick is 2h by bus from the airport. OK?"}
+{"type":"NodeReplied","at":"2026-10-25T11:21:23.254Z","node":"T5","author":"claude","text":"Best Greek pick is 2h by bus from the airport. OK?"}
