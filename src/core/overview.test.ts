@@ -1,4 +1,4 @@
-import { expect, test } from 'claude-code/testing'
+import { describe, expect, test } from 'claude-code/testing'
 
 import { a } from './a.ts'
 import { fold } from './evolve.ts'
@@ -175,4 +175,46 @@ test('the pane’s overview leaves replies out', () => {
     '    ✦ T6 Transfers',
     '  ○ T7 Flights',
   ])
+})
+
+describe('threads merged into another', () => {
+  const merged = fold([
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T4', title: 'Spain trip' }),
+    a.threadOpened({ thread: 'T5', title: 'Places in Spain' }),
+    a.threadOpened({ thread: 'T6', title: 'Spain, again' }),
+    a.threadOpened({ thread: 'T7', parent: 'T4', title: 'Ferries' }),
+    a.nodeReplied({ node: 'T4', text: 'same trip' }),
+    a.nodeReplied({ node: 'T5', author: 'claude', text: 'Noted' }),
+    a.nodeReplied({ node: 'T6', text: 'still Spain' }),
+    a.nodeMerged(),
+  ])
+
+  test('the pane shows a merged thread dimmed, with where it went, and its children under the target', () => {
+    expect(overview(merged)).toEqual([
+      { text: '○ G Pick a holiday', isOpen: true },
+      { text: '2 open · 2 closed', isOpen: true },
+      { text: '  → T4 Spain trip → T5', isOpen: false },
+      { text: '  ○ T5 Places in Spain', isOpen: true },
+      { text: '    ✦ T7 Ferries', isOpen: true },
+      { text: '  → T6 Spain, again → T5', isOpen: false },
+    ])
+  })
+
+  test('the full view lists under the target what was merged into it, before its replies, and leaves each merged thread’s replies on it', () => {
+    expect(fullView(merged)).toBe(
+      [
+        '○ G Pick a holiday',
+        '2 open · 2 closed',
+        '  → T4 Spain trip → T5',
+        '    #1 human: same trip',
+        '  ○ T5 Places in Spain',
+        '    merged from T4, T6',
+        '    #1 claude: Noted',
+        '    ○ T7 Ferries',
+        '  → T6 Spain, again → T5',
+        '    #1 human: still Spain',
+      ].join('\n'),
+    )
+  })
 })

@@ -76,13 +76,19 @@ export const specs: RegisteredToolSpec[] = [
   },
   {
     name: 'node',
-    description: `Acts on any node (a thread so far). cancel closes it when it is no longer worth pursuing. ${CLOSED_BY} nest moves it under parent when the human says it belongs elsewhere, or when you put it in the wrong place yourself; say so in your reply. source: chat for the human's words, claude for your own correction. When a message addresses a thread, reply: author human with their words exactly as written in their message, author claude with your own part that addresses it; one reply per thread per message.`,
+    description: `Acts on any node (a thread so far). cancel closes it when it is no longer worth pursuing. ${CLOSED_BY} nest moves it under parent when the human says it belongs elsewhere, or when you put it in the wrong place yourself; say so in your reply. source: chat for the human's words, claude for your own correction. merge folds the from threads that turned out to be the same into the thread into, when the human says so; source and reason as for closing. When a message addresses a thread, reply: author human with their words exactly as written in their message, author claude with your own part that addresses it; one reply per thread per message.`,
     inputSchema: {
       type: 'object',
       properties: {
-        op: { enum: ['cancel', 'reply', 'nest'] },
+        op: { enum: ['cancel', 'reply', 'nest', 'merge'] },
         id: text,
         parent: { ...text, description: 'nest: G… or T…' },
+        from: {
+          type: 'array',
+          items: text,
+          description: 'merge: T… to fold in',
+        },
+        into: { ...text, description: 'merge: T…' },
         author: { enum: OWNERS },
         text: { ...text, description: 'reply: what was said' },
         source: { enum: NODE_SOURCES },
@@ -279,8 +285,37 @@ export const toCommand = (
         }
         return { type: 'NestNode', at, node: id, parent, source }
       }
+      if (input.op === 'merge') {
+        const named: unknown[] = Array.isArray(input.from) ? input.from : []
+        if (named.length === 0) {
+          return { missing: 'merge needs at least one thread to fold in.' }
+        }
+        const ids: string[] = []
+        for (const one of named) {
+          if (typeof one !== 'string' || one.trim() === '') {
+            return { missing: 'merge needs from: the T… ids to fold in.' }
+          }
+          ids.push(one)
+        }
+        const from = [...new Set(ids)]
+        const into = str(input, 'into')
+        if (into === undefined) {
+          return { missing: 'merge needs into: the thread to fold them into.' }
+        }
+        const source = nodeSourceOf(input)
+        if (source === undefined) {
+          return { missing: 'merge needs source: chat, dialog or claude.' }
+        }
+        const reason = str(input, 'reason')
+        if (reason === undefined) {
+          return {
+            missing: 'merge needs the reason: the words that folded them.',
+          }
+        }
+        return { type: 'MergeNodes', at, from, into, source, reason }
+      }
       if (input.op !== 'cancel') {
-        return { missing: 'node needs op: cancel, reply or nest.' }
+        return { missing: 'node needs op: cancel, reply, nest or merge.' }
       }
       const closed = closedBy('cancel', input)
       if ('missing' in closed) return closed

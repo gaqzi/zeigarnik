@@ -168,7 +168,7 @@ once.
 │ Actions                                                                │
 │ ☐ A1 Check school dates (you)                                          │
 └────────────────────────────────────────────────────────────────────────┘
-○ open  ✦ new  ✓ resolved  ✗ cancelled  ◆ decision  ◇ option  ☐ action  ✱ changed
+○ open  ✦ new  ✓ resolved  ✗ cancelled  → merged  ◆ decision  ◇ option  ☐ action  ✱ changed
 ```
 
 **Fan in.** T2, T3 and T4 each resolve with a shortlist entry, and Claude
@@ -329,9 +329,11 @@ question, a long exploration, or a sub-topic of one.
   - `resolved`: closed with an outcome
   - `cancelled`: closed as not worth pursuing, with the words that closed it
     and whose they are
-- Every thread must end `resolved` or `cancelled`. To pursue something outside
-  this session, close the thread with a decision to do so. That produces an
-  action captured into your tracking, or it becomes the next session's goal.
+  - `merged`: folded into another thread, which carries on
+- Every thread must end `resolved`, `cancelled` or `merged`. To pursue
+  something outside this session, close the thread with a decision to do so.
+  That produces an action captured into your tracking, or it becomes the next
+  session's goal.
 - A question is a thread too: its title asks, its outcome is the answer, and
   the answer may name other threads or decisions by ID.
 
@@ -513,15 +515,15 @@ goal. Nothing is left hanging.
 | See the structure | the pane: zg opens it when Claude Code starts, including `claude --resume`, shown once the terminal is 144 columns wide; `ctrl+x x` closes it until Claude Code next starts |
 | Reply to a node | `T4: …` in chat, or type in the pane |
 | Reply to several | several `T4:` blocks in one message |
-| Nest or cancel nodes | `T5 under T2`, `T4 cancel` in chat |
+| Merge, nest or cancel nodes | `T4–T7 merge T5`, `T5 under T2`, `T4 cancel` in chat |
 | Change the goal | `/zg:open <text>` again; Claude asks whether it's a revision or a replacement |
 | Revisit a thread | select it in the pane, or `T4` alone; Claude recaps |
 | See a thread's history | expand it in the pane |
-| See what's new | ✦ marks nodes you haven't written to yet; nesting one counts as writing to it |
+| See what's new | ✦ marks nodes you haven't written to yet; nesting or merging into one counts as writing to it |
 | Close the session | `/zg:close` |
 | Copy the handoff, to paste after `/clear` | `/zg:copy-handoff` |
 
-Later: merging (`T4–T7 merge T5`), and tidying from the pane.
+Later: tidying from the pane.
 
 ## Configuration
 
@@ -576,7 +578,8 @@ another thread and they show in the pane as a tree, and Claude closes them,
 resolved with an outcome or cancelled, each with the reason and whose words it
 is. Each thread keeps what both sides said about it, word for word, and `show`
 lists it under the thread; the pane doesn't show it yet. Claude can move a
-thread to another parent when you say so, or to fix its own mistake. The pane
-marks ✦ a thread you haven't written to yet. Decisions and criteria come next.
-To try it from a clone, run `script/bootstrap`, then start Claude Code with
+thread to another parent when you say so, or to fix its own mistake, and
+merge threads that turned out to be the same into one when you say so. The
+pane marks ✦ a thread you haven't written to yet. Decisions and criteria come
+next. To try it from a clone, run `script/bootstrap`, then start Claude Code with
 `claude --plugin-dir .` in the clone.

@@ -322,6 +322,154 @@ describe('one parent', () => {
       events: [a.nodeMoved({ node: 'T1', parent: 'T3' })],
     })
   })
+
+  const threeOpen = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T4' }),
+    a.threadOpened({ thread: 'T5' }),
+    a.threadOpened({ thread: 'T6' }),
+  ]
+
+  test('open threads merge into another open thread, the event keeping the order they were named in', () => {
+    expect(when(threeOpen, a.mergeNodes({ from: ['T6', 'T4'] }))).toEqual({
+      events: [a.nodeMerged({ from: ['T6', 'T4'] })],
+    })
+  })
+
+  test('a merge records its source and the words that folded the threads', () => {
+    expect(
+      when(
+        threeOpen,
+        a.mergeNodes({ source: 'claude', reason: 'same question twice' }),
+      ),
+    ).toEqual({
+      events: [
+        a.nodeMerged({ source: 'claude', reason: 'same question twice' }),
+      ],
+    })
+  })
+
+  const folding = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T1' }),
+    a.threadOpened({ thread: 'T2', parent: 'T1' }),
+    a.threadOpened({ thread: 'T3' }),
+    a.threadResolved({ thread: 'T3' }),
+  ]
+  const mergeRefused: {
+    name: string
+    command: Command
+    reason: string
+    fix: string
+  }[] = [
+    {
+      name: 'refuses to merge a thread into its own descendant',
+      command: a.mergeNodes({ from: ['T1'], into: 'T2' }),
+      reason:
+        "One parent: T2 is under T1; T2 can't take its own ancestor's children.",
+      fix: 'Merge T1 into a thread outside its own branch, or leave it where it is.',
+    },
+    {
+      name: 'refuses to merge a resolved thread',
+      command: a.mergeNodes({ from: ['T3'], into: 'T1' }),
+      reason:
+        'T3 is already resolved; a closed thread stays where it rolled up.',
+      fix: 'Leave T3 where it is; if it comes up again, open a new thread.',
+    },
+    {
+      name: 'refuses to merge into a resolved thread',
+      command: a.mergeNodes({ from: ['T1'], into: 'T3' }),
+      reason: 'T3 is already resolved.',
+      fix: 'Merge T1 into another open thread, or leave it where it is.',
+    },
+    {
+      name: 'refuses to merge a thread into itself',
+      command: a.mergeNodes({ from: ['T1'], into: 'T1' }),
+      reason: "One parent: a thread can't merge into itself.",
+      fix: 'Merge T1 into another open thread, or leave it where it is.',
+    },
+    {
+      name: 'refuses to merge several threads into a resolved thread',
+      command: a.mergeNodes({ from: ['T1', 'T2'], into: 'T3' }),
+      reason: 'T3 is already resolved.',
+      fix: 'Merge T1 and T2 into another open thread, or leave them where they are.',
+    },
+    {
+      name: 'refuses to merge the goal',
+      command: a.mergeNodes({ from: ['G'], into: 'T1' }),
+      reason: 'There is no thread G.',
+      fix: 'The open threads are T1, T2.',
+    },
+    {
+      name: 'refuses to merge into the goal',
+      command: a.mergeNodes({ from: ['T1'], into: 'G' }),
+      reason: 'There is no thread G.',
+      fix: 'The open threads are T1, T2.',
+    },
+    {
+      name: 'refuses a thread to fold in that does not exist',
+      command: a.mergeNodes({ from: ['T1', 'T9'], into: 'T2' }),
+      reason: 'There is no thread T9.',
+      fix: 'The open threads are T1, T2.',
+    },
+  ]
+  for (const { name, command, reason, fix } of mergeRefused) {
+    test(name, () => {
+      expect(when(folding, command)).toEqual({ refusal: { reason, fix } })
+    })
+  }
+})
+
+describe('a merged thread stays merged', () => {
+  const given = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T4' }),
+    a.threadOpened({ thread: 'T5' }),
+    a.threadOpened({ thread: 'T6' }),
+    a.nodeMerged({ from: ['T4'], into: 'T5' }),
+  ]
+  const fix = 'T4 was merged into T5; work on T5 instead.'
+  const refused: { name: string; command: Command }[] = [
+    {
+      name: 'refuses to merge it again',
+      command: a.mergeNodes({ from: ['T4'], into: 'T6' }),
+    },
+    {
+      name: 'refuses to merge a thread into it',
+      command: a.mergeNodes({ from: ['T6'], into: 'T4' }),
+    },
+    {
+      name: 'refuses to nest it',
+      command: a.nestNode({ node: 'T4', parent: 'T6' }),
+    },
+    {
+      name: 'refuses to nest a thread under it',
+      command: a.nestNode({ node: 'T6', parent: 'T4' }),
+    },
+    {
+      name: 'refuses to open a thread under it',
+      command: a.openThread({ parent: 'T4' }),
+    },
+    {
+      name: 'refuses a reply to it',
+      command: a.replyToNode({ node: 'T4' }),
+    },
+    {
+      name: 'refuses to resolve it',
+      command: a.resolveThread({ thread: 'T4' }),
+    },
+    {
+      name: 'refuses to cancel it',
+      command: a.cancelNode({ node: 'T4' }),
+    },
+  ]
+  for (const { name, command } of refused) {
+    test(name, () => {
+      expect(when(given, command)).toEqual({
+        refusal: { reason: 'T4 is already merged.', fix },
+      })
+    })
+  }
 })
 
 describe('an open action', () => {
@@ -675,6 +823,26 @@ describe('children close first', () => {
 
     expect(when(given, a.resolveThread())).toEqual({
       events: [a.threadResolved()],
+    })
+  })
+
+  const mergedChild = [
+    a.goalOpened(),
+    a.threadOpened(),
+    under('T2', 'Places in Spain'),
+    a.threadOpened({ thread: 'T3', title: 'Spain trip' }),
+    a.nodeMerged({ from: ['T2'], into: 'T3' }),
+  ]
+
+  test('a parent closes when its only child was merged away', () => {
+    expect(when(mergedChild, a.resolveThread())).toEqual({
+      events: [a.threadResolved()],
+    })
+  })
+
+  test('a parent is cancelled when its only child was merged away', () => {
+    expect(when(mergedChild, a.cancelNode())).toEqual({
+      events: [a.nodeCancelled()],
     })
   })
 

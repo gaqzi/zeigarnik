@@ -12,7 +12,7 @@ export type Refusal = { reason: string; fix: string }
 
 export type Decided = { events: Event[] } | { refusal: Refusal }
 
-const refuse = (reason: string, fix: string): Decided => ({
+const refuse = (reason: string, fix: string): { refusal: Refusal } => ({
   refusal: { reason, fix },
 })
 
@@ -69,6 +69,23 @@ const openThreadsFix = (state: State) => {
   return `${clause.charAt(0).toUpperCase()}${clause.slice(1)}.`
 }
 
+// A node that takes work is open. A merged one is refused the same way
+// everywhere, since its target carries on; any other closed one is refused
+// as the caller words it.
+const refuseNotOpen = (
+  node: Node,
+  closed: (node: Node) => { refusal: Refusal },
+): { refusal: Refusal } | undefined => {
+  if (node.status === 'merged') {
+    return refuse(
+      `${node.id} is already merged.`,
+      `${node.id} was merged into ${node.into}; work on ${node.into} instead.`,
+    )
+  }
+
+  return node.status === 'open' ? undefined : closed(node)
+}
+
 // Closing a node names one that exists and is still open.
 const findOpenNode = (
   state: State,
@@ -83,14 +100,10 @@ const findOpenNode = (
       },
     }
   }
-  if (node.status !== 'open') {
-    return {
-      refusal: {
-        reason: `${id} is already ${node.status}.`,
-        fix: openThreadsFix(state),
-      },
-    }
-  }
+  const blocked = refuseNotOpen(node, closed =>
+    refuse(`${id} is already ${closed.status}.`, openThreadsFix(state)),
+  )
+  if (blocked !== undefined) return blocked
 
   return { node }
 }
@@ -106,14 +119,15 @@ const refuseParent = (
   if (parent !== goal.id && target === undefined) {
     return refuse(`One parent: there is no thread ${parent}.`, fixes.missing)
   }
-  if (target !== undefined && target.status !== 'open') {
-    return refuse(
-      `One parent: ${parent} is already ${target.status}.`,
-      fixes.closed(target),
-    )
-  }
 
-  return undefined
+  return target === undefined
+    ? undefined
+    : refuseNotOpen(target, closed =>
+        refuse(
+          `One parent: ${parent} is already ${closed.status}.`,
+          fixes.closed(closed),
+        ),
+      )
 }
 
 // Children close first: a parent is refused while any child is open.
@@ -280,12 +294,13 @@ const decideReplyToNode = (
   if (target === undefined) {
     return refuse(`There is no thread ${node}.`, openThreadsFix(state))
   }
-  if (target.status !== 'open') {
-    return refuse(
-      `${node} is already ${target.status}.`,
+  const blocked = refuseNotOpen(target, closed =>
+    refuse(
+      `${node} is already ${closed.status}.`,
       `Open a new thread under ${node}'s parent for what's new; ${openThreadsClause(state)}.`,
-    )
-  }
+    ),
+  )
+  if (blocked !== undefined) return blocked
 
   return { events: [{ type: 'NodeReplied', at, node, author, text }] }
 }
@@ -343,21 +358,22 @@ const decideNestNode = (
       openThreadsFix(state),
     )
   }
-  if (moving.status !== 'open') {
-    return refuse(
-      `One parent: ${node} is already ${moving.status}; a closed thread stays where it rolled up.`,
+  const movingBlocked = refuseNotOpen(moving, closed =>
+    refuse(
+      `One parent: ${node} is already ${closed.status}; a closed thread stays where it rolled up.`,
       `Leave ${node} where it is; if it comes up again, open a new thread.`,
-    )
-  }
+    ),
+  )
+  if (movingBlocked !== undefined) return movingBlocked
   const fix = nestFix(state, goal, moving)
   if (parent === node) {
     return refuse("One parent: a thread can't be its own parent.", fix)
   }
-  const blocked = refuseParent(state, goal, parent, {
+  const parentBlocked = refuseParent(state, goal, parent, {
     missing: fix,
     closed: () => fix,
   })
-  if (blocked !== undefined) return blocked
+  if (parentBlocked !== undefined) return parentBlocked
   if (isBelow(state, parent, node)) {
     return refuse(
       `One parent: ${parent} is under ${node}; a thread can't nest under its own descendant.`,
@@ -369,6 +385,47 @@ const decideNestNode = (
   }
 
   return { events: [{ type: 'NodeMoved', at, node, parent, source }] }
+}
+
+const decideMergeNodes = (
+  state: State,
+  command: Command & { type: 'MergeNodes' },
+): Decided => {
+  const { at, from, into, source, reason } = command
+  for (const id of from) {
+    const folding = state.nodes.find(one => one.id === id)
+    if (folding === undefined) {
+      return refuse(`There is no thread ${id}.`, openThreadsFix(state))
+    }
+    const blocked = refuseNotOpen(folding, closed =>
+      refuse(
+        `${id} is already ${closed.status}; a closed thread stays where it rolled up.`,
+        `Leave ${id} where it is; if it comes up again, open a new thread.`,
+      ),
+    )
+    if (blocked !== undefined) return blocked
+  }
+  const fix = `Merge ${joinList(from, 'and')} into another open thread, or leave ${from.length > 1 ? 'them where they are' : 'it where it is'}.`
+  if (from.includes(into)) {
+    return refuse("One parent: a thread can't merge into itself.", fix)
+  }
+  const target = state.nodes.find(one => one.id === into)
+  if (target === undefined) {
+    return refuse(`There is no thread ${into}.`, openThreadsFix(state))
+  }
+  const blocked = refuseNotOpen(target, closed =>
+    refuse(`${into} is already ${closed.status}.`, fix),
+  )
+  if (blocked !== undefined) return blocked
+  const ancestor = from.find(id => isBelow(state, into, id))
+  if (ancestor !== undefined) {
+    return refuse(
+      `One parent: ${into} is under ${ancestor}; ${into} can't take its own ancestor's children.`,
+      `Merge ${ancestor} into a thread outside its own branch, or leave it where it is.`,
+    )
+  }
+
+  return { events: [{ type: 'NodeMerged', at, from, into, source, reason }] }
 }
 
 const decideCloseGoal = (
@@ -533,5 +590,7 @@ export const decide = (state: State, command: Command): Decided => {
       return decideReplyToNode(state, command)
     case 'NestNode':
       return decideNestNode(state, command)
+    case 'MergeNodes':
+      return decideMergeNodes(state, command)
   }
 }

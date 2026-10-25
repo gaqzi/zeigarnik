@@ -75,6 +75,12 @@ export const a = {
     text: 'no, two hours with the kids is a no',
   }),
   nodeMoved: event('NodeMoved', { node: 'T5', parent: 'T2', source: 'chat' }),
+  nodeMerged: event('NodeMerged', {
+    from: ['T4', 'T6'],
+    into: 'T5',
+    source: 'chat',
+    reason: 'T4–T7 are the same as T5',
+  }),
 
   openGoal: command('OpenGoal', { text: 'Pick a holiday' }),
   addAction: command('AddAction', {
@@ -120,4 +126,10 @@ export const a = {
     text: 'no, two hours with the kids is a no',
   }),
   nestNode: command('NestNode', { node: 'T5', parent: 'T2', source: 'chat' }),
+  mergeNodes: command('MergeNodes', {
+    from: ['T4', 'T6'],
+    into: 'T5',
+    source: 'chat',
+    reason: 'T4–T7 are the same as T5',
+  }),
 }

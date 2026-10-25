@@ -1,4 +1,10 @@
-import type { Decision, Event, MoveSource, Owner } from './events.ts'
+import type {
+  Decision,
+  Event,
+  MoveSource,
+  NodeSource,
+  Owner,
+} from './events.ts'
 
 // The session as the events leave it: a fold, with no rules of its own.
 
@@ -24,7 +30,8 @@ export type Node = {
   kind: 'thread'
   parent: string
   title: string
-  status: 'open' | 'resolved' | 'cancelled'
+  status: 'open' | 'resolved' | 'cancelled' | 'merged'
+  into?: string
   outcome?: string
   reason?: string
 }
@@ -33,6 +40,10 @@ export type Reply = { node: string; author: Owner; text: string; at: string }
 
 // Who moved a node; its new parent is on the node.
 export type Move = { node: string; source: MoveSource }
+
+// Threads folded into another, in the order they were named, and whose
+// words folded them.
+export type Merge = { from: string[]; into: string; source: NodeSource }
 
 export type Handoff = {
   next: string
@@ -47,6 +58,7 @@ export type State = {
   // In log order; a reply's number is its place among its node's.
   replies: Reply[]
   moves: Move[]
+  merges: Merge[]
   handoff?: Handoff
   // False once anything happens after the handoff was written: it no longer
   // describes the session, and has to be written again.
@@ -60,6 +72,7 @@ export const initial: State = {
   nodes: [],
   replies: [],
   moves: [],
+  merges: [],
   handoffStands: false,
   isClosed: false,
 }
@@ -193,6 +206,24 @@ const happened = (state: State, event: Event): State => {
       return {
         ...setNode(state, event.node, { parent: event.parent }),
         moves: [...state.moves, { node: event.node, source: event.source }],
+      }
+    case 'NodeMerged':
+      // A merge this build can't read changes nothing, like an unknown event.
+      if (!Array.isArray(event.from)) return state
+
+      return {
+        ...state,
+        nodes: state.nodes.map(node =>
+          event.from.includes(node.id)
+            ? { ...node, status: 'merged', into: event.into }
+            : event.from.includes(node.parent)
+              ? { ...node, parent: event.into }
+              : node,
+        ),
+        merges: [
+          ...state.merges,
+          { from: event.from, into: event.into, source: event.source },
+        ],
       }
     case 'HandoffWritten':
       return {

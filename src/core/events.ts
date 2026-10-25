@@ -115,6 +115,14 @@ export type Event =
       source: MoveSource
     }
   | {
+      type: 'NodeMerged'
+      at: string
+      from: string[]
+      into: string
+      source: NodeSource
+      reason: string
+    }
+  | {
       type: 'HandoffWritten'
       at: string
       next: string

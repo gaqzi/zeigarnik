@@ -31,6 +31,30 @@ describe('a thread is new until the human has replied on it', () => {
       isNew: true,
     },
     {
+      name: 'the human merged threads into it in chat',
+      events: [
+        a.threadOpened({ thread: 'T2' }),
+        a.nodeMerged({ from: ['T2'], into: 'T1', source: 'chat' }),
+      ],
+      isNew: false,
+    },
+    {
+      name: 'the human merged threads into it in the dialog',
+      events: [
+        a.threadOpened({ thread: 'T2' }),
+        a.nodeMerged({ from: ['T2'], into: 'T1', source: 'dialog' }),
+      ],
+      isNew: false,
+    },
+    {
+      name: 'Claude merged threads into it',
+      events: [
+        a.threadOpened({ thread: 'T2' }),
+        a.nodeMerged({ from: ['T2'], into: 'T1', source: 'claude' }),
+      ],
+      isNew: true,
+    },
+    {
       name: 'it is resolved and was never replied to',
       events: [a.threadResolved()],
       isNew: false,

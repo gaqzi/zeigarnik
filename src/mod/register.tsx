@@ -70,6 +70,7 @@ export const register: Register = on => {
             'action' in event ? event.action : '',
             'thread' in event ? event.thread : '',
             'node' in event ? event.node : '',
+            'into' in event ? event.into : '',
           ]
             .filter(part => part !== '')
             .join(' '),

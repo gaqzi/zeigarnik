@@ -55,6 +55,14 @@ const nest = (overrides: Input = {}) => ({
   source: 'chat',
   ...overrides,
 })
+const merge = (overrides: Input = {}) => ({
+  op: 'merge',
+  from: ['T4', 'T6'],
+  into: 'T5',
+  source: 'chat',
+  reason: 'T4–T7 are the same as T5',
+  ...overrides,
+})
 const closeGoal = (overrides: Input = {}) => ({
   as: 'achieved',
   source: 'chat',
@@ -206,6 +214,24 @@ describe('a tool call becomes', () => {
       command: a.nestNode({ parent: 'G', source: 'claude' }),
     },
     {
+      name: 'threads merged into another on the human’s word',
+      tool: 'node',
+      input: merge(),
+      command: a.mergeNodes(),
+    },
+    {
+      name: 'threads merged into another on Claude’s own word',
+      tool: 'node',
+      input: merge({ from: ['T6'], source: 'claude' }),
+      command: a.mergeNodes({ from: ['T6'], source: 'claude' }),
+    },
+    {
+      name: 'threads merged, a thread named twice folded in once, in the order named',
+      tool: 'node',
+      input: merge({ from: ['T6', 'T4', 'T6'] }),
+      command: a.mergeNodes({ from: ['T6', 'T4'] }),
+    },
+    {
       name: 'a reply with its author and text',
       tool: 'node',
       input: reply(),
@@ -306,8 +332,38 @@ describe('a tool call missing what it needs is refused', () => {
       {
         name: 'a node op zg has no name for',
         tool: 'node',
-        input: cancel({ op: 'merge' }),
-        missing: 'node needs op: cancel, reply or nest.',
+        input: cancel({ op: 'archive' }),
+        missing: 'node needs op: cancel, reply, nest or merge.',
+      },
+      {
+        name: 'a merge without the words that folded the threads',
+        tool: 'node',
+        input: merge({ reason: undefined }),
+        missing: 'merge needs the reason: the words that folded them.',
+      },
+      {
+        name: 'a merge with nothing to fold in',
+        tool: 'node',
+        input: merge({ from: [] }),
+        missing: 'merge needs at least one thread to fold in.',
+      },
+      {
+        name: 'a merge whose from holds something that is not a thread id',
+        tool: 'node',
+        input: merge({ from: ['T4', 6] }),
+        missing: 'merge needs from: the T… ids to fold in.',
+      },
+      {
+        name: 'a merge whose from holds a blank id',
+        tool: 'node',
+        input: merge({ from: ['T4', ' '] }),
+        missing: 'merge needs from: the T… ids to fold in.',
+      },
+      {
+        name: 'a merge without the thread to fold them into',
+        tool: 'node',
+        input: merge({ into: undefined }),
+        missing: 'merge needs into: the thread to fold them into.',
       },
       {
         name: 'a nest without its id',
@@ -485,6 +541,12 @@ describe('a tool call whose source is absent or not chat, dialog or claude is re
       tool: 'node',
       input: source => cancel({ source }),
       missing: 'cancel needs source: chat, dialog or claude.',
+    },
+    {
+      name: 'threads merged',
+      tool: 'node',
+      input: source => merge({ source }),
+      missing: 'merge needs source: chat, dialog or claude.',
     },
   ]
   const sources = [

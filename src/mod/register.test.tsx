@@ -732,3 +732,75 @@ test('a thread nested on the human’s word moves in the log and the pane, in ID
     },
   })
 })
+
+test('threads merged on the human’s word are logged, show as merged in the pane and in show, and hand their children to the target', async ($, on) => {
+  const trip = a.threadOpened({ thread: 'T4', title: 'Spain trip' })
+  const places = a.threadOpened({ thread: 'T5', title: 'Places in Spain' })
+  const again = a.threadOpened({ thread: 'T6', title: 'Spain, again' })
+  const ferries = a.threadOpened({
+    thread: 'T7',
+    parent: 'T4',
+    title: 'Ferries',
+  })
+  const tripSaid = a.nodeReplied({ node: 'T4', text: 'same trip' })
+  const placesSaid = a.nodeReplied({
+    node: 'T5',
+    author: 'claude',
+    text: 'Noted',
+  })
+  const againSaid = a.nodeReplied({ node: 'T6', text: 'still Spain' })
+  const before = [
+    a.goalOpened(),
+    trip,
+    places,
+    again,
+    ferries,
+    tripSaid,
+    placesSaid,
+    againSaid,
+  ]
+  const world = host(on, { [LOG]: log(before) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__node',
+    op: 'merge',
+    from: ['T4', 'T6'],
+    into: 'T5',
+    source: 'chat',
+    reason: 'T4–T7 are the same as T5',
+  })
+  const shown = await $.tool.call({ tool: 'mcp__zg__show' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => ({
+    text: text.text,
+    isDim: text.props.dimColor,
+  }))
+
+  expect({ answer, shown, pane, files: world.files }).toEqual({
+    answer: { result: 'NodeMerged T5' },
+    shown: {
+      result: [
+        '○ G Pick a holiday',
+        '2 open · 2 closed',
+        '  → T4 Spain trip → T5',
+        '    #1 human: same trip',
+        '  ○ T5 Places in Spain',
+        '    merged from T4, T6',
+        '    #1 claude: Noted',
+        '    ○ T7 Ferries',
+        '  → T6 Spain, again → T5',
+        '    #1 human: still Spain',
+      ].join('\n'),
+    },
+    pane: [
+      { text: '○ G Pick a holiday', isDim: false },
+      { text: '2 open · 2 closed', isDim: false },
+      { text: '  → T4 Spain trip → T5', isDim: true },
+      { text: '  ○ T5 Places in Spain', isDim: false },
+      { text: '    ✦ T7 Ferries', isDim: false },
+      { text: '  → T6 Spain, again → T5', isDim: true },
+    ],
+    files: { [LOG]: log([...before, a.nodeMerged()]) },
+  })
+})

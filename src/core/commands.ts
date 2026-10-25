@@ -87,3 +87,11 @@ export type Command =
       parent: string
       source: MoveSource
     }
+  | {
+      type: 'MergeNodes'
+      at: string
+      from: string[]
+      into: string
+      source: NodeSource
+      reason: string
+    }

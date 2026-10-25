@@ -1,4 +1,4 @@
-import { expect, test } from 'claude-code/testing'
+import { describe, expect, test } from 'claude-code/testing'
 
 import { a } from './a.ts'
 import type { Event } from './events.ts'
@@ -14,4 +14,26 @@ test('an event this build does not know changes nothing', () => {
   } as unknown as Event
 
   expect(fold([a.goalOpened(), unknown])).toEqual(fold([a.goalOpened()]))
+})
+
+describe('a NodeMerged this build cannot read changes nothing', () => {
+  const given = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T1' }),
+    a.threadOpened({ thread: 'T4' }),
+  ]
+  const unreadable: { name: string; from: unknown }[] = [
+    { name: 'with no from', from: undefined },
+    { name: 'with from a string, not a list', from: 'T4' },
+  ]
+  for (const { name, from } of unreadable) {
+    test(`a merge ${name}`, () => {
+      const merged = {
+        ...a.nodeMerged({ into: 'T1' }),
+        from,
+      } as unknown as Event
+
+      expect(fold([...given, merged])).toEqual(fold(given))
+    })
+  }
 })

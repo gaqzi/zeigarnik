@@ -26,6 +26,7 @@ const NODE_MARK: Record<Node['status'], string> = {
   open: '○',
   resolved: '✓',
   cancelled: '✗',
+  merged: '→',
 }
 
 const paneMark = (node: Node, state: State): string =>
@@ -48,7 +49,9 @@ const nodeLine = ({ node, depth }: Placed, mark: string): Line => {
       ? ` → ${node.outcome}`
       : node.status === 'cancelled' && node.reason !== undefined
         ? ` · ${node.reason}`
-        : ''
+        : node.status === 'merged'
+          ? ` → ${node.into}`
+          : ''
 
   return {
     text: `${'  '.repeat(depth)}${mark} ${node.id} ${node.title}${end}`,
@@ -104,6 +107,22 @@ const replyLines = (state: State, { node, depth }: Placed): Line[] =>
       }
     })
 
+// What was merged into a thread, in the order merged, one level under it.
+const mergedFromLines = (state: State, { node, depth }: Placed): Line[] => {
+  const from = state.merges
+    .filter(merge => merge.into === node.id)
+    .flatMap(merge => merge.from)
+
+  return from.length === 0
+    ? []
+    : [
+        {
+          text: `${'  '.repeat(depth + 1)}merged from ${from.join(', ')}`,
+          isOpen: false,
+        },
+      ]
+}
+
 const view = (state: State, linesOf: (one: Placed) => Line[]): Line[] => {
   if (state.goals.length === 0) return [{ text: 'No goal yet.', isOpen: false }]
   const actions =
@@ -140,6 +159,7 @@ export const overview = (state: State): Line[] =>
 export const fullView = (state: State): string => {
   const lines = view(state, one => [
     nodeLine(one, NODE_MARK[one.node.status]),
+    ...mergedFromLines(state, one),
     ...replyLines(state, one),
   ]).map(line => line.text)
   const written = state.handoff === undefined ? [] : ['', handoff(state)]
