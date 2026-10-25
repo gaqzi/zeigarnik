@@ -690,3 +690,45 @@ test('an untouched thread is new in the pane, with its line not dimmed', async (
     },
   })
 })
+
+test('a thread nested on the human’s word moves in the log and the pane, in ID order, and is no longer new', async ($, on) => {
+  const spain = a.threadOpened({ thread: 'T2', title: 'Places in Spain' })
+  const bus = a.threadOpened({ thread: 'T5', title: '2h bus?' })
+  const ferries = a.threadOpened({
+    thread: 'T6',
+    parent: 'T2',
+    title: 'Ferries',
+  })
+  const world = host(on, { [LOG]: log([a.goalOpened(), spain, bus, ferries]) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__node',
+    op: 'nest',
+    id: 'T5',
+    parent: 'T2',
+    source: 'chat',
+  })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+
+  expect({ answer, pane, files: world.files }).toEqual({
+    answer: { result: 'NodeMoved T5' },
+    pane: [
+      '○ G Pick a holiday',
+      '3 open · 0 closed',
+      '  ✦ T2 Places in Spain',
+      '    ○ T5 2h bus?',
+      '    ✦ T6 Ferries',
+    ],
+    files: {
+      [LOG]: log([
+        a.goalOpened(),
+        spain,
+        bus,
+        ferries,
+        a.nodeMoved({ node: 'T5', parent: 'T2', source: 'chat' }),
+      ]),
+    },
+  })
+})

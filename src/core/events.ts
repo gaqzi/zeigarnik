@@ -10,6 +10,9 @@ export type Source = 'chat' | 'dialog'
 // Who closed a node: the human in chat or the dialog, or Claude on its own.
 export type NodeSource = Source | 'claude'
 
+// Who moved a node: the human in chat, or Claude correcting itself.
+export type MoveSource = 'chat' | 'claude'
+
 export type Decision = { text: string; lasting: boolean }
 
 // The default sink: an action exported here is listed in the handoff for the
@@ -103,6 +106,13 @@ export type Event =
       node: string
       author: Owner
       text: string
+    }
+  | {
+      type: 'NodeMoved'
+      at: string
+      node: string
+      parent: string
+      source: MoveSource
     }
   | {
       type: 'HandoffWritten'

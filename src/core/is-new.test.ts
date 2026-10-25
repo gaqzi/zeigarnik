@@ -21,6 +21,16 @@ describe('a thread is new until the human has replied on it', () => {
       isNew: false,
     },
     {
+      name: 'it is open and the human nested it',
+      events: [a.nodeMoved({ node: 'T1', parent: 'G' })],
+      isNew: false,
+    },
+    {
+      name: 'it is open and Claude nested it',
+      events: [a.nodeMoved({ node: 'T1', parent: 'G', source: 'claude' })],
+      isNew: true,
+    },
+    {
       name: 'it is resolved and was never replied to',
       events: [a.threadResolved()],
       isNew: false,
@@ -35,7 +45,7 @@ describe('a thread is new until the human has replied on it', () => {
     test(`${row.isNew ? 'new' : 'not new'} when ${row.name}`, () => {
       const state = fold([a.goalOpened(), a.threadOpened(), ...row.events])
 
-      expect(isNew(state.nodes[0]!, state.replies)).toBe(row.isNew)
+      expect(isNew(state.nodes[0]!, state)).toBe(row.isNew)
     })
   }
 })

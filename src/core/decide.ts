@@ -2,6 +2,7 @@ import type { Command } from './commands.ts'
 import type { Event } from './events.ts'
 import type { Action, Goal, Node, State } from './evolve.ts'
 import { nextId } from './ids.ts'
+import { joinList } from './join-list.ts'
 import { type Child, stillOpenUnder } from './still-open.ts'
 
 // The rules live here and nowhere else (zg-kux). A command that would break
@@ -94,6 +95,27 @@ const findOpenNode = (
   return { node }
 }
 
+// A parent is the open goal or an open thread.
+const refuseParent = (
+  state: State,
+  goal: Goal,
+  parent: string,
+  fixes: { missing: string; closed: (target: Node) => string },
+): Decided | undefined => {
+  const target = state.nodes.find(node => node.id === parent)
+  if (parent !== goal.id && target === undefined) {
+    return refuse(`One parent: there is no thread ${parent}.`, fixes.missing)
+  }
+  if (target !== undefined && target.status !== 'open') {
+    return refuse(
+      `One parent: ${parent} is already ${target.status}.`,
+      fixes.closed(target),
+    )
+  }
+
+  return undefined
+}
+
 // Children close first: a parent is refused while any child is open.
 const refuseOpenChildren = (
   children: readonly Child[],
@@ -181,19 +203,12 @@ const decideOpenThread = (
     )
   }
   const { at, parent, title } = command
-  const found = state.nodes.find(node => node.id === parent)
-  if (parent !== goal.id && found === undefined) {
-    return refuse(
-      `One parent: there is no thread ${parent}.`,
-      openThreadsFix(state),
-    )
-  }
-  if (found !== undefined && found.status !== 'open') {
-    return refuse(
-      `One parent: ${parent} is already ${found.status}.`,
-      `Open it under ${parent}'s parent ${found.parent}, or under another open thread.`,
-    )
-  }
+  const blocked = refuseParent(state, goal, parent, {
+    missing: openThreadsFix(state),
+    closed: target =>
+      `Open it under ${parent}'s parent ${target.parent}, or under another open thread.`,
+  })
+  if (blocked !== undefined) return blocked
 
   return {
     events: [
@@ -273,6 +288,87 @@ const decideReplyToNode = (
   }
 
   return { events: [{ type: 'NodeReplied', at, node, author, text }] }
+}
+
+// Whether `id` sits anywhere below `ancestor`; a cycle in the log ends it.
+const isBelow = (state: State, id: string, ancestor: string): boolean => {
+  const seen = new Set<string>()
+  let current = state.nodes.find(node => node.id === id)
+  while (current !== undefined && !seen.has(current.id)) {
+    if (current.parent === ancestor) return true
+    seen.add(current.id)
+    current = state.nodes.find(node => node.id === current?.parent)
+  }
+
+  return false
+}
+
+// The parents nest would accept for a node: the open goal unless the node is
+// already under it, then the open threads outside its branch.
+const nestFix = (state: State, goal: Goal, moving: Node): string => {
+  const parents = [
+    ...(moving.parent === goal.id ? [] : [goal.id]),
+    ...openNodes(state)
+      .filter(
+        node =>
+          node.id !== moving.id &&
+          node.id !== moving.parent &&
+          !isBelow(state, node.id, moving.id),
+      )
+      .map(node => node.id),
+  ]
+  if (parents.length === 0) {
+    return `Leave ${moving.id} where it is: no other open parent can take it.`
+  }
+
+  return `Nest ${moving.id} under ${joinList(parents, 'or')}.`
+}
+
+const decideNestNode = (
+  state: State,
+  command: Command & { type: 'NestNode' },
+): Decided => {
+  const goal = openGoal(state)
+  if (goal === undefined) {
+    return refuse(
+      "One parent: a thread belongs to the open goal's tree, and no goal is open.",
+      'Open a goal first: the human starts one with /zg:open.',
+    )
+  }
+  const { at, node, parent, source } = command
+  const moving = state.nodes.find(one => one.id === node)
+  if (moving === undefined) {
+    return refuse(
+      `One parent: there is no thread ${node}.`,
+      openThreadsFix(state),
+    )
+  }
+  if (moving.status !== 'open') {
+    return refuse(
+      `One parent: ${node} is already ${moving.status}; a closed thread stays where it rolled up.`,
+      `Leave ${node} where it is; if it comes up again, open a new thread.`,
+    )
+  }
+  const fix = nestFix(state, goal, moving)
+  if (parent === node) {
+    return refuse("One parent: a thread can't be its own parent.", fix)
+  }
+  const blocked = refuseParent(state, goal, parent, {
+    missing: fix,
+    closed: () => fix,
+  })
+  if (blocked !== undefined) return blocked
+  if (isBelow(state, parent, node)) {
+    return refuse(
+      `One parent: ${parent} is under ${node}; a thread can't nest under its own descendant.`,
+      fix,
+    )
+  }
+  if (moving.parent === parent) {
+    return refuse(`One parent: ${node} is already under ${parent}.`, fix)
+  }
+
+  return { events: [{ type: 'NodeMoved', at, node, parent, source }] }
 }
 
 const decideCloseGoal = (
@@ -435,5 +531,7 @@ export const decide = (state: State, command: Command): Decided => {
       return decideCancelNode(state, command)
     case 'ReplyToNode':
       return decideReplyToNode(state, command)
+    case 'NestNode':
+      return decideNestNode(state, command)
   }
 }

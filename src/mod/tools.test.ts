@@ -48,6 +48,13 @@ const reply = (overrides: Input = {}) => ({
   text: 'no, two hours with the kids is a no',
   ...overrides,
 })
+const nest = (overrides: Input = {}) => ({
+  op: 'nest',
+  id: 'T5',
+  parent: 'T2',
+  source: 'chat',
+  ...overrides,
+})
 const closeGoal = (overrides: Input = {}) => ({
   as: 'achieved',
   source: 'chat',
@@ -187,6 +194,18 @@ describe('a tool call becomes', () => {
       command: a.cancelNode({ source: 'claude' }),
     },
     {
+      name: 'a thread nested under another on the human’s word',
+      tool: 'node',
+      input: nest(),
+      command: a.nestNode(),
+    },
+    {
+      name: 'a thread nested under the goal on Claude’s own word',
+      tool: 'node',
+      input: nest({ parent: 'G', source: 'claude' }),
+      command: a.nestNode({ parent: 'G', source: 'claude' }),
+    },
+    {
       name: 'a reply with its author and text',
       tool: 'node',
       input: reply(),
@@ -288,7 +307,19 @@ describe('a tool call missing what it needs is refused', () => {
         name: 'a node op zg has no name for',
         tool: 'node',
         input: cancel({ op: 'merge' }),
-        missing: 'node needs op: cancel or reply.',
+        missing: 'node needs op: cancel, reply or nest.',
+      },
+      {
+        name: 'a nest without its id',
+        tool: 'node',
+        input: nest({ id: undefined }),
+        missing: 'nest needs the id.',
+      },
+      {
+        name: 'a nest without its parent',
+        tool: 'node',
+        input: nest({ parent: undefined }),
+        missing: "nest needs the parent: the goal's ID or a thread's.",
       },
       {
         name: 'a reply without its id',
@@ -418,6 +449,21 @@ describe('a tool call whose source is absent or not chat or dialog is refused', 
         expect(toCommand(tool, input(source), AT)).toEqual({ missing })
       })
     }
+  }
+})
+
+describe('a tool call whose source is absent or not chat or claude is refused', () => {
+  const sources = [
+    { how: 'absent', source: undefined },
+    { how: 'dialog', source: 'dialog' },
+    { how: 'human', source: 'human' },
+  ]
+  for (const { how, source } of sources) {
+    test(`a thread nested with its source ${how}`, () => {
+      expect(toCommand('node', nest({ source }), AT)).toEqual({
+        missing: 'nest needs source: chat or claude.',
+      })
+    })
   }
 })
 

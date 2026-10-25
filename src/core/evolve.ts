@@ -1,4 +1,4 @@
-import type { Decision, Event, Owner } from './events.ts'
+import type { Decision, Event, MoveSource, Owner } from './events.ts'
 
 // The session as the events leave it: a fold, with no rules of its own.
 
@@ -31,6 +31,9 @@ export type Node = {
 
 export type Reply = { node: string; author: Owner; text: string; at: string }
 
+// Who moved a node; its new parent is on the node.
+export type Move = { node: string; source: MoveSource }
+
 export type Handoff = {
   next: string
   decisions: Decision[]
@@ -43,6 +46,7 @@ export type State = {
   nodes: Node[]
   // In log order; a reply's number is its place among its node's.
   replies: Reply[]
+  moves: Move[]
   handoff?: Handoff
   // False once anything happens after the handoff was written: it no longer
   // describes the session, and has to be written again.
@@ -55,6 +59,7 @@ export const initial: State = {
   actions: [],
   nodes: [],
   replies: [],
+  moves: [],
   handoffStands: false,
   isClosed: false,
 }
@@ -183,6 +188,11 @@ const happened = (state: State, event: Event): State => {
             at: event.at,
           },
         ],
+      }
+    case 'NodeMoved':
+      return {
+        ...setNode(state, event.node, { parent: event.parent }),
+        moves: [...state.moves, { node: event.node, source: event.source }],
       }
     case 'HandoffWritten':
       return {

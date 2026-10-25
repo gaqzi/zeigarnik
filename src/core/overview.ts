@@ -28,8 +28,8 @@ const NODE_MARK: Record<Node['status'], string> = {
   cancelled: '✗',
 }
 
-const paneMark = (node: Node, replies: State['replies']): string =>
-  isNew(node, replies) ? '✦' : NODE_MARK[node.status]
+const paneMark = (node: Node, state: State): string =>
+  isNew(node, state) ? '✦' : NODE_MARK[node.status]
 
 type Placed = { node: Node; depth: number }
 
@@ -133,7 +133,7 @@ const view = (state: State, linesOf: (one: Placed) => Line[]): Line[] => {
 
 // The pane lines: threads without what was said on them.
 export const overview = (state: State): Line[] =>
-  view(state, one => [nodeLine(one, paneMark(one.node, state.replies))])
+  view(state, one => [nodeLine(one, paneMark(one.node, state))])
 
 // What `show` answers: the overview with each thread's replies, and the
 // handoff when one is written.

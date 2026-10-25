@@ -74,6 +74,7 @@ export const a = {
     author: 'human',
     text: 'no, two hours with the kids is a no',
   }),
+  nodeMoved: event('NodeMoved', { node: 'T5', parent: 'T2', source: 'chat' }),
 
   openGoal: command('OpenGoal', { text: 'Pick a holiday' }),
   addAction: command('AddAction', {
@@ -118,4 +119,5 @@ export const a = {
     author: 'human',
     text: 'no, two hours with the kids is a no',
   }),
+  nestNode: command('NestNode', { node: 'T5', parent: 'T2', source: 'chat' }),
 }

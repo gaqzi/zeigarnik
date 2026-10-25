@@ -158,6 +158,170 @@ describe('one parent', () => {
       expect(when(given, command)).toEqual({ refusal: { reason, fix } })
     })
   }
+
+  const twoOpen = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T2' }),
+    a.threadOpened({ thread: 'T5' }),
+  ]
+
+  test('an open thread nests under another open thread', () => {
+    expect(when(twoOpen, a.nestNode())).toEqual({ events: [a.nodeMoved()] })
+  })
+
+  test('the goal is a valid parent: a thread moves up to it', () => {
+    const given = [...twoOpen, a.nodeMoved()]
+
+    expect(when(given, a.nestNode({ parent: 'G' }))).toEqual({
+      events: [a.nodeMoved({ parent: 'G' })],
+    })
+  })
+
+  test('a move records its source', () => {
+    expect(when(twoOpen, a.nestNode({ source: 'claude' }))).toEqual({
+      events: [a.nodeMoved({ source: 'claude' })],
+    })
+  })
+
+  const tree = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T1' }),
+    a.threadOpened({ thread: 'T2', parent: 'T1' }),
+    a.threadOpened({ thread: 'T3' }),
+    a.threadResolved({ thread: 'T3' }),
+  ]
+  const underSecondGoal = [
+    a.goalOpened(),
+    a.goalAchieved(),
+    a.goalOpened({ goal: 'G2' }),
+    a.threadOpened({ thread: 'T1', parent: 'G2' }),
+    a.threadOpened({ thread: 'T2', parent: 'T1' }),
+    a.threadOpened({ thread: 'T3', parent: 'G2' }),
+  ]
+  const leaveT1 = 'Leave T1 where it is: no other open parent can take it.'
+  const nestRefused: {
+    name: string
+    given: Event[]
+    command: Command
+    reason: string
+    fix: string
+  }[] = [
+    {
+      name: 'refuses a thread under its own descendant',
+      given: tree,
+      command: a.nestNode({ node: 'T1', parent: 'T2' }),
+      reason:
+        "One parent: T2 is under T1; a thread can't nest under its own descendant.",
+      fix: leaveT1,
+    },
+    {
+      name: 'refuses a thread under its own descendant at any depth',
+      given: [...tree, a.threadOpened({ thread: 'T4', parent: 'T2' })],
+      command: a.nestNode({ node: 'T1', parent: 'T4' }),
+      reason:
+        "One parent: T4 is under T1; a thread can't nest under its own descendant.",
+      fix: leaveT1,
+    },
+    {
+      name: 'refuses a thread as its own parent',
+      given: tree,
+      command: a.nestNode({ node: 'T1', parent: 'T1' }),
+      reason: "One parent: a thread can't be its own parent.",
+      fix: leaveT1,
+    },
+    {
+      name: 'refuses a resolved parent',
+      given: tree,
+      command: a.nestNode({ node: 'T2', parent: 'T3' }),
+      reason: 'One parent: T3 is already resolved.',
+      fix: 'Nest T2 under G.',
+    },
+    {
+      name: 'refuses to move a resolved thread',
+      given: tree,
+      command: a.nestNode({ node: 'T3', parent: 'T1' }),
+      reason:
+        'One parent: T3 is already resolved; a closed thread stays where it rolled up.',
+      fix: 'Leave T3 where it is; if it comes up again, open a new thread.',
+    },
+    {
+      name: 'refuses a parent that does not exist',
+      given: tree,
+      command: a.nestNode({ node: 'T2', parent: 'T9' }),
+      reason: 'One parent: there is no thread T9.',
+      fix: 'Nest T2 under G.',
+    },
+    {
+      name: 'names every parent that would take the thread, goal first',
+      given: [
+        ...tree,
+        a.threadOpened({ thread: 'T4' }),
+        a.threadOpened({ thread: 'T5' }),
+      ],
+      command: a.nestNode({ node: 'T2', parent: 'T9' }),
+      reason: 'One parent: there is no thread T9.',
+      fix: 'Nest T2 under G, T4 or T5.',
+    },
+    {
+      name: 'refuses a thread that does not exist',
+      given: tree,
+      command: a.nestNode({ node: 'T9', parent: 'T1' }),
+      reason: 'One parent: there is no thread T9.',
+      fix: 'The open threads are T1, T2.',
+    },
+    {
+      name: 'refuses the parent the thread is already under',
+      given: tree,
+      command: a.nestNode({ node: 'T2', parent: 'T1' }),
+      reason: 'One parent: T2 is already under T1.',
+      fix: 'Nest T2 under G.',
+    },
+    {
+      name: 'refuses a move when no goal is open',
+      given: [
+        a.goalOpened(),
+        a.threadOpened({ thread: 'T1' }),
+        a.threadOpened({ thread: 'T2' }),
+        a.goalAchieved(),
+      ],
+      command: a.nestNode({ node: 'T2', parent: 'T1' }),
+      reason:
+        "One parent: a thread belongs to the open goal's tree, and no goal is open.",
+      fix: 'Open a goal first: the human starts one with /zg:open.',
+    },
+    {
+      name: 'names the open goal by its ID',
+      given: underSecondGoal,
+      command: a.nestNode({ node: 'T2', parent: 'T9' }),
+      reason: 'One parent: there is no thread T9.',
+      fix: 'Nest T2 under G2 or T3.',
+    },
+    {
+      name: 'leaves out the goal a thread is already under',
+      given: underSecondGoal,
+      command: a.nestNode({ node: 'T1', parent: 'T9' }),
+      reason: 'One parent: there is no thread T9.',
+      fix: 'Nest T1 under T3.',
+    },
+  ]
+  for (const { name, given, command, reason, fix } of nestRefused) {
+    test(name, () => {
+      expect(when(given, command)).toEqual({ refusal: { reason, fix } })
+    })
+  }
+
+  test('a parent cycle elsewhere in the log does not hang the descendant check', () => {
+    const given = [
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T1' }),
+      a.threadOpened({ thread: 'T3', parent: 'T4' }),
+      a.threadOpened({ thread: 'T4', parent: 'T3' }),
+    ]
+
+    expect(when(given, a.nestNode({ node: 'T1', parent: 'T3' }))).toEqual({
+      events: [a.nodeMoved({ node: 'T1', parent: 'T3' })],
+    })
+  })
 })
 
 describe('an open action', () => {

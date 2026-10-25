@@ -316,7 +316,9 @@ reach it descends from it, so each goal has its own tree.
 An ongoing conversation that we are looking to close. It might be a yes/no
 question, a long exploration, or a sub-topic of one.
 
-- Has exactly one **parent** (the goal, another thread, or an option).
+- Has exactly one **parent** (the goal, another thread, or an option). While
+  it is open it can be nested under another open parent; a closed thread stays
+  where it rolled up.
 - Has a **history**: what you and Claude said about it, word for word, so you
   can reread later how it was settled. Claude's side is the part of each reply
   that addresses the thread.
@@ -511,13 +513,15 @@ goal. Nothing is left hanging.
 | See the structure | the pane: zg opens it when Claude Code starts, including `claude --resume`, shown once the terminal is 144 columns wide; `ctrl+x x` closes it until Claude Code next starts |
 | Reply to a node | `T4: …` in chat, or type in the pane |
 | Reply to several | several `T4:` blocks in one message |
-| Merge, nest or cancel nodes | in the pane, or `T4–T7 merge T5`, `T5 under T2`, `T4 cancel` in chat |
+| Nest or cancel nodes | `T5 under T2`, `T4 cancel` in chat |
 | Change the goal | `/zg:open <text>` again; Claude asks whether it's a revision or a replacement |
 | Revisit a thread | select it in the pane, or `T4` alone; Claude recaps |
 | See a thread's history | expand it in the pane |
-| See what's new | ✦ marks nodes you haven't written to yet |
+| See what's new | ✦ marks nodes you haven't written to yet; nesting one counts as writing to it |
 | Close the session | `/zg:close` |
 | Copy the handoff, to paste after `/clear` | `/zg:copy-handoff` |
+
+Later: merging (`T4–T7 merge T5`), and tidying from the pane.
 
 ## Configuration
 
@@ -563,15 +567,16 @@ and how to work on it, is in [docs/](docs/): [the design](docs/design.md),
 behind them.
 
 It isn't released yet. So far it covers the skeleton of the session loop:
-`/zg:open` with a goal, actions recorded as they come up and shown in the
-pane, `/zg:close` with the rules for closing, and a handoff that lists what to
-file by hand (there are no sinks yet). The goal, open threads and open actions
-come back after a compaction or a resume, and Claude gets a one-line index of
-what is open with every prompt. Threads exist too: Claude opens them under the
-goal or another thread and they show in the pane as a tree, and Claude closes
-them, resolved with an outcome or cancelled, each with the reason and whose
-words it is. Each thread keeps what both sides said about it, word for word,
-and `show` lists it under the thread; the pane doesn't show it yet. The pane
+`/zg:open` with a goal, actions recorded as they come up and shown in the pane,
+`/zg:close` with the rules for closing, and a handoff that lists what to file by
+hand (there are no sinks yet). The goal, open threads and open actions come back
+after a compaction or a resume, and Claude gets a one-line index of what is open
+with every prompt. Threads exist too: Claude opens them under the goal or
+another thread and they show in the pane as a tree, and Claude closes them,
+resolved with an outcome or cancelled, each with the reason and whose words it
+is. Each thread keeps what both sides said about it, word for word, and `show`
+lists it under the thread; the pane doesn't show it yet. Claude can move a
+thread to another parent when you say so, or to fix its own mistake. The pane
 marks ✦ a thread you haven't written to yet. Decisions and criteria come next.
 To try it from a clone, run `script/bootstrap`, then start Claude Code with
 `claude --plugin-dir .` in the clone.

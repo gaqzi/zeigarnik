@@ -1,4 +1,10 @@
-import type { Decision, NodeSource, Owner, Source } from './events.ts'
+import type {
+  Decision,
+  MoveSource,
+  NodeSource,
+  Owner,
+  Source,
+} from './events.ts'
 
 // Every input becomes one of these, and decide checks it (zg-kux). What the
 // core needs from outside, such as the time, comes in the command.
@@ -73,4 +79,11 @@ export type Command =
       node: string
       author: Owner
       text: string
+    }
+  | {
+      type: 'NestNode'
+      at: string
+      node: string
+      parent: string
+      source: MoveSource
     }

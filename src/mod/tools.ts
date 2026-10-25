@@ -3,6 +3,7 @@ import type { RegisteredToolSpec } from 'claude-code'
 import type { Command } from '../core/commands.ts'
 import {
   HANDOFF,
+  type MoveSource,
   type NodeSource,
   type Owner,
   type Source,
@@ -20,6 +21,8 @@ const text = { type: 'string' } as const
 const SOURCES: Source[] = ['chat', 'dialog']
 const OWNERS: Owner[] = ['human', 'claude']
 const NODE_SOURCES: NodeSource[] = ['chat', 'dialog', 'claude']
+
+const MOVE_SOURCES: MoveSource[] = ['chat', 'claude']
 
 const CLOSED_BY =
   "source: whose words closed it: chat or dialog for the human's, claude when you close it yourself. reason: those words verbatim for the human's; with claude, what let you close it yourself: the condition the human set and that it was met, or your own fan-out research reported in this reply."
@@ -73,12 +76,13 @@ export const specs: RegisteredToolSpec[] = [
   },
   {
     name: 'node',
-    description: `Acts on any node (a thread so far). cancel closes it when it is no longer worth pursuing. ${CLOSED_BY} When a message addresses a thread, reply: author human with their words exactly as written in their message, author claude with your own part that addresses it; one reply per thread per message.`,
+    description: `Acts on any node (a thread so far). cancel closes it when it is no longer worth pursuing. ${CLOSED_BY} nest moves it under parent when the human says it belongs elsewhere, or when you put it in the wrong place yourself; say so in your reply. source: chat for the human's words, claude for your own correction. When a message addresses a thread, reply: author human with their words exactly as written in their message, author claude with your own part that addresses it; one reply per thread per message.`,
     inputSchema: {
       type: 'object',
       properties: {
-        op: { enum: ['cancel', 'reply'] },
+        op: { enum: ['cancel', 'reply', 'nest'] },
         id: text,
+        parent: { ...text, description: 'nest: G… or T…' },
         author: { enum: OWNERS },
         text: { ...text, description: 'reply: what was said' },
         source: { enum: NODE_SOURCES },
@@ -260,8 +264,23 @@ export const toCommand = (
         if (said === undefined) return { missing: 'reply needs the text.' }
         return { type: 'ReplyToNode', at, node: id, author, text: said }
       }
+      if (input.op === 'nest') {
+        const id = str(input, 'id')
+        if (id === undefined) return { missing: 'nest needs the id.' }
+        const parent = str(input, 'parent')
+        if (parent === undefined) {
+          return {
+            missing: "nest needs the parent: the goal's ID or a thread's.",
+          }
+        }
+        const source = MOVE_SOURCES.find(one => one === input.source)
+        if (source === undefined) {
+          return { missing: 'nest needs source: chat or claude.' }
+        }
+        return { type: 'NestNode', at, node: id, parent, source }
+      }
       if (input.op !== 'cancel') {
-        return { missing: 'node needs op: cancel or reply.' }
+        return { missing: 'node needs op: cancel, reply or nest.' }
       }
       const closed = closedBy('cancel', input)
       if ('missing' in closed) return closed
