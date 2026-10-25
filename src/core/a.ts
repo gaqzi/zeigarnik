@@ -161,4 +161,11 @@ export const a = {
     source: 'chat',
     reason: 'Paphos then, the 20 min transfer settles it',
   }),
+  recordDecision: command('RecordDecision', {
+    parent: 'G',
+    title: 'Which holiday do we book?',
+    choice: 'Greek village',
+    source: 'chat',
+    reason: 'Paphos then, the 20 min transfer settles it',
+  }),
 }

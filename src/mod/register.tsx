@@ -94,7 +94,7 @@ export const register: Register = on => {
             .filter(part => part !== '')
             .join(' '),
         )
-        .join('\n'),
+        .join(', '),
     }
   })
 

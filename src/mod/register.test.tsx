@@ -1456,3 +1456,80 @@ test('cancelling a decision with an open thread under an option is refused and t
     },
   })
 })
+
+// Recording a realization in one call (zg-bam.5.3).
+
+const transferBus = a.threadOpened({ thread: 'T5', title: '2h bus?' })
+const TRANSFER_WORDS =
+  'no, two hours with the kids is a no. Keep transfers under 30 min.'
+
+const recordedEvents = [
+  {
+    type: 'DecisionOpened',
+    at: AT,
+    decision: 'D2',
+    parent: 'T5',
+    title: 'How long may the transfer be?',
+  },
+  {
+    type: 'OptionAdded',
+    at: AT,
+    option: 'D2.1',
+    decision: 'D2',
+    title: 'transfers ≤ 30 min',
+  },
+  a.decisionMade({
+    decision: 'D2',
+    option: 'D2.1',
+    reason: TRANSFER_WORDS,
+  }),
+]
+
+const recordedGiven = [a.goalOpened(), transferBus, decisionOpened]
+
+const recordCall = {
+  tool: 'mcp__zg__decision',
+  op: 'record',
+  parent: 'T5',
+  title: 'How long may the transfer be?',
+  choice: 'transfers ≤ 30 min',
+  source: 'chat',
+  reason: TRANSFER_WORDS,
+} as const
+
+test('a record appends the opened decision, its option and the pick in that order and names them', async ($, on) => {
+  const world = host(on, { [LOG]: log(recordedGiven) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call(recordCall)
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: {
+      result: 'DecisionOpened D2, OptionAdded D2.1, DecisionMade D2',
+    },
+    files: { [LOG]: log([...recordedGiven, ...recordedEvents]) },
+  })
+})
+
+test('a recorded decision shows dimmed under its thread with its pick, and the thread stays open', async ($, on) => {
+  host(on, { [LOG]: log(recordedGiven) })
+  await $.session.start(START)
+  await $.tool.call(recordCall)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => ({
+    text: text.text,
+    isDim: text.props.dimColor,
+  }))
+
+  expect(pane).toEqual([
+    { text: '○ G Pick a holiday', isDim: false },
+    { text: '2 open · 2 closed', isDim: false },
+    { text: '  ✦ T5 2h bus?', isDim: false },
+    {
+      text: '    ✓ D2 How long may the transfer be? → D2.1 transfers ≤ 30 min',
+      isDim: true,
+    },
+    { text: '  ✦ D1 Which holiday do we book?', isDim: false },
+  ])
+})

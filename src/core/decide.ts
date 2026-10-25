@@ -1,6 +1,12 @@
 import type { Command } from './commands.ts'
 import type { Event } from './events.ts'
-import type { Action, Goal, Node, State } from './evolve.ts'
+import {
+  type Action,
+  type Goal,
+  type Node,
+  type State,
+  evolve,
+} from './evolve.ts'
 import { type Holder, holds } from './containment.ts'
 import { nextId, nextOptionId } from './ids.ts'
 import { joinList } from './join-list.ts'
@@ -395,7 +401,7 @@ const decideOpenDecision = (
   const target = state.nodes.find(node => node.id === parent)
   if (parent !== goal.id && target === undefined) {
     return refuse(
-      `One parent: there is no node ${parent}.`,
+      `There is no node ${parent}.`,
       openParentsFix(state, goal, 'decision'),
     )
   }
@@ -1007,6 +1013,49 @@ const decideCloseSession = (
   }
 }
 
+// A realization recorded in one step: the decision is opened, given its one
+// option and decided, each step checked on the state the one before left.
+const decideRecordDecision = (
+  state: State,
+  command: Command & { type: 'RecordDecision' },
+): Decided => {
+  const { at, parent, title, choice, source, reason } = command
+  const opened = decideOpenDecision(state, {
+    type: 'OpenDecision',
+    at,
+    parent,
+    title,
+  })
+  if ('refusal' in opened) return opened
+  const withDecision = opened.events.reduce(evolve, state)
+  // Opening a decision yields exactly one DecisionOpened.
+  const [opening] = opened.events as [
+    Extract<Event, { type: 'DecisionOpened' }>,
+  ]
+  const decision = opening.decision
+  const added = decideAddOption(withDecision, {
+    type: 'AddOption',
+    at,
+    decision,
+    title: choice,
+  })
+  if ('refusal' in added) return added
+  const withOption = added.events.reduce(evolve, withDecision)
+  // Adding an option yields exactly one OptionAdded.
+  const [adding] = added.events as [Extract<Event, { type: 'OptionAdded' }>]
+  const made = decideMakeDecision(withOption, {
+    type: 'MakeDecision',
+    at,
+    decision,
+    option: adding.option,
+    source,
+    reason,
+  })
+  if ('refusal' in made) return made
+
+  return { events: [...opened.events, ...added.events, ...made.events] }
+}
+
 export const decide = (state: State, command: Command): Decided => {
   if (state.isClosed) {
     return refuse(
@@ -1065,6 +1114,8 @@ export const decide = (state: State, command: Command): Decided => {
       return decideAddOption(state, command)
     case 'MakeDecision':
       return decideMakeDecision(state, command)
+    case 'RecordDecision':
+      return decideRecordDecision(state, command)
     case 'ResolveThread':
       return decideResolveThread(state, command)
     case 'CancelNode':

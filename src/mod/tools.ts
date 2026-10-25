@@ -77,16 +77,17 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: 'decision',
     description:
-      "Records a decision: a choice the human has to make. open one when a choice comes up, naming the choice as the title (parent: the goal, a thread or an option). option adds a candidate as it is named, numbered under the decision (D1.1). A candidate that needs exploring gets a thread under its option. A question that ends with an answer is a thread, not a decision. Dropping an option is node cancel. decide: id is the decision, option the ID of the option picked, only on the human's words: source chat or dialog, reason their words on why, verbatim, hedges included. A dialog pick alone isn't enough: ask why in chat and record those words with source chat. Never decide on your own judgment: propose and wait.",
+      "Records a decision: a choice the human has to make. open one when a choice comes up, naming the choice as the title (parent: the goal, a thread or an option). option adds a candidate as it is named, numbered under the decision (D1.1). A candidate that needs exploring gets a thread under its option. A question that ends with an answer is a thread, not a decision. Dropping an option is node cancel. decide: id is the decision, option the ID of the option picked, only on the human's words: source chat or dialog, reason their words on why, verbatim, hedges included. A dialog pick alone isn't enough: ask why in chat and record those words with source chat. Never decide on your own judgment: propose and wait. record: when the human states a choice outright, it opens the decision (parent, title the choice to make, as for open), adds the option (choice the option picked) and decides it in one step (source, reason as for decide). open, option and decide are for a choice still being worked.",
     inputSchema: {
       type: 'object',
       properties: {
-        op: { enum: ['open', 'option', 'decide'] },
-        parent: { ...text, description: 'open: G…, T… or D…' },
+        op: { enum: ['open', 'option', 'decide', 'record'] },
+        parent: { ...text, description: 'open, record: G…, T… or D…' },
         title: {
           ...text,
-          description: 'open: the choice; option: the candidate',
+          description: 'open, record: the choice; option: the candidate',
         },
+        choice: { ...text, description: 'record: the option picked' },
         id: { ...text, description: 'option, decide: D…' },
         option: { ...text, description: 'decide: the option picked, D….n' },
         source: { enum: SOURCES },
@@ -295,6 +296,45 @@ export const toCommand = (
         if (title === undefined) return { missing: 'option needs the title.' }
         return { type: 'AddOption', at, decision: id, title }
       }
+      if (input.op === 'record') {
+        const parent = str(input, 'parent')
+        if (parent === undefined) {
+          return {
+            missing:
+              "record needs the parent: the goal's ID, a thread's or an option's.",
+          }
+        }
+        const title = str(input, 'title')
+        if (title === undefined) {
+          return {
+            missing: 'record needs the title: the choice that was made.',
+          }
+        }
+        const choice = str(input, 'choice')
+        if (choice === undefined) {
+          return { missing: 'record needs the choice: what was decided.' }
+        }
+        const source = sourceOf(input)
+        if (source === undefined) {
+          return { missing: 'record needs source: chat or dialog.' }
+        }
+        const reason = str(input, 'reason')
+        if (reason === undefined) {
+          return {
+            missing:
+              "record needs the reason: the human's words on why, verbatim.",
+          }
+        }
+        return {
+          type: 'RecordDecision',
+          at,
+          parent,
+          title,
+          choice,
+          source,
+          reason,
+        }
+      }
       if (input.op === 'decide') {
         const id = str(input, 'id')
         if (id === undefined) return { missing: 'decide needs the id.' }
@@ -323,7 +363,7 @@ export const toCommand = (
         }
       }
       if (input.op !== 'open') {
-        return { missing: 'decision needs op: open, option or decide.' }
+        return { missing: 'decision needs op: open, option, decide or record.' }
       }
       const parent = str(input, 'parent')
       if (parent === undefined) {

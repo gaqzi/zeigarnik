@@ -69,6 +69,15 @@ export type Command =
       reason: string
     }
   | {
+      type: 'RecordDecision'
+      at: string
+      parent: string
+      title: string
+      choice: string
+      source: Source
+      reason: string
+    }
+  | {
       type: 'ResolveThread'
       at: string
       thread: string

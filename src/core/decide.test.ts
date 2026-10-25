@@ -570,7 +570,7 @@ describe('one parent', () => {
         name: 'a decision is refused under a parent that does not exist, naming the parents that would take it',
         given: table,
         command: a.openDecision({ parent: 'T9', title: 'X' }),
-        reason: 'One parent: there is no node T9.',
+        reason: 'There is no node T9.',
         fix: 'Open it under G, T1 or D1.1.',
       },
       {
@@ -585,6 +585,91 @@ describe('one parent', () => {
     for (const { name, given, command, reason, fix } of rows) {
       test(name, () => {
         expect(when(given, command)).toEqual({ refusal: { reason, fix } })
+      })
+    }
+  })
+
+  describe('record follows its three steps', () => {
+    const given = [
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T4' }),
+      a.threadResolved({ thread: 'T4' }),
+      a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+      a.decisionOpened(),
+    ]
+    const transfer = {
+      title: 'How long may the transfer be?',
+      choice: 'transfers ≤ 30 min',
+      reason:
+        'no, two hours with the kids is a no. Keep transfers under 30 min.',
+    }
+
+    test('a realization opens the decision, adds its one option and decides it, as one list at one time', () => {
+      expect(
+        when(given, a.recordDecision({ parent: 'T5', ...transfer })),
+      ).toEqual({
+        events: [
+          a.decisionOpened({
+            decision: 'D2',
+            parent: 'T5',
+            title: 'How long may the transfer be?',
+          }),
+          a.optionAdded({
+            option: 'D2.1',
+            decision: 'D2',
+            title: 'transfers ≤ 30 min',
+          }),
+          a.decisionMade({
+            decision: 'D2',
+            option: 'D2.1',
+            reason: transfer.reason,
+          }),
+        ],
+      })
+    })
+
+    const rows: {
+      name: string
+      given: Event[]
+      parent: string
+      reason: string
+      fix: string
+    }[] = [
+      {
+        name: 'a decision as the parent is refused as open is',
+        given,
+        parent: 'D1',
+        reason: 'One parent: D1 is a decision, and holds only its options.',
+        fix: "Open the decision under one of D1's options, or beside D1.",
+      },
+      {
+        name: 'a resolved thread as the parent is refused as open is',
+        given,
+        parent: 'T4',
+        reason: 'T4 is already resolved.',
+        fix: "Open it under T4's parent G, or under another open node.",
+      },
+      {
+        name: 'a parent that does not exist is refused as open is',
+        given,
+        parent: 'T9',
+        reason: 'There is no node T9.',
+        fix: 'Open it under G or T5.',
+      },
+      {
+        name: 'no open goal is refused as open is',
+        given: [],
+        parent: 'G',
+        reason:
+          "One parent: a decision belongs to the open goal's tree, and no goal is open.",
+        fix: 'Open a goal first: the human starts one with /zg:open.',
+      },
+    ]
+    for (const { name, given: events, parent, reason, fix } of rows) {
+      test(`${name}, and nothing is appended`, () => {
+        expect(when(events, a.recordDecision({ parent, ...transfer }))).toEqual(
+          { refusal: { reason, fix } },
+        )
       })
     }
   })
