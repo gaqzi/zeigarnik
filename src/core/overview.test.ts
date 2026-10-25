@@ -218,3 +218,66 @@ describe('threads merged into another', () => {
     )
   })
 })
+
+test('after a reply moves, the full view numbers each thread’s replies again, the moved one in log order on its new thread', () => {
+  const spain = '2026-10-22T10:00:02.000Z'
+  const state = fold([
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T3', title: 'Places in Spain' }),
+    a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+    a.nodeReplied({ node: 'T3', text: 'Spain is out' }),
+    a.nodeReplied({
+      node: 'T5',
+      text: 'two hours is too long',
+      at: '2026-10-22T10:00:01.000Z',
+    }),
+    a.nodeReplied({ node: 'T5', text: 'that was about Spain', at: spain }),
+    a.nodeReplied({
+      node: 'T5',
+      author: 'claude',
+      text: 'Noted',
+      at: '2026-10-22T10:00:03.000Z',
+    }),
+    a.replyMoved({ node: 'T5', reply: spain, to: 'T3' }),
+  ])
+
+  expect(fullView(state)).toBe(
+    [
+      '○ G Pick a holiday',
+      '2 open · 0 closed',
+      '  ○ T3 Places in Spain',
+      '    #1 human: Spain is out',
+      '    #2 human: that was about Spain',
+      '  ○ T5 2h bus?',
+      '    #1 human: two hours is too long',
+      '    #2 claude: Noted',
+    ].join('\n'),
+  )
+})
+
+test('a moved reply takes its place among the new thread’s replies by when it was said, not at the end', () => {
+  const spain = '2026-10-22T10:00:02.000Z'
+  const state = fold([
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T3', title: 'Places in Spain' }),
+    a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+    a.nodeReplied({ node: 'T5', text: 'that was about Spain', at: spain }),
+    a.nodeReplied({
+      node: 'T3',
+      text: 'Spain is back on',
+      at: '2026-10-22T10:00:05.000Z',
+    }),
+    a.replyMoved({ node: 'T5', reply: spain, to: 'T3' }),
+  ])
+
+  expect(fullView(state)).toBe(
+    [
+      '○ G Pick a holiday',
+      '2 open · 0 closed',
+      '  ○ T3 Places in Spain',
+      '    #1 human: that was about Spain',
+      '    #2 human: Spain is back on',
+      '  ○ T5 2h bus?',
+    ].join('\n'),
+  )
+})

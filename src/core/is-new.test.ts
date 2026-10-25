@@ -55,6 +55,33 @@ describe('a thread is new until the human has replied on it', () => {
       isNew: true,
     },
     {
+      name: 'a human reply was moved onto it',
+      events: [
+        a.threadOpened({ thread: 'T2' }),
+        a.nodeReplied({ node: 'T2' }),
+        a.replyMoved({ node: 'T2', to: 'T1' }),
+      ],
+      isNew: false,
+    },
+    {
+      name: 'its only human reply was moved to another thread',
+      events: [
+        a.threadOpened({ thread: 'T2' }),
+        a.nodeReplied({ node: 'T1' }),
+        a.replyMoved({ node: 'T1', to: 'T2' }),
+      ],
+      isNew: true,
+    },
+    {
+      name: 'a Claude reply was moved onto it',
+      events: [
+        a.threadOpened({ thread: 'T2' }),
+        a.nodeReplied({ node: 'T2', author: 'claude', text: 'Noted' }),
+        a.replyMoved({ node: 'T2', to: 'T1' }),
+      ],
+      isNew: true,
+    },
+    {
       name: 'it is resolved and was never replied to',
       events: [a.threadResolved()],
       isNew: false,

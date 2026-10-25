@@ -1,6 +1,7 @@
 import type { Action, Goal, Node, State } from './evolve.ts'
 import { handoff } from './handoff.ts'
 import { isNew } from './is-new.ts'
+import { repliesOn } from './replies-on.ts'
 
 // The full view of the session, line by line: `show` sends Claude all of it
 // on request, and the pane draws a subset (zg-zo2), except that the pane also
@@ -95,17 +96,15 @@ const actionLine = (action: Action): Line => {
 // A thread's replies, numbered from 1 in log order, one level under its line;
 // a reply's later lines sit under its text.
 const replyLines = (state: State, { node, depth }: Placed): Line[] =>
-  state.replies
-    .filter(reply => reply.node === node.id)
-    .map((reply, index) => {
-      const prefix = `${'  '.repeat(depth + 1)}#${index + 1} ${reply.author}: `
-      const indent = ' '.repeat(prefix.length)
+  repliesOn(state, node.id).map(({ ordinal, reply }) => {
+    const prefix = `${'  '.repeat(depth + 1)}#${ordinal} ${reply.author}: `
+    const indent = ' '.repeat(prefix.length)
 
-      return {
-        text: prefix + reply.text.replaceAll('\n', `\n${indent}`),
-        isOpen: false,
-      }
-    })
+    return {
+      text: prefix + reply.text.replaceAll('\n', `\n${indent}`),
+      isOpen: false,
+    }
+  })
 
 // What was merged into a thread, in the order merged, one level under it.
 const mergedFromLines = (state: State, { node, depth }: Placed): Line[] => {

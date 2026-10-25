@@ -81,6 +81,7 @@ export const a = {
     source: 'chat',
     reason: 'T4–T7 are the same as T5',
   }),
+  replyMoved: event('ReplyMoved', { node: 'T5', reply: AT, to: 'T3' }),
 
   openGoal: command('OpenGoal', { text: 'Pick a holiday' }),
   addAction: command('AddAction', {
@@ -132,4 +133,5 @@ export const a = {
     source: 'chat',
     reason: 'T4–T7 are the same as T5',
   }),
+  moveReply: command('MoveReply', { node: 'T5', to: 'T3' }),
 }

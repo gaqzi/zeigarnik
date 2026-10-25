@@ -114,6 +114,10 @@ export type Event =
       parent: string
       source: MoveSource
     }
+  // `reply` is the `at` of the NodeReplied that moves. A node's replies never
+  // share an at, each being its own tool call; a move could bring two
+  // together, and decide refuses it.
+  | { type: 'ReplyMoved'; at: string; node: string; reply: string; to: string }
   | {
       type: 'NodeMerged'
       at: string

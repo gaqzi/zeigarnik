@@ -516,6 +516,7 @@ goal. Nothing is left hanging.
 | Reply to a node | `T4: …` in chat, or type in the pane |
 | Reply to several | several `T4:` blocks in one message |
 | Merge, nest or cancel nodes | `T4–T7 merge T5`, `T5 under T2`, `T4 cancel` in chat |
+| Move a reply to the right thread | `T5 #2 to T3` in chat; without a number, the latest reply moves |
 | Change the goal | `/zg:open <text>` again; Claude asks whether it's a revision or a replacement |
 | Revisit a thread | select it in the pane, or `T4` alone; Claude recaps |
 | See a thread's history | expand it in the pane |
@@ -579,7 +580,8 @@ resolved with an outcome or cancelled, each with the reason and whose words it
 is. Each thread keeps what both sides said about it, word for word, and `show`
 lists it under the thread; the pane doesn't show it yet. Claude can move a
 thread to another parent when you say so, or to fix its own mistake, and
-merge threads that turned out to be the same into one when you say so. The
-pane marks ✦ a thread you haven't written to yet. Decisions and criteria come
-next. To try it from a clone, run `script/bootstrap`, then start Claude Code with
+merge threads that turned out to be the same into one when you say so, and it
+can move a reply it put on the wrong thread. The pane marks ✦ a thread you
+haven't written to yet. Decisions and criteria come next. To try it from a
+clone, run `script/bootstrap`, then start Claude Code with
 `claude --plugin-dir .` in the clone.

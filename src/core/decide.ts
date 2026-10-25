@@ -3,6 +3,7 @@ import type { Event } from './events.ts'
 import type { Action, Goal, Node, State } from './evolve.ts'
 import { nextId } from './ids.ts'
 import { joinList } from './join-list.ts'
+import { repliesOn } from './replies-on.ts'
 import { type Child, stillOpenUnder } from './still-open.ts'
 
 // The rules live here and nowhere else (zg-kux). A command that would break
@@ -86,7 +87,7 @@ const refuseNotOpen = (
   return node.status === 'open' ? undefined : closed(node)
 }
 
-// Closing a node names one that exists and is still open.
+// A command that acts on a node names one that exists and is still open.
 const findOpenNode = (
   state: State,
   id: string,
@@ -428,6 +429,68 @@ const decideMergeNodes = (
   return { events: [{ type: 'NodeMerged', at, from, into, source, reason }] }
 }
 
+const decideMoveReply = (
+  state: State,
+  command: Command & { type: 'MoveReply' },
+): Decided => {
+  const { at, node, to } = command
+  const source = state.nodes.find(one => one.id === node)
+  if (source === undefined) {
+    return refuse(`There is no thread ${node}.`, openThreadsFix(state))
+  }
+  const sourceBlocked = refuseNotOpen(source, closed =>
+    refuse(
+      `${node} is already ${closed.status}.`,
+      'A closed thread keeps its replies; reply on the right thread with the words instead.',
+    ),
+  )
+  if (sourceBlocked !== undefined) return sourceBlocked
+  const found = findOpenNode(state, to)
+  if ('refusal' in found) return found
+  const replies = repliesOn(state, node)
+  if (replies.length === 0) {
+    return refuse(
+      `${node} has no replies.`,
+      "Name the thread that holds the reply as id; show lists each thread's replies.",
+    )
+  }
+  const ordinal = command.ordinal ?? replies.length
+  const moving = replies[ordinal - 1]
+  if (moving === undefined) {
+    return refuse(
+      `${node} has ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}, none numbered ${ordinal}.`,
+      `Pass an ordinal from 1 to ${replies.length}, as show numbers them, or leave it out for the latest.`,
+    )
+  }
+  const twin = replies.find(
+    one => one.ordinal !== ordinal && one.reply.at === moving.reply.at,
+  )
+  if (twin !== undefined) {
+    const [low, high] = [twin.ordinal, ordinal].sort((x, y) => x - y)
+    return refuse(
+      `${node}'s replies #${low} and #${high} were recorded at the same moment, so zg can't tell them apart.`,
+      'Leave them where they are; reply on the right thread with the words instead.',
+    )
+  }
+  if (node === to) {
+    return refuse(
+      `The reply is already on ${to}.`,
+      'Pass the thread the reply belongs on as to.',
+    )
+  }
+
+  if (repliesOn(state, to).some(one => one.reply.at === moving.reply.at)) {
+    return refuse(
+      `${to} already holds a reply recorded at the same moment as ${node}'s #${ordinal}, so zg couldn't tell them apart.`,
+      `Leave it where it is; reply on ${to} with the words instead.`,
+    )
+  }
+
+  return {
+    events: [{ type: 'ReplyMoved', at, node, reply: moving.reply.at, to }],
+  }
+}
+
 const decideCloseGoal = (
   state: State,
   command: Command & { type: 'CloseGoal' },
@@ -592,5 +655,7 @@ export const decide = (state: State, command: Command): Decided => {
       return decideNestNode(state, command)
     case 'MergeNodes':
       return decideMergeNodes(state, command)
+    case 'MoveReply':
+      return decideMoveReply(state, command)
   }
 }

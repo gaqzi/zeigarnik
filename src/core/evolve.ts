@@ -202,6 +202,15 @@ const happened = (state: State, event: Event): State => {
           },
         ],
       }
+    case 'ReplyMoved':
+      return {
+        ...state,
+        replies: state.replies.map(reply =>
+          reply.node === event.node && reply.at === event.reply
+            ? { ...reply, node: event.to }
+            : reply,
+        ),
+      }
     case 'NodeMoved':
       return {
         ...setNode(state, event.node, { parent: event.parent }),

@@ -95,3 +95,10 @@ export type Command =
       source: NodeSource
       reason: string
     }
+  | {
+      type: 'MoveReply'
+      at: string
+      node: string
+      ordinal?: number
+      to: string
+    }

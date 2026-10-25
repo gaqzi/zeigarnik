@@ -63,6 +63,12 @@ const merge = (overrides: Input = {}) => ({
   reason: 'T4–T7 are the same as T5',
   ...overrides,
 })
+const moveReply = (overrides: Input = {}) => ({
+  op: 'move_reply',
+  id: 'T5',
+  to: 'T3',
+  ...overrides,
+})
 const closeGoal = (overrides: Input = {}) => ({
   as: 'achieved',
   source: 'chat',
@@ -232,6 +238,18 @@ describe('a tool call becomes', () => {
       command: a.mergeNodes({ from: ['T6', 'T4'] }),
     },
     {
+      name: 'the latest reply moved to another thread when no ordinal is given',
+      tool: 'node',
+      input: moveReply(),
+      command: a.moveReply(),
+    },
+    {
+      name: 'a reply moved by its ordinal as show lists it',
+      tool: 'node',
+      input: moveReply({ ordinal: 2 }),
+      command: a.moveReply({ ordinal: 2 }),
+    },
+    {
       name: 'a reply with its author and text',
       tool: 'node',
       input: reply(),
@@ -333,7 +351,7 @@ describe('a tool call missing what it needs is refused', () => {
         name: 'a node op zg has no name for',
         tool: 'node',
         input: cancel({ op: 'archive' }),
-        missing: 'node needs op: cancel, reply, nest or merge.',
+        missing: 'node needs op: cancel, reply, nest, merge or move_reply.',
       },
       {
         name: 'a merge without the words that folded the threads',
@@ -364,6 +382,39 @@ describe('a tool call missing what it needs is refused', () => {
         tool: 'node',
         input: merge({ into: undefined }),
         missing: 'merge needs into: the thread to fold them into.',
+      },
+      {
+        name: 'a move_reply without its id',
+        tool: 'node',
+        input: moveReply({ id: undefined }),
+        missing: 'move_reply needs the id.',
+      },
+      {
+        name: 'a move_reply without the thread to move to',
+        tool: 'node',
+        input: moveReply({ to: undefined }),
+        missing: 'move_reply needs to: the thread the reply belongs on.',
+      },
+      {
+        name: 'a move_reply whose ordinal is zero',
+        tool: 'node',
+        input: moveReply({ ordinal: 0 }),
+        missing:
+          "move_reply needs ordinal: a reply's number as show lists it, or none for the latest.",
+      },
+      {
+        name: 'a move_reply whose ordinal is not a whole number',
+        tool: 'node',
+        input: moveReply({ ordinal: 1.5 }),
+        missing:
+          "move_reply needs ordinal: a reply's number as show lists it, or none for the latest.",
+      },
+      {
+        name: 'a move_reply whose ordinal is a word',
+        tool: 'node',
+        input: moveReply({ ordinal: 'last' }),
+        missing:
+          "move_reply needs ordinal: a reply's number as show lists it, or none for the latest.",
       },
       {
         name: 'a nest without its id',

@@ -804,3 +804,55 @@ test('threads merged on the human’s word are logged, show as merged in the pan
     files: { [LOG]: log([...before, a.nodeMerged()]) },
   })
 })
+
+test('a reply moved to the right thread is logged and show lists it there, numbered again on both', async ($, on) => {
+  const spain = a.threadOpened({ thread: 'T3', title: 'Places in Spain' })
+  const bus = a.threadOpened({ thread: 'T5', title: '2h bus?' })
+  const said = a.nodeReplied({
+    node: 'T5',
+    author: 'claude',
+    text: 'Noted',
+    at: '2026-10-22T10:00:01.000Z',
+  })
+  const aboutSpain = a.nodeReplied({
+    node: 'T5',
+    text: 'that was about Spain',
+    at: '2026-10-22T10:00:02.000Z',
+  })
+  const before = [a.goalOpened(), spain, bus, said, aboutSpain]
+  const world = host(on, { [LOG]: log(before) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__node',
+    op: 'move_reply',
+    id: 'T5',
+    ordinal: 2,
+    to: 'T3',
+  })
+  const shown = await $.tool.call({ tool: 'mcp__zg__show' })
+
+  expect({ answer, shown, files: world.files }).toEqual({
+    answer: { result: 'ReplyMoved T5' },
+    shown: {
+      result: [
+        '○ G Pick a holiday',
+        '2 open · 0 closed',
+        '  ○ T3 Places in Spain',
+        '    #1 human: that was about Spain',
+        '  ○ T5 2h bus?',
+        '    #1 claude: Noted',
+      ].join('\n'),
+    },
+    files: {
+      [LOG]: log([
+        ...before,
+        a.replyMoved({
+          node: 'T5',
+          reply: '2026-10-22T10:00:02.000Z',
+          to: 'T3',
+        }),
+      ]),
+    },
+  })
+})

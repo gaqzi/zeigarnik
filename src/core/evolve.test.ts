@@ -37,3 +37,37 @@ describe('a NodeMerged this build cannot read changes nothing', () => {
     })
   }
 })
+
+describe('a moved reply', () => {
+  const first = '2026-10-22T10:00:01.000Z'
+  const second = '2026-10-22T10:00:02.000Z'
+  const third = '2026-10-22T10:00:03.000Z'
+  const given = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T3' }),
+    a.threadOpened({ thread: 'T5' }),
+    a.nodeReplied({ node: 'T5', author: 'claude', text: 'Noted', at: first }),
+    a.nodeReplied({ node: 'T5', text: 'that was about Spain', at: second }),
+    a.nodeReplied({ node: 'T5', author: 'claude', text: 'Right', at: third }),
+  ]
+
+  test('is on the new thread and keeps its place in log order', () => {
+    expect(fold([...given, a.replyMoved({ reply: second })]).replies).toEqual([
+      { node: 'T5', author: 'claude', text: 'Noted', at: first },
+      { node: 'T3', author: 'human', text: 'that was about Spain', at: second },
+      { node: 'T5', author: 'claude', text: 'Right', at: third },
+    ])
+  })
+
+  test('naming a reply that is not on the thread changes nothing', () => {
+    const moved = a.replyMoved({ reply: '2026-10-22T10:00:09.000Z' })
+
+    expect(fold([...given, moved])).toEqual(fold(given))
+  })
+
+  test('naming a reply on another thread changes nothing', () => {
+    const moved = a.replyMoved({ node: 'T3', reply: second, to: 'T5' })
+
+    expect(fold([...given, moved])).toEqual(fold(given))
+  })
+})

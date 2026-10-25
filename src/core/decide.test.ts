@@ -1069,3 +1069,232 @@ describe('a closed session', () => {
     })
   }
 })
+
+describe('moving a reply', () => {
+  const first = '2026-10-22T10:00:01.000Z'
+  const second = '2026-10-22T10:00:02.000Z'
+  const third = '2026-10-22T10:00:03.000Z'
+  const base = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T3', title: 'Places in Spain' }),
+    a.threadOpened({ thread: 'T4', title: 'Flights' }),
+    a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+  ]
+  const twoReplies = [
+    a.nodeReplied({ node: 'T5', author: 'claude', text: 'Noted', at: first }),
+    a.nodeReplied({ node: 'T5', text: 'that was about Spain', at: second }),
+  ]
+
+  test('the reply named by its ordinal moves, the event holding when it was said', () => {
+    const given = [...base, ...twoReplies]
+
+    expect(when(given, a.moveReply({ ordinal: 1 }))).toEqual({
+      events: [a.replyMoved({ reply: first })],
+    })
+  })
+
+  test('the latest reply moves when no ordinal is named', () => {
+    const given = [...base, ...twoReplies]
+
+    expect(when(given, a.moveReply())).toEqual({
+      events: [a.replyMoved({ reply: second })],
+    })
+  })
+
+  describe('ordinals re-derive after a move', () => {
+    const given = [
+      ...base,
+      ...twoReplies,
+      a.nodeReplied({ node: 'T5', author: 'claude', text: 'Right', at: third }),
+      a.replyMoved({ reply: second }),
+    ]
+
+    test('the reply that was number 3 is now number 2', () => {
+      expect(when(given, a.moveReply({ ordinal: 2 }))).toEqual({
+        events: [a.replyMoved({ reply: third })],
+      })
+    })
+
+    test('number 3 no longer exists', () => {
+      expect(when(given, a.moveReply({ ordinal: 3 }))).toEqual({
+        refusal: {
+          reason: 'T5 has 2 replies, none numbered 3.',
+          fix: 'Pass an ordinal from 1 to 2, as show numbers them, or leave it out for the latest.',
+        },
+      })
+    })
+  })
+
+  const refusedGiven = [
+    ...base.slice(0, 3),
+    a.threadResolved({ thread: 'T4' }),
+    a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+    a.threadOpened({ thread: 'T7', title: 'Spain again' }),
+    a.nodeMerged({ from: ['T7'], into: 'T5' }),
+    ...twoReplies,
+  ]
+  const openThreads = 'The open threads are T3, T5.'
+  const refused: {
+    name: string
+    command: Command
+    reason: string
+    fix: string
+  }[] = [
+    {
+      name: 'refuses an ordinal past the last reply',
+      command: a.moveReply({ ordinal: 7 }),
+      reason: 'T5 has 2 replies, none numbered 7.',
+      fix: 'Pass an ordinal from 1 to 2, as show numbers them, or leave it out for the latest.',
+    },
+    {
+      name: 'refuses a move to a resolved thread',
+      command: a.moveReply({ ordinal: 2, to: 'T4' }),
+      reason: 'T4 is already resolved.',
+      fix: openThreads,
+    },
+    {
+      name: 'refuses a move to a merged thread, naming where it went',
+      command: a.moveReply({ ordinal: 2, to: 'T7' }),
+      reason: 'T7 is already merged.',
+      fix: 'T7 was merged into T5; work on T5 instead.',
+    },
+    {
+      name: 'refuses a move to the thread the reply is already on',
+      command: a.moveReply({ ordinal: 2, to: 'T5' }),
+      reason: 'The reply is already on T5.',
+      fix: 'Pass the thread the reply belongs on as to.',
+    },
+    {
+      name: 'refuses a move from a thread with no replies',
+      command: a.moveReply({ node: 'T3', to: 'T5' }),
+      reason: 'T3 has no replies.',
+      fix: "Name the thread that holds the reply as id; show lists each thread's replies.",
+    },
+    {
+      name: 'refuses a move from a thread that does not exist',
+      command: a.moveReply({ node: 'T9' }),
+      reason: 'There is no thread T9.',
+      fix: openThreads,
+    },
+    {
+      name: 'refuses a move to a thread that does not exist',
+      command: a.moveReply({ to: 'T9' }),
+      reason: 'There is no thread T9.',
+      fix: openThreads,
+    },
+    {
+      name: 'names the missing source before the missing destination',
+      command: a.moveReply({ node: 'T9', to: 'T8' }),
+      reason: 'There is no thread T9.',
+      fix: openThreads,
+    },
+  ]
+  for (const { name, command, reason, fix } of refused) {
+    test(name, () => {
+      expect(when(refusedGiven, command)).toEqual({ refusal: { reason, fix } })
+    })
+  }
+
+  test('says reply, not replies, when the thread has one', () => {
+    const given = [...base, ...twoReplies.slice(0, 1)]
+
+    expect(when(given, a.moveReply({ ordinal: 2 }))).toEqual({
+      refusal: {
+        reason: 'T5 has 1 reply, none numbered 2.',
+        fix: 'Pass an ordinal from 1 to 1, as show numbers them, or leave it out for the latest.',
+      },
+    })
+  })
+
+  describe('a closed thread keeps its replies', () => {
+    const closedGiven = [
+      ...base,
+      a.nodeReplied({ node: 'T4', text: 'Flights are booked', at: first }),
+      a.threadResolved({ thread: 'T4' }),
+      a.threadOpened({ thread: 'T6', title: 'Ferries' }),
+      a.nodeReplied({ node: 'T6', text: 'Ferries too', at: first }),
+      a.nodeMerged({ from: ['T6'], into: 'T5' }),
+    ]
+    const closedRefused: {
+      name: string
+      command: Command
+      reason: string
+      fix: string
+    }[] = [
+      {
+        name: 'refuses to move a reply off a resolved thread',
+        command: a.moveReply({ node: 'T4', to: 'T3' }),
+        reason: 'T4 is already resolved.',
+        fix: 'A closed thread keeps its replies; reply on the right thread with the words instead.',
+      },
+      {
+        name: 'refuses to move a reply off a merged thread, naming where it went',
+        command: a.moveReply({ node: 'T6', to: 'T3' }),
+        reason: 'T6 is already merged.',
+        fix: 'T6 was merged into T5; work on T5 instead.',
+      },
+    ]
+    for (const { name, command, reason, fix } of closedRefused) {
+      test(name, () => {
+        expect(when(closedGiven, command)).toEqual({
+          refusal: { reason, fix },
+        })
+      })
+    }
+  })
+
+  describe('replies recorded at the same moment cannot be told apart', () => {
+    const fix =
+      'Leave them where they are; reply on the right thread with the words instead.'
+
+    test('refuses the reply when the next one shares its moment', () => {
+      const given = [
+        ...base,
+        a.nodeReplied({ node: 'T5', text: 'one', at: first }),
+        a.nodeReplied({ node: 'T5', text: 'two', at: first }),
+      ]
+
+      expect(when(given, a.moveReply({ ordinal: 1 }))).toEqual({
+        refusal: {
+          reason:
+            "T5's replies #1 and #2 were recorded at the same moment, so zg can't tell them apart.",
+          fix,
+        },
+      })
+    })
+
+    test('names the pair as the lower number first, whichever of them is moved', () => {
+      const given = [
+        ...base,
+        a.nodeReplied({ node: 'T5', text: 'one', at: first }),
+        a.nodeReplied({ node: 'T5', text: 'two', at: second }),
+        a.nodeReplied({ node: 'T5', text: 'three', at: second }),
+      ]
+
+      expect(when(given, a.moveReply({ ordinal: 3 }))).toEqual({
+        refusal: {
+          reason:
+            "T5's replies #2 and #3 were recorded at the same moment, so zg can't tell them apart.",
+          fix,
+        },
+      })
+    })
+
+    test('refuses the reply when the destination already holds one from the same moment', () => {
+      const given = [
+        ...base,
+        a.nodeReplied({ node: 'T3', text: 'Spain is out', at: second }),
+        a.nodeReplied({ node: 'T5', text: 'one', at: first }),
+        a.nodeReplied({ node: 'T5', text: 'two', at: second }),
+      ]
+
+      expect(when(given, a.moveReply({ ordinal: 2 }))).toEqual({
+        refusal: {
+          reason:
+            "T3 already holds a reply recorded at the same moment as T5's #2, so zg couldn't tell them apart.",
+          fix: 'Leave it where it is; reply on T3 with the words instead.',
+        },
+      })
+    })
+  })
+})

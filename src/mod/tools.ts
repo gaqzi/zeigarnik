@@ -76,12 +76,14 @@ export const specs: RegisteredToolSpec[] = [
   },
   {
     name: 'node',
-    description: `Acts on any node (a thread so far). cancel closes it when it is no longer worth pursuing. ${CLOSED_BY} nest moves it under parent when the human says it belongs elsewhere, or when you put it in the wrong place yourself; say so in your reply. source: chat for the human's words, claude for your own correction. merge folds the from threads that turned out to be the same into the thread into, when the human says so; source and reason as for closing. When a message addresses a thread, reply: author human with their words exactly as written in their message, author claude with your own part that addresses it; one reply per thread per message.`,
+    description: `Acts on any node (a thread so far). cancel closes it when it is no longer worth pursuing. ${CLOSED_BY} nest moves it under parent when the human says it belongs elsewhere, or when you put it in the wrong place yourself; say so in your reply. source: chat for the human's words, claude for your own correction. merge folds the from threads that turned out to be the same into the thread into, when the human says so; source and reason as for closing. When a message addresses a thread, reply: author human with their words exactly as written in their message, author claude with your own part that addresses it; one reply per thread per message. move_reply moves a reply that landed on the wrong thread to thread to: ordinal is its number as show lists it, the latest when left out.`,
     inputSchema: {
       type: 'object',
       properties: {
-        op: { enum: ['cancel', 'reply', 'nest', 'merge'] },
+        op: { enum: ['cancel', 'reply', 'nest', 'merge', 'move_reply'] },
         id: text,
+        ordinal: { type: 'integer', description: 'move_reply: reply number' },
+        to: { ...text, description: 'move_reply: T…' },
         parent: { ...text, description: 'nest: G… or T…' },
         from: {
           type: 'array',
@@ -314,8 +316,41 @@ export const toCommand = (
         }
         return { type: 'MergeNodes', at, from, into, source, reason }
       }
+      if (input.op === 'move_reply') {
+        const id = str(input, 'id')
+        if (id === undefined) return { missing: 'move_reply needs the id.' }
+        const to = str(input, 'to')
+        if (to === undefined) {
+          return {
+            missing: 'move_reply needs to: the thread the reply belongs on.',
+          }
+        }
+        const { ordinal } = input
+        if (
+          ordinal !== undefined &&
+          !(
+            typeof ordinal === 'number' &&
+            Number.isInteger(ordinal) &&
+            ordinal >= 1
+          )
+        ) {
+          return {
+            missing:
+              "move_reply needs ordinal: a reply's number as show lists it, or none for the latest.",
+          }
+        }
+        return {
+          type: 'MoveReply',
+          at,
+          node: id,
+          ...(ordinal === undefined ? {} : { ordinal }),
+          to,
+        }
+      }
       if (input.op !== 'cancel') {
-        return { missing: 'node needs op: cancel, reply, nest or merge.' }
+        return {
+          missing: 'node needs op: cancel, reply, nest, merge or move_reply.',
+        }
       }
       const closed = closedBy('cancel', input)
       if ('missing' in closed) return closed
