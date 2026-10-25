@@ -455,25 +455,34 @@ const openDecisionsFix = (state: State) => {
 const aKind = (node: Node) =>
   `${node.kind === 'option' ? 'an' : 'a'} ${node.kind}`
 
-// A command on a decision names one that exists and is still open; what
-// refusing a node that is no decision says is the caller's.
-const findOpenDecision = (
+// A command on a decision names one that exists and whose status it accepts;
+// what refusing a node that is no decision says is the caller's. An open
+// decision is always accepted.
+const findDecision = (
   state: State,
   id: string,
   notADecision: (found: Node) => { refusal: Refusal },
+  accepts: readonly Node['status'][],
 ): { node: Node } | { refusal: Refusal } => {
   const found = state.nodes.find(node => node.id === id)
   if (found === undefined) {
     return refuse(`There is no decision ${id}.`, openDecisionsFix(state))
   }
   if (found.kind !== 'decision') return notADecision(found)
+  if (accepts.includes(found.status)) return { node: found }
   const blocked = refuseNotOpen(found, closed =>
     refuse(`${id} is already ${closed.status}.`, openDecisionsFix(state)),
   )
-  if (blocked !== undefined) return blocked
 
-  return { node: found }
+  return blocked ?? { node: found }
 }
+
+// A command on a decision names one that exists and is still open.
+const findOpenDecision = (
+  state: State,
+  id: string,
+  notADecision: (found: Node) => { refusal: Refusal },
+) => findDecision(state, id, notADecision, ['open'])
 
 const decideAddOption = (
   state: State,
@@ -508,6 +517,63 @@ const decideAddOption = (
         ),
         decision,
         title,
+      },
+    ],
+  }
+}
+
+// Where a criterion may have come up: the goal or any node, closed or not.
+const knowsOrigin = (state: State, id: string): boolean =>
+  state.goals.some(goal => goal.id === id) ||
+  state.nodes.some(node => node.id === id)
+
+// A criterion belongs to an open or decided decision (one parent).
+const decideAddCriterion = (
+  state: State,
+  command: Command & { type: 'AddCriterion' },
+): Decided => {
+  const { at, on, text, origin } = command
+  if (state.goals.some(goal => goal.id === on)) {
+    return refuse(
+      'One parent: a criterion belongs to a decision, not the goal.',
+      'Open the decision it serves.',
+    )
+  }
+  const found = findDecision(
+    state,
+    on,
+    notADecision => {
+      const open = openDecisions(state).map(node => node.id)
+      const attach =
+        open.length === 0 ? '' : `, or attach it to ${joinList(open, 'or')}`
+
+      return refuse(
+        `One parent: a criterion belongs to a decision, and ${on} is ${aKind(notADecision)}.`,
+        `Open the decision it serves under ${on}${attach}.`,
+      )
+    },
+    ['open', 'decided'],
+  )
+  if ('refusal' in found) return found
+  if (origin !== undefined && !knowsOrigin(state, origin)) {
+    return refuse(
+      `There is no node ${origin}.`,
+      'Name the node it came up in, or leave origin out.',
+    )
+  }
+
+  return {
+    events: [
+      {
+        type: 'CriterionAdded',
+        at,
+        criterion: nextId(
+          'C',
+          state.criteria.map(criterion => criterion.id),
+        ),
+        on,
+        text,
+        ...(origin === undefined ? {} : { origin }),
       },
     ],
   }
@@ -1116,6 +1182,8 @@ export const decide = (state: State, command: Command): Decided => {
       return decideMakeDecision(state, command)
     case 'RecordDecision':
       return decideRecordDecision(state, command)
+    case 'AddCriterion':
+      return decideAddCriterion(state, command)
     case 'ResolveThread':
       return decideResolveThread(state, command)
     case 'CancelNode':

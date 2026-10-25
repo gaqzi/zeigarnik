@@ -78,6 +78,13 @@ export type Command =
       reason: string
     }
   | {
+      type: 'AddCriterion'
+      at: string
+      on: string
+      text: string
+      origin?: string
+    }
+  | {
       type: 'ResolveThread'
       at: string
       thread: string

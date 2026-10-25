@@ -2210,3 +2210,90 @@ describe('a decided decision with its options counts as closed', () => {
     })
   })
 })
+
+describe('a criterion attaches to a decision', () => {
+  const outline = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T2' }),
+    a.decisionOpened(),
+    a.decisionOpened({ decision: 'D2', title: 'Which flights?' }),
+    a.optionAdded({ option: 'D2.1', decision: 'D2', title: 'Direct' }),
+    a.decisionMade({ decision: 'D2', option: 'D2.1' }),
+    a.decisionOpened({ decision: 'D5', title: 'Which hotel?' }),
+    a.nodeCancelled({ node: 'D5' }),
+  ]
+  const fix = 'The open decisions are D1.'
+  const refused: {
+    name: string
+    command: Command
+    reason: string
+    fix: string
+  }[] = [
+    {
+      name: 'refuses a criterion on a thread',
+      command: a.addCriterion({ on: 'T2' }),
+      reason:
+        'One parent: a criterion belongs to a decision, and T2 is a thread.',
+      fix: 'Open the decision it serves under T2, or attach it to D1.',
+    },
+    {
+      name: 'refuses a criterion on the goal',
+      command: a.addCriterion({ on: 'G' }),
+      reason: 'One parent: a criterion belongs to a decision, not the goal.',
+      fix: 'Open the decision it serves.',
+    },
+    {
+      name: 'refuses a criterion on a cancelled decision',
+      command: a.addCriterion({ on: 'D5' }),
+      reason: 'D5 is already cancelled.',
+      fix,
+    },
+    {
+      name: 'refuses a criterion on a decision that does not exist',
+      command: a.addCriterion({ on: 'D9' }),
+      reason: 'There is no decision D9.',
+      fix,
+    },
+    {
+      name: 'refuses a criterion whose origin does not exist',
+      command: a.addCriterion({ origin: 'T9' }),
+      reason: 'There is no node T9.',
+      fix: 'Name the node it came up in, or leave origin out.',
+    },
+  ]
+  for (const { name, command, reason, fix } of refused) {
+    test(name, () => {
+      expect(when(outline, command)).toEqual({ refusal: { reason, fix } })
+    })
+  }
+
+  test('an open decision gains the criterion, numbered C1', () => {
+    expect(when(outline, a.addCriterion())).toEqual({
+      events: [a.criterionAdded()],
+    })
+  })
+
+  test('a decided decision gains the criterion that its sub-decisions inherit', () => {
+    expect(when(outline, a.addCriterion({ on: 'D2' }))).toEqual({
+      events: [a.criterionAdded({ on: 'D2' })],
+    })
+  })
+
+  test('the next criterion is numbered by nextId across the session', () => {
+    expect(
+      when([...outline, a.criterionAdded({ on: 'D2' })], a.addCriterion()),
+    ).toEqual({ events: [a.criterionAdded({ criterion: 'C2' })] })
+  })
+
+  test('a criterion keeps the origin it came up in, though that node is closed', () => {
+    expect(when(outline, a.addCriterion({ origin: 'D2' }))).toEqual({
+      events: [a.criterionAdded({ origin: 'D2' })],
+    })
+  })
+
+  test('a criterion may come up in the goal', () => {
+    expect(when(outline, a.addCriterion({ origin: 'G' }))).toEqual({
+      events: [a.criterionAdded({ origin: 'G' })],
+    })
+  })
+})

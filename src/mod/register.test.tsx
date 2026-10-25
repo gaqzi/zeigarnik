@@ -1533,3 +1533,189 @@ test('a recorded decision shows dimmed under its thread with its pick, and the t
     { text: '  ✦ D1 Which holiday do we book?', isDim: false },
   ])
 })
+
+// Criteria on a decision (zg-bam.5.4).
+
+const add = (on: string, text: string, origin?: string) =>
+  ({
+    tool: 'mcp__zg__criterion',
+    op: 'add',
+    on,
+    text,
+    ...(origin === undefined ? {} : { origin }),
+  }) as const
+
+const judging = [a.goalOpened(), decisionOpened, greekVillage]
+
+test('criteria added to a decision are logged with their IDs and drawn under it, before its options', async ($, on) => {
+  const world = host(on, { [LOG]: log(judging) })
+  await $.session.start(START)
+
+  const answers = [
+    await $.tool.call(add('D1', 'Europe')),
+    await $.tool.call(add('D1', 'sea ≥ 18°C')),
+  ]
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+
+  expect({ answers, files: world.files, pane }).toEqual({
+    answers: [{ result: 'CriterionAdded C1' }, { result: 'CriterionAdded C2' }],
+    files: {
+      [LOG]: log([
+        ...judging,
+        a.criterionAdded(),
+        a.criterionAdded({ criterion: 'C2', text: 'sea ≥ 18°C' }),
+      ]),
+    },
+    pane: [
+      '○ G Pick a holiday',
+      '2 open · 0 closed',
+      '  ✦ D1 Which holiday do we book?',
+      '      C1 Europe',
+      '      C2 sea ≥ 18°C',
+      '    ✦ D1.1 Greek village',
+    ],
+  })
+})
+
+const deepGiven = [
+  a.goalOpened(),
+  a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+  decisionOpened,
+  a.criterionAdded(),
+  a.criterionAdded({ criterion: 'C2', text: 'sea ≥ 18°C' }),
+  paphosOption,
+  a.decisionOpened({ decision: 'D3', parent: 'D1.3', title: 'Which flights?' }),
+  a.optionAdded({ option: 'D3.1', decision: 'D3', title: 'Direct' }),
+  a.decisionOpened({ decision: 'D7', parent: 'D3.1', title: 'Which seats?' }),
+  a.criterionAdded({ criterion: 'C3', on: 'D7', text: 'quiet' }),
+  a.threadOpened({ thread: 'T6', parent: 'D1.3', title: 'Check flights' }),
+  a.decisionOpened({ decision: 'D4', title: 'Which hotel?' }),
+  a.decisionOpened({ decision: 'D2', parent: 'T5', title: 'How long?' }),
+  a.optionAdded({
+    option: 'D2.1',
+    decision: 'D2',
+    title: 'transfers ≤ 30 min',
+  }),
+  a.decisionMade({ decision: 'D2', option: 'D2.1' }),
+]
+
+const deepWorld = async (...[$, on]: Parameters<Test>) => {
+  const world = host(on, { [LOG]: log(deepGiven) })
+  await $.session.start(START)
+  const answer = await $.tool.call(add('D1', 'transfer ≤ 30 min', 'D2'))
+
+  return { world, answer }
+}
+
+const INHERITED =
+  'C1 Europe (D1) · C2 sea ≥ 18°C (D1) · C4 transfer ≤ 30 min (D1, from D2)'
+
+test('a criterion found in a decided decision is logged with its origin', async ($, on) => {
+  const { world, answer } = await deepWorld($, on)
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: { result: 'CriterionAdded C4' },
+    files: {
+      [LOG]: log([
+        ...deepGiven,
+        a.criterionAdded({
+          criterion: 'C4',
+          text: 'transfer ≤ 30 min',
+          origin: 'D2',
+        }),
+      ]),
+    },
+  })
+})
+
+test('show for a decision deep under the options lists its own criteria, then those it inherits', async ($, on) => {
+  await deepWorld($, on)
+
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'D7' })
+
+  expect(shown).toEqual({
+    result: [
+      'D7 Decision: Which seats?',
+      '   Criteria: C3 quiet',
+      `             ${INHERITED}`,
+      '   Options:',
+    ].join('\n'),
+  })
+})
+
+test('show for a decision under an option lists the criteria it inherits', async ($, on) => {
+  await deepWorld($, on)
+
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'D3' })
+
+  expect(shown).toEqual({
+    result: [
+      'D3 Decision: Which flights?',
+      `   Criteria: ${INHERITED}`,
+      '   Options:',
+      '     ◇ D3.1 Direct',
+      '         D7 Which seats? ◆',
+    ].join('\n'),
+  })
+})
+
+test('show for a thread under an option lists the criteria in force', async ($, on) => {
+  await deepWorld($, on)
+
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'T6' })
+
+  expect(shown).toEqual({
+    result: [
+      'T6 Check flights',
+      'under D1.3',
+      'open',
+      `Criteria in force: ${INHERITED}`,
+    ].join('\n'),
+  })
+})
+
+test('show for a decision beside it lists no criteria', async ($, on) => {
+  await deepWorld($, on)
+
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'D4' })
+
+  expect(String((shown as { result: string }).result).split('\n')).toEqual([
+    'D4 Decision: Which hotel?',
+    '   Options:',
+  ])
+})
+
+test('show with the criterion’s ID says where it sits and came up', async ($, on) => {
+  await deepWorld($, on)
+
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'C4' })
+
+  expect(shown).toEqual({ result: 'C4 transfer ≤ 30 min (on D1, from D2)' })
+})
+
+test('a criterion on the goal is refused as an error and traced, and nothing is logged', async ($, on) => {
+  const world = host(on, { [LOG]: log(judging) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call(add('G', 'Europe'))
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: {
+      deny: 'One parent: a criterion belongs to a decision, not the goal. Open the decision it serves.',
+    },
+    files: {
+      [LOG]: log(judging),
+      [TRACE]: log([
+        {
+          type: 'CommandRefused',
+          at: AT,
+          command: { type: 'AddCriterion', at: AT, on: 'G', text: 'Europe' },
+          reason:
+            'One parent: a criterion belongs to a decision, not the goal.',
+          fix: 'Open the decision it serves.',
+        },
+      ]),
+    },
+  })
+})

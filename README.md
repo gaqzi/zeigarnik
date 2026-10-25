@@ -589,6 +589,8 @@ D1.2), explorations go in threads under an option, and you drop an option in
 your own words. When you pick an option, Claude decides the decision with your
 words: the option is chosen, the others not chosen, and the pane folds the
 decision into one line. `show` takes an item's ID (`show D1`) for everything
-about that item. Criteria come next. To try it from a
-clone, run `script/bootstrap`, then start Claude Code with
+about that item. Criteria exist too: Claude attaches what a decision is judged
+on to it as you state it, the decisions under its options inherit them, the
+pane lists them under the decision, and `show` lists the ones in force. To try
+it from a clone, run `script/bootstrap`, then start Claude Code with
 `claude --plugin-dir .` in the clone.

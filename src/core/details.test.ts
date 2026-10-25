@@ -289,3 +289,202 @@ describe('a cancelled decision’s details', () => {
     )
   })
 })
+
+describe('criteria in details', () => {
+  const holiday = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+  ]
+  const own = [
+    a.criterionAdded(),
+    a.criterionAdded({ criterion: 'C2', text: 'sea ≥ 18°C' }),
+  ]
+
+  test('a decision lists its own after the pick and before its options', () => {
+    const given = [...holiday, ...own, a.decisionMade()]
+
+    expect(details(fold(given), 'D1')).toEqual(
+      block(
+        false,
+        'D1 Decision: Which holiday do we book?',
+        '   Decision: D1.3 Paphos',
+        '   because (chat): Paphos then, the 20 min transfer settles it',
+        '   Criteria: C1 Europe · C2 sea ≥ 18°C',
+        '   Options:',
+        '     ✓ D1.3 Paphos',
+      ),
+    )
+  })
+
+  test('an own criterion says where it came up', () => {
+    const given = [
+      ...holiday,
+      a.criterionAdded({
+        criterion: 'C5',
+        text: 'transfer ≤ 30 min',
+        origin: 'D2',
+      }),
+    ]
+
+    expect(details(fold(given), 'D1')).toEqual(
+      block(
+        true,
+        'D1 Decision: Which holiday do we book?',
+        '   Criteria: C5 transfer ≤ 30 min (from D2)',
+        '   Options:',
+        '     ◇ D1.3 Paphos',
+      ),
+    )
+  })
+
+  test('a cancelled decision still lists its own', () => {
+    const given = [
+      ...holiday,
+      ...own.slice(0, 1),
+      a.nodeCancelled({ node: 'D1' }),
+    ]
+
+    expect(details(fold(given), 'D1')).toEqual(
+      block(
+        false,
+        'D1 Decision: Which holiday do we book?',
+        '   Cancelled',
+        '   because (chat): not going to Greece',
+        '   Criteria: C1 Europe',
+        '   Options:',
+        '     ✗ D1.3 Paphos · with D1',
+      ),
+    )
+  })
+
+  const deep = [
+    ...holiday,
+    a.criterionAdded(),
+    a.criterionAdded({ criterion: 'C2', text: 'sea ≥ 18°C' }),
+    a.criterionAdded({
+      criterion: 'C4',
+      text: 'transfer ≤ 30 min',
+      origin: 'D2',
+    }),
+    a.decisionOpened({
+      decision: 'D3',
+      parent: 'D1.3',
+      title: 'Which flights?',
+    }),
+    a.optionAdded({ option: 'D3.1', decision: 'D3', title: 'Direct' }),
+    a.decisionOpened({ decision: 'D7', parent: 'D3.1', title: 'Which seats?' }),
+    a.criterionAdded({ criterion: 'C3', on: 'D7', text: 'quiet' }),
+    a.threadOpened({ thread: 'T6', parent: 'D1.3', title: 'Check flights' }),
+    a.decisionOpened({ decision: 'D4', title: 'Which hotel?' }),
+  ]
+  const inherited =
+    'C1 Europe (D1) · C2 sea ≥ 18°C (D1) · C4 transfer ≤ 30 min (D1, from D2)'
+
+  test('a decision with its own and inherited lists the inherited on a second line, aligned under the first', () => {
+    expect(details(fold(deep), 'D7')).toEqual(
+      block(
+        true,
+        'D7 Decision: Which seats?',
+        '   Criteria: C3 quiet',
+        `             ${inherited}`,
+        '   Options:',
+      ),
+    )
+  })
+
+  test('a decision with only inherited lists them after Criteria:', () => {
+    expect(details(fold(deep), 'D3')).toEqual(
+      block(
+        true,
+        'D3 Decision: Which flights?',
+        `   Criteria: ${inherited}`,
+        '   Options:',
+        '     ◇ D3.1 Direct',
+        '         D7 Which seats? ◆',
+      ),
+    )
+  })
+
+  test('a decision with none has no Criteria line', () => {
+    expect(
+      details(fold(deep), 'D4').filter(line => line.text.includes('Criteria')),
+    ).toEqual([])
+  })
+
+  test('a thread lists those in force right after its status', () => {
+    expect(details(fold(deep), 'T6')).toEqual(
+      block(
+        true,
+        'T6 Check flights',
+        'under D1.3',
+        'open',
+        `Criteria in force: ${inherited}`,
+      ),
+    )
+  })
+
+  test('a resolved thread lists them after its outcome and reason, before its children', () => {
+    const given = [
+      ...deep,
+      a.threadOpened({ thread: 'T8', parent: 'T6', title: 'Which airline?' }),
+      a.threadResolved({ thread: 'T8', outcome: 'Aegean' }),
+      a.threadResolved({ thread: 'T6', outcome: 'direct' }),
+    ]
+
+    expect(details(fold(given), 'T6')).toEqual(
+      block(
+        false,
+        'T6 Check flights',
+        'under D1.3',
+        'resolved → direct',
+        'that covers it',
+        `Criteria in force: ${inherited}`,
+        'children: T8 ✓ Aegean',
+      ),
+    )
+  })
+
+  test('an option lists those in force', () => {
+    expect(details(fold(deep), 'D3.1')).toEqual(
+      block(
+        true,
+        'D3.1 Direct',
+        'under D3',
+        'open',
+        `Criteria in force: ${inherited}`,
+        'children: D7 ◆ Which seats?',
+      ),
+    )
+  })
+
+  test('a node with none in force has no such line', () => {
+    const given = [...holiday, a.threadOpened({ thread: 'T6' })]
+
+    expect(
+      details(fold(given), 'T6').filter(line => line.text.includes('Criteria')),
+    ).toEqual([])
+  })
+
+  test('a criterion is one line, with where it sits', () => {
+    expect(details(fold(deep), 'C1')).toEqual(block(true, 'C1 Europe (on D1)'))
+  })
+
+  test('a criterion says where it came up', () => {
+    expect(details(fold(deep), 'C4')).toEqual(
+      block(true, 'C4 transfer ≤ 30 min (on D1, from D2)'),
+    )
+  })
+
+  test('a criterion of a closed decision is dimmed', () => {
+    const given = [...holiday, ...own.slice(0, 1), a.decisionMade()]
+
+    expect(details(fold(given), 'C1')).toEqual(
+      block(false, 'C1 Europe (on D1)'),
+    )
+  })
+
+  test('an ID that names no criterion has no details', () => {
+    expect(details(fold(deep), 'C9')).toEqual([])
+  })
+})

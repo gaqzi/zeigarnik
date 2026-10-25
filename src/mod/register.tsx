@@ -88,6 +88,7 @@ export const register: Register = on => {
               : 'decision' in event
                 ? event.decision
                 : '',
+            'criterion' in event ? event.criterion : '',
             'node' in event ? event.node : '',
             'into' in event ? event.into : '',
           ]

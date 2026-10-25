@@ -108,6 +108,14 @@ export type Event =
       reason: string
     }
   | {
+      type: 'CriterionAdded'
+      at: string
+      criterion: string
+      on: string
+      text: string
+      origin?: string
+    }
+  | {
       type: 'ThreadResolved'
       at: string
       thread: string

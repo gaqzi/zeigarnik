@@ -1,4 +1,5 @@
-import type { Action, Node, State } from './evolve.ts'
+import type { Action, Criterion, Node, State } from './evolve.ts'
+import { criteriaOn, currentText, inForce, originOf } from './in-force.ts'
 import {
   actionArrow,
   bySiblingOrder,
@@ -40,12 +41,59 @@ const childrenLine = (state: State, parent: string): string[] => {
 const optional = (text: string | undefined): string[] =>
   text === undefined ? [] : [text]
 
+// A criterion on the decision being shown: "C5 transfer ≤ 30 min (from D2)".
+const ownCriterion = (criterion: Criterion): string => {
+  const origin = originOf(criterion)
+
+  return `${criterion.id} ${currentText(criterion)}${origin === undefined ? '' : ` (from ${origin})`}`
+}
+
+// A criterion from a decision above: "C4 transfer ≤ 30 min (D1, from D2)".
+const inheritedCriterion = (criterion: Criterion): string => {
+  const origin = originOf(criterion)
+
+  return `${criterion.id} ${currentText(criterion)} (${criterion.on}${origin === undefined ? '' : `, from ${origin}`})`
+}
+
+// What a node is judged on from the decisions above it, for any node.
+const inheritedCriteria = (state: State, id: string): string[] =>
+  inForce(state, id)
+    .filter(criterion => criterion.on !== id)
+    .map(inheritedCriterion)
+
+const CRITERIA_LABEL = '   Criteria: '
+
+// A decision's own criteria, even once it is closed, then the inherited ones
+// on a line of their own, aligned under the first.
+const decisionCriteriaLines = (state: State, decision: Node): string[] => {
+  const own = criteriaOn(state, decision.id).map(ownCriterion)
+  const inherited = inheritedCriteria(state, decision.id)
+  const lines = [own, inherited]
+    .filter(group => group.length > 0)
+    .map(group => group.join(' · '))
+
+  return lines.map((line, index) =>
+    index === 0
+      ? `${CRITERIA_LABEL}${line}`
+      : `${' '.repeat(CRITERIA_LABEL.length)}${line}`,
+  )
+}
+
+const criteriaInForceLines = (state: State, id: string): string[] => {
+  const inherited = inheritedCriteria(state, id)
+
+  return inherited.length === 0
+    ? []
+    : [`Criteria in force: ${inherited.join(' · ')}`]
+}
+
 const nodeDetails = (state: State, node: Node): Line[] =>
   [
     `${node.id} ${node.title}`,
     `under ${node.parent}`,
     withArrow(node.status, nodeArrow(node)),
     ...optional(node.reason),
+    ...criteriaInForceLines(state, node.id),
     ...childrenLine(state, node.id),
     ...optional(mergedFrom(state, node.id)),
     ...replyLines(state, node.id, '').map(line => line.text),
@@ -95,11 +143,25 @@ const decisionDetails = (state: State, decision: Node): Line[] =>
     `${decision.id} Decision: ${decision.title}`,
     ...pickLines(state, decision),
     ...cancelLines(decision),
+    ...decisionCriteriaLines(state, decision),
     '   Options:',
     ...childrenOf(state, decision.id).flatMap(option =>
       optionLines(state, option),
     ),
   ].map(text => ({ text, isOpen: decision.status === 'open' }))
+
+const criterionDetails = (state: State, criterion: Criterion): Line[] => {
+  const origin = originOf(criterion)
+  const where = `on ${criterion.on}${origin === undefined ? '' : `, from ${origin}`}`
+  const decision = state.nodes.find(node => node.id === criterion.on)
+
+  return [
+    {
+      text: `${criterion.id} ${currentText(criterion)} (${where})`,
+      isOpen: decision?.status === 'open',
+    },
+  ]
+}
 
 const actionDetails = (action: Action): Line[] =>
   [
@@ -113,6 +175,8 @@ export const details = (state: State, id: string): Line[] => {
   const node = state.nodes.find(one => one.id === id)
   if (node?.kind === 'decision') return decisionDetails(state, node)
   if (node !== undefined) return nodeDetails(state, node)
+  const criterion = state.criteria.find(one => one.id === id)
+  if (criterion !== undefined) return criterionDetails(state, criterion)
   const action = state.actions.find(one => one.id === id)
 
   return action === undefined ? [] : actionDetails(action)

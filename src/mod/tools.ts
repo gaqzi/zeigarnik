@@ -97,6 +97,21 @@ export const specs: RegisteredToolSpec[] = [
     },
   },
   {
+    name: 'criterion',
+    description:
+      "Records a criterion: what a decision is judged on. add one in a few words as soon as the human states or implies it, on the decision it serves; the decisions under its options inherit it. origin: the node where it came up; the human's words are already in that node's history.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        op: { enum: ['add'] },
+        on: { ...text, description: 'add: the decision, D…' },
+        text: { ...text, description: 'add: the criterion, briefly' },
+        origin: { ...text, description: 'add: where it came up' },
+      },
+      required: ['op'],
+    },
+  },
+  {
     name: 'node',
     description: `Acts on any node (a thread, decision or option). cancel closes it when it is no longer worth pursuing. ${CLOSED_BY} nest moves it under parent when the human says it belongs elsewhere, or when you put it in the wrong place yourself; say so in your reply. source: chat for the human's words, claude for your own correction. merge folds the from threads that turned out to be the same into the thread into, when the human says so; source and reason as for closing. reply records what is said to a node: when the human writes a line beginning with a node's ID and a colon (any case), a reply runs from it to the next such line or the message's end, paragraphs included; a range like T4–T6: gives each the same words; quoted or fenced lines are not replies. Reply author human with those words exactly, marker excluded, then author claude with your part about that node only; one of each per node per message, even when the words also close it (reply first, then close if they do). Text before the first marker is on no existing node: leave it, or open a thread for what it starts, with the text as its first human reply. move_reply moves a reply that landed on the wrong thread to thread to: ordinal is its number as show lists it, the latest when left out.`,
     inputSchema: {
@@ -377,6 +392,22 @@ export const toCommand = (
         return { missing: 'open needs the title: the choice to make.' }
       }
       return { type: 'OpenDecision', at, parent, title }
+    }
+    case 'criterion': {
+      if (input.op !== 'add') return { missing: 'criterion needs op: add.' }
+      const on = str(input, 'on')
+      if (on === undefined) {
+        return { missing: "add needs on: the decision's ID." }
+      }
+      const criterion = str(input, 'text')
+      if (criterion === undefined) return { missing: 'add needs the text.' }
+      return {
+        type: 'AddCriterion',
+        at,
+        on,
+        text: criterion,
+        ...optional('origin', str(input, 'origin')),
+      }
     }
     case 'node': {
       if (input.op === 'reply') {

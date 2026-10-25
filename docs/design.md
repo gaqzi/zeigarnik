@@ -21,7 +21,9 @@ on open, nest and merge (zg-8ld). `show` takes an optional item ID and answers
 that item's details, the same view the pane shows on selection. A decision is
 decided by one event; its options' chosen, not chosen and the cancel that
 follows a decision's own are derived in `evolve` from the decision's events
-(zg-ww9).
+(zg-ww9). A criterion is attached to an open or decided decision by
+`CriterionAdded`; the criteria in force for a node are derived in `inForce`
+from its ancestor decisions (criteria flow down, zg-ww9).
 
 ## How an input flows
 

@@ -1,4 +1,5 @@
 import type { Action, Goal, Node, State } from './evolve.ts'
+import { criteriaOn, currentText } from './in-force.ts'
 import { handoff } from './handoff.ts'
 import { isNew } from './is-new.ts'
 import { repliesOn } from './replies-on.ts'
@@ -211,6 +212,14 @@ const mergedFromLines = (state: State, { node, depth }: Placed): Line[] => {
     : [{ text: `${'  '.repeat(depth + 1)}${text}`, isOpen: false }]
 }
 
+// A decision's criteria, one per line before its options, two spaces deeper.
+const criteriaLines = (state: State, { node, depth }: Placed): Line[] =>
+  criteriaOn(state, node.id).map(criterion => ({
+    text: `${'  '.repeat(depth + 2)}${criterion.id} ${currentText(criterion)}`,
+    isOpen: node.status === 'open',
+    item: criterion.id,
+  }))
+
 // The count always covers every node; `folds` only shortens what is drawn.
 const view = (
   state: State,
@@ -248,6 +257,7 @@ const view = (
 export const overview = (state: State): Line[] =>
   view(state, collapsesChildren, one => [
     nodeLine(state, one, paneMark(one.node, state)),
+    ...(collapsesChildren(one.node) ? [] : criteriaLines(state, one)),
   ])
 
 // What `show` answers: the overview with each thread's replies, and the
@@ -255,6 +265,7 @@ export const overview = (state: State): Line[] =>
 export const fullView = (state: State): string => {
   const lines = view(state, collapsesNothing, one => [
     nodeLine(state, one, nodeMark(one.node)),
+    ...criteriaLines(state, one),
     ...mergedFromLines(state, one),
     ...replyLines(state, one.node.id, '  '.repeat(one.depth + 1)),
   ]).map(line => line.text)

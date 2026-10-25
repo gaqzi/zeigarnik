@@ -55,6 +55,13 @@ export type DecisionPick = {
   at: string
 }
 
+// What a decision is judged on. The current text is the last version.
+export type Criterion = {
+  id: string
+  on: string
+  versions: { text: string; origin?: string; at: string }[]
+}
+
 export type Reply = { node: string; author: Owner; text: string; at: string }
 
 // Who moved a node; its new parent is on the node.
@@ -74,6 +81,7 @@ export type State = {
   goals: Goal[]
   actions: Action[]
   nodes: Node[]
+  criteria: Criterion[]
   // In log order; a reply's number is its place among its node's.
   replies: Reply[]
   moves: Move[]
@@ -89,6 +97,7 @@ export const initial: State = {
   goals: [],
   actions: [],
   nodes: [],
+  criteria: [],
   replies: [],
   moves: [],
   merges: [],
@@ -222,6 +231,24 @@ const happened = (state: State, event: Event): State => {
             parent: event.decision,
             title: event.title,
             status: 'open',
+          },
+        ],
+      }
+    case 'CriterionAdded':
+      return {
+        ...state,
+        criteria: [
+          ...state.criteria,
+          {
+            id: event.criterion,
+            on: event.on,
+            versions: [
+              {
+                text: event.text,
+                ...(event.origin === undefined ? {} : { origin: event.origin }),
+                at: event.at,
+              },
+            ],
           },
         ],
       }

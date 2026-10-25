@@ -99,6 +99,12 @@ export const a = {
     title: 'Greek village',
   }),
 
+  criterionAdded: event('CriterionAdded', {
+    criterion: 'C1',
+    on: 'D1',
+    text: 'Europe',
+  }),
+
   openGoal: command('OpenGoal', { text: 'Pick a holiday' }),
   addAction: command('AddAction', {
     text: 'Check school dates',
@@ -168,4 +174,5 @@ export const a = {
     source: 'chat',
     reason: 'Paphos then, the 20 min transfer settles it',
   }),
+  addCriterion: command('AddCriterion', { on: 'D1', text: 'Europe' }),
 }

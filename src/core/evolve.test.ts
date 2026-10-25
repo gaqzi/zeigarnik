@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { a } from './a.ts'
+import { AT, a } from './a.ts'
 import type { Event } from './events.ts'
 import { fold } from './evolve.ts'
 
@@ -122,5 +122,31 @@ describe('a decision and its options end together, derived from the decision’s
       { id: 'D1.2', status: 'cancelled', reason: undefined },
       { id: 'D1.3', status: 'cancelled', reason: undefined },
     ])
+  })
+})
+
+describe('a criterion', () => {
+  const decided = [a.goalOpened(), a.decisionOpened()]
+
+  test('is kept on its decision with its text', () => {
+    expect(fold([...decided, a.criterionAdded()]).criteria).toEqual([
+      { id: 'C1', on: 'D1', versions: [{ text: 'Europe', at: AT }] },
+    ])
+  })
+
+  test('keeps the origin it came up in inside its version', () => {
+    expect(
+      fold([...decided, a.criterionAdded({ origin: 'D2' })]).criteria,
+    ).toEqual([
+      {
+        id: 'C1',
+        on: 'D1',
+        versions: [{ text: 'Europe', origin: 'D2', at: AT }],
+      },
+    ])
+  })
+
+  test('a session without one has none', () => {
+    expect(fold(decided).criteria).toEqual([])
   })
 })

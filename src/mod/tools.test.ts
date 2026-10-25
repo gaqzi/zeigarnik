@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { AT, a } from '../core/a.ts'
 import type { Command } from '../core/commands.ts'
-import { toCommand } from './tools.ts'
+import { specs, toCommand } from './tools.ts'
 
 // A pure function in the mod: a tool call's input to the command it records,
 // or what is missing from it. It runs with the wiring tests, but needs no
@@ -878,4 +878,89 @@ describe('a decision recorded', () => {
       expect(toCommand('decision', input, AT)).toEqual({ missing: reason })
     })
   }
+})
+
+describe('a criterion attaches to a decision', () => {
+  const add = (overrides: Input = {}) => ({
+    op: 'add',
+    on: 'D1',
+    text: 'Europe',
+    ...overrides,
+  })
+
+  test('is the decision it serves and its text as the command', () => {
+    expect(toCommand('criterion', add(), AT)).toEqual(a.addCriterion())
+  })
+
+  test('keeps the node it came up in', () => {
+    expect(toCommand('criterion', add({ origin: 'D2' }), AT)).toEqual(
+      a.addCriterion({ origin: 'D2' }),
+    )
+  })
+
+  test('with no origin carries none', () => {
+    expect(toCommand('criterion', add({ origin: undefined }), AT)).toEqual({
+      type: 'AddCriterion',
+      at: AT,
+      on: 'D1',
+      text: 'Europe',
+    })
+  })
+
+  const missing: { name: string; input: Input; missing: string }[] = [
+    {
+      name: 'a criterion with no text',
+      input: add({ text: undefined }),
+      missing: 'add needs the text.',
+    },
+    {
+      name: 'a criterion with a blank text',
+      input: add({ text: '  ' }),
+      missing: 'add needs the text.',
+    },
+    {
+      name: 'a criterion with no decision',
+      input: add({ on: undefined }),
+      missing: "add needs on: the decision's ID.",
+    },
+    {
+      name: 'a criterion with a blank decision',
+      input: add({ on: ' ' }),
+      missing: "add needs on: the decision's ID.",
+    },
+    {
+      name: 'a criterion call with no op',
+      input: add({ op: undefined }),
+      missing: 'criterion needs op: add.',
+    },
+    {
+      name: 'a criterion call with an op zg has no name for',
+      input: add({ op: 'revise' }),
+      missing: 'criterion needs op: add.',
+    },
+  ]
+  for (const { name, input, missing: reason } of missing) {
+    test(`${name} is refused`, () => {
+      expect(toCommand('criterion', input, AT)).toEqual({ missing: reason })
+    })
+  }
+
+  test('the tool takes add with the decision, the text and the origin, and says what it is for', () => {
+    const spec = specs.find(one => one.name === 'criterion')
+    const properties = (
+      spec?.inputSchema as { properties?: Record<string, unknown> } | undefined
+    )?.properties
+
+    expect({
+      name: spec?.name,
+      ops: properties?.op,
+      inputs: Object.keys(properties ?? {}).sort(),
+      isDescribed: (spec?.description ?? '') !== '',
+    }).toEqual({
+      name: 'criterion',
+      ops: { enum: ['add'] },
+      inputs: ['on', 'op', 'origin', 'text'],
+      isDescribed: true,
+    })
+  })
 })

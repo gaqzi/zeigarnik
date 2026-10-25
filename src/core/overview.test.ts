@@ -495,3 +495,60 @@ describe('the full view lists what the pane folds', () => {
     )
   })
 })
+
+describe('a decision’s criteria', () => {
+  const judged = [
+    a.goalOpened(),
+    a.decisionOpened(),
+    a.optionAdded(),
+    a.criterionAdded(),
+    a.criterionAdded({ criterion: 'C2', text: 'sea ≥ 18°C' }),
+  ]
+
+  test('the pane draws them one per line under their decision, before its options, two spaces deeper than the options and selectable', () => {
+    expect(
+      overview(fold([...judged, a.nodeReplied({ node: 'D1.1' })])),
+    ).toEqual([
+      { text: '○ G Pick a holiday', isOpen: true },
+      { text: '2 open · 0 closed', isOpen: true },
+      { text: '  ◆ D1 Which holiday do we book?', isOpen: true, item: 'D1' },
+      { text: '      C1 Europe', isOpen: true, item: 'C1' },
+      { text: '      C2 sea ≥ 18°C', isOpen: true, item: 'C2' },
+      { text: '    ◇ D1.1 Greek village', isOpen: true, item: 'D1.1' },
+    ])
+  })
+
+  test('the pane folds them with the options of a decided decision', () => {
+    const decided = [
+      ...judged,
+      a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+      a.decisionMade(),
+    ]
+
+    expect(overview(fold(decided)).map(line => line.text)).toEqual([
+      '○ G Pick a holiday',
+      '0 open · 3 closed',
+      '  ✓ D1 Which holiday do we book? → D1.3 Paphos',
+    ])
+  })
+
+  test('the full view lists a decided decision’s, before its options', () => {
+    const decided = [
+      ...judged,
+      a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+      a.decisionMade(),
+    ]
+
+    expect(fullView(fold(decided))).toBe(
+      [
+        '○ G Pick a holiday',
+        '0 open · 3 closed',
+        '  ✓ D1 Which holiday do we book? → D1.3 Paphos',
+        '      C1 Europe',
+        '      C2 sea ≥ 18°C',
+        '    · D1.1 Greek village',
+        '    ✓ D1.3 Paphos',
+      ].join('\n'),
+    )
+  })
+})
