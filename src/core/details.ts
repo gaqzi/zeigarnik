@@ -8,6 +8,7 @@ import {
   nodeArrow,
   nodeEnd,
   nodeMark,
+  pickedOption,
   replyLines,
 } from './overview.ts'
 
@@ -116,7 +117,7 @@ const optionLines = (state: State, option: Node): string[] => {
 // Once made: the latest pick and its words.
 const pickLines = (state: State, decision: Node): string[] => {
   const pick = decision.picks?.at(-1)
-  const option = state.nodes.find(one => one.id === pick?.option)
+  const option = pickedOption(state, decision)
   if (pick === undefined || option === undefined) return []
 
   return [

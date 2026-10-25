@@ -572,25 +572,26 @@ behind them.
 It isn't released yet. So far it covers the skeleton of the session loop:
 `/zg:open` with a goal, actions recorded as they come up and shown in the pane,
 `/zg:close` with the rules for closing, and a handoff that lists what to file by
-hand (there are no sinks yet). The goal, open threads and open actions come back
-after a compaction or a resume, and Claude gets a one-line index of what is open
-with every prompt. Threads exist too: Claude opens them under the goal or
-another thread and they show in the pane as a tree, and Claude closes them,
-resolved with an outcome or cancelled, each with the reason and whose words it
-is. Each thread keeps what both sides said about it, word for word, and `show`
-lists it under the thread. Selecting a thread or an action in the pane shows
-everything zg knows about it there, its replies included, without asking
-Claude. Claude can move a thread to another parent when you say so, or to fix
-its own mistake, and merge threads that turned out to be the same into one
-when you say so, and it can move a reply it put on the wrong thread. The pane marks ✦ a thread you
-haven't written to yet. Decisions and options exist too: Claude opens a
-decision for a choice you have to make and adds its options under it (D1.1,
-D1.2), explorations go in threads under an option, and you drop an option in
-your own words. When you pick an option, Claude decides the decision with your
-words: the option is chosen, the others not chosen, and the pane folds the
-decision into one line. `show` takes an item's ID (`show D1`) for everything
-about that item. Criteria exist too: Claude attaches what a decision is judged
-on to it as you state it, the decisions under its options inherit them, the
-pane lists them under the decision, and `show` lists the ones in force. To try
-it from a clone, run `script/bootstrap`, then start Claude Code with
-`claude --plugin-dir .` in the clone.
+hand (there are no sinks yet). The goal, the criteria in force, the open nodes,
+the latest decisions and the open actions come back after a compaction or a
+resume, and Claude gets a one-line index of what is open with every prompt.
+Threads exist too: Claude opens them under the goal or another thread and they
+show in the pane as a tree, and Claude closes them, resolved with an outcome or
+cancelled, each with the reason and whose words it is. Each thread keeps what
+both sides said about it, word for word, and `show` lists it under the thread.
+Selecting a thread or an action in the pane shows everything zg knows about it
+there, its replies included, without asking Claude. Claude can move a thread to
+another parent when you say so, or to fix its own mistake, and merge threads
+that turned out to be the same into one when you say so, and it can move a reply
+it put on the wrong thread. The pane marks ✦ a thread you haven't written to
+yet. Decisions and options exist too: Claude opens a decision for a choice you
+have to make and adds its options under it (D1.1, D1.2), explorations go in
+threads under an option, and you drop an option in your own words. When you pick
+an option, Claude decides the decision with your words: the option is chosen,
+the others not chosen, and the pane folds the decision into one line. `show`
+takes an item's ID (`show D1`) for everything about that item. Criteria exist
+too: Claude attaches what a decision is judged on to it as you state it, the
+decisions under its options inherit them, the pane lists them under the
+decision, and `show` lists the ones in force. To try it from a clone, run
+`script/bootstrap`, then start Claude Code with `claude --plugin-dir .` in the
+clone.

@@ -549,7 +549,7 @@ test('/zg:copy-handoff shows the handoff when it cannot copy', async ($, on) => 
 
 const BRIEF = [
   'zg: the goal is G Pick a holiday',
-  'Open threads:',
+  'Open nodes:',
   '- T1 Places in Greece (under G)',
   '- T3 Places in Spain (under T1)',
   'Open actions:',
@@ -570,6 +570,55 @@ test('after a compaction the goal, open threads and open actions are re-injected
   const answer = await $.classic.SessionStart({ source: 'compact' })
 
   expect(answer).toEqual({ additionalContext: [BRIEF] })
+})
+
+const COMPACTED = [
+  a.goalOpened(),
+  a.decisionOpened(),
+  a.optionAdded(),
+  a.optionAdded({ option: 'D1.2', title: 'Paphos' }),
+  a.optionAdded({ option: 'D1.3', title: 'Rhodes' }),
+  a.nodeCancelled({ node: 'D1.1' }),
+  a.criterionAdded({ criterion: 'C1', on: 'D1', text: 'Europe' }),
+  a.criterionAdded({ criterion: 'C2', on: 'D1', text: 'sea ≥ 20°C' }),
+  a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+  a.threadOpened({ thread: 'T5', title: 'Getting there' }),
+  a.decisionOpened({ decision: 'D3', parent: 'T5', title: 'Where to stay' }),
+  a.optionAdded({ option: 'D3.1', decision: 'D3', title: 'Hotel' }),
+  a.criterionAdded({ criterion: 'C3', on: 'D3', text: 'Near the beach' }),
+  a.decisionMade({ decision: 'D3', option: 'D3.1' }),
+  a.threadResolved({ thread: 'T5' }),
+  a.decisionOpened({ decision: 'D5', title: 'Which airline?' }),
+  a.optionAdded({ option: 'D5.1', decision: 'D5', title: 'Aegean' }),
+  a.decisionMade({ decision: 'D5', option: 'D5.1' }),
+  a.decisionOpened({ decision: 'D6', title: 'Rent a car?' }),
+  a.optionAdded({ option: 'D6.1', decision: 'D6', title: 'Hertz' }),
+  a.criterionAdded({ criterion: 'C6', on: 'D6', text: 'Automatic' }),
+  a.nodeCancelled({ node: 'D6' }),
+]
+
+test('after a compaction the criteria in force and the last decisions are re-injected', async ($, on) => {
+  host(on, { [LOG]: log(COMPACTED) })
+
+  const answer = await $.classic.SessionStart({ source: 'compact' })
+
+  expect(answer).toEqual({
+    additionalContext: [
+      [
+        'zg: the goal is G Pick a holiday',
+        'Criteria: C1 Europe (D1) · C2 sea ≥ 20°C (D1) · C3 Near the beach (D3)',
+        'Open nodes:',
+        '- T2 Places in Greece (under G)',
+        '- D1 Which holiday do we book? (under G)',
+        '- D1.2 Paphos (under D1)',
+        '- D1.3 Rhodes (under D1)',
+        'Decisions:',
+        '- D3 Where to stay → Hotel (under T5)',
+        '- D5 Which airline? → Aegean (under G)',
+        'Full view: mcp__zg__show.',
+      ].join('\n'),
+    ],
+  })
 })
 
 test('after a resume the goal, open threads and open actions are re-injected', async ($, on) => {

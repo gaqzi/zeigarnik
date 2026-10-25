@@ -1,11 +1,16 @@
-import type { Criterion, State } from './evolve.ts'
+import type { Criterion, Node, State } from './evolve.ts'
 
 // Criteria flow down: in force for a node are the criteria on its ancestor
 // decisions, itself included when it is a decision, that are open or
 // decided. Derived from the log, never stored (zg-ww9).
 
-const byCriterionNumber = (one: Criterion, other: Criterion): number =>
+export const byCriterionNumber = (one: Criterion, other: Criterion): number =>
   Number(one.id.slice(1)) - Number(other.id.slice(1))
+
+// A decision judges its subtree while it is open or decided.
+export const judges = (node: Node): boolean =>
+  node.kind === 'decision' &&
+  (node.status === 'open' || node.status === 'decided')
 
 // A criterion's current text and origin are those of its latest version.
 export const currentText = (criterion: Criterion): string =>
@@ -37,12 +42,7 @@ const withAncestors = (state: State, id: string): string[] => {
 export const inForce = (state: State, id: string): Criterion[] => {
   const judging = new Set(
     withAncestors(state, id).filter(one =>
-      state.nodes.some(
-        node =>
-          node.id === one &&
-          node.kind === 'decision' &&
-          (node.status === 'open' || node.status === 'decided'),
-      ),
+      state.nodes.some(node => node.id === one && judges(node)),
     ),
   )
   const own = judging.has(id) ? criteriaOn(state, id) : []

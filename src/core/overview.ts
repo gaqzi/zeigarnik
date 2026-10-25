@@ -88,11 +88,13 @@ const nodesUnder = (
       ...(folds(node) ? [] : nodesUnder(state, node.id, folds, depth + 1)),
     ])
 
+// The nodes under one goal, as the pane draws them.
+export const nodesInGoal = (state: State, goal: Goal): Node[] =>
+  nodesUnder(state, goal.id, collapsesNothing).map(placed => placed.node)
+
 // Every node as the pane draws them, goal by goal.
 export const nodesInTreeOrder = (state: State): Node[] =>
-  state.goals.flatMap(goal =>
-    nodesUnder(state, goal.id, collapsesNothing).map(placed => placed.node),
-  )
+  state.goals.flatMap(goal => nodesInGoal(state, goal))
 
 // Where a closed thread went: its outcome, or the thread it merged into.
 export const nodeArrow = (node: Node): string | undefined =>
@@ -121,9 +123,13 @@ export const nodeEnd = (node: Node): string => {
           : ''
 }
 
+// The option a decision's latest pick chose, if it is still there.
+export const pickedOption = (state: State, decision: Node): Node | undefined =>
+  state.nodes.find(one => one.id === decision.picks?.at(-1)?.option)
+
 // A decided decision names its latest pick.
 const decisionEnd = (state: State, node: Node): string => {
-  const option = state.nodes.find(one => one.id === node.picks?.at(-1)?.option)
+  const option = pickedOption(state, node)
 
   return option === undefined ? '' : ` → ${option.id} ${option.title}`
 }

@@ -21,6 +21,32 @@ const actions = (count: number, text = 'Check school dates'): Event[] =>
     a.actionAdded({ action: `A${n + 1}`, text }),
   )
 
+const decisionsWithAnOption = (
+  count: number,
+  title = (n: number) => `Decision ${n}`,
+  option = (n: number) => `Option ${n}`,
+): Event[] =>
+  Array.from({ length: count }, (_, n) => [
+    a.decisionOpened({ decision: `D${n + 1}`, title: title(n + 1) }),
+    a.optionAdded({
+      option: `D${n + 1}.1`,
+      decision: `D${n + 1}`,
+      title: option(n + 1),
+    }),
+  ]).flat()
+
+const chosen = (...numbers: number[]): Event[] =>
+  numbers.map(n => a.decisionMade({ decision: `D${n}`, option: `D${n}.1` }))
+
+const criteria = (
+  count: number,
+  on = 'D1',
+  text = (n: number) => `Criterion ${n}`,
+): Event[] =>
+  Array.from({ length: count }, (_, n) =>
+    a.criterionAdded({ criterion: `C${n + 1}`, on, text: text(n + 1) }),
+  )
+
 test('nothing is re-injected before a goal is opened', () => {
   expect(brief(fold([]))).toBeUndefined()
 })
@@ -56,7 +82,7 @@ test('the open threads with their parents, between the goal and the actions', ()
   expect(brief(state)).toBe(
     [
       'zg: the goal is G Pick a holiday',
-      'Open threads:',
+      'Open nodes:',
       '- T1 Places in Greece (under G)',
       '- T3 Rhodes or Crete (under T1)',
       'Open actions:',
@@ -84,7 +110,7 @@ describe('the open nodes are listed in the pane’s sibling order, whatever the 
     expect(brief(state)).toBe(
       [
         'zg: the goal is G Pick a holiday',
-        'Open threads:',
+        'Open nodes:',
         '- T2 Places in Greece (under G)',
         '- D1 Which holiday do we book? (under G)',
         '- D1.1 Greek village (under D1)',
@@ -106,7 +132,7 @@ describe('the open nodes are listed in the pane’s sibling order, whatever the 
     expect(brief(state)).toBe(
       [
         'zg: the goal is G Pick a holiday',
-        'Open threads:',
+        'Open nodes:',
         '- D1 Which holiday do we book? (under G)',
         '- D1.9 Ninth (under D1)',
         '- D1.10 Tenth (under D1)',
@@ -154,6 +180,17 @@ describe('with no goal open, the brief says', () => {
         a.handoffWritten(),
         a.goalOpened({ goal: 'G2' }),
         a.goalCancelled({ goal: 'G2' }),
+      ],
+      head: 'zg: no goal is open.',
+    },
+    {
+      name: 'so, whatever criteria and decisions the achieved goal held',
+      given: [
+        a.goalOpened(),
+        ...decisionsWithAnOption(1),
+        ...criteria(1, 'D1'),
+        ...chosen(1),
+        a.goalAchieved(),
       ],
       head: 'zg: no goal is open.',
     },
@@ -244,7 +281,7 @@ test('cuts a thread title at 80 characters', () => {
   expect(brief(state)).toBe(
     [
       'zg: the goal is G Pick a holiday',
-      'Open threads:',
+      'Open nodes:',
       `- T1 ${'t'.repeat(79)}… (under G)`,
       'Full view: mcp__zg__show.',
     ].join('\n'),
@@ -267,7 +304,7 @@ test('cuts an action text at 120 characters', () => {
   )
 })
 
-test('stays within the re-injection budget with long texts, many threads and many actions', () => {
+test('stays within the re-injection budget with long texts, many nodes, many actions, ten criteria and five decisions', () => {
   const long = 'x'.repeat(3000)
   const text =
     brief(
@@ -275,8 +312,186 @@ test('stays within the re-injection budget with long texts, many threads and man
         a.goalOpened({ text: long }),
         ...threads(20, long),
         ...actions(100, long),
+        ...decisionsWithAnOption(
+          5,
+          () => long,
+          () => long,
+        ),
+        ...criteria(10, 'D1', () => long),
+        ...chosen(1, 2, 3, 4, 5),
       ]),
     ) ?? ''
 
   expect(tokens(text)).toBeLessThanOrEqual(BUDGET)
+})
+
+describe('after the goal line, the criteria in force and the decisions made', () => {
+  test('the criteria come after the goal and the decisions after the open nodes', () => {
+    const state = fold([
+      a.goalOpened(),
+      ...decisionsWithAnOption(2),
+      ...criteria(2, 'D1'),
+      ...chosen(1),
+    ])
+
+    expect(brief(state)).toBe(
+      [
+        'zg: the goal is G Pick a holiday',
+        'Criteria: C1 Criterion 1 (D1) · C2 Criterion 2 (D1)',
+        'Open nodes:',
+        '- D2 Decision 2 (under G)',
+        '- D2.1 Option 2 (under D2)',
+        'Decisions:',
+        '- D1 Decision 1 → Option 1 (under G)',
+        'Full view: mcp__zg__show.',
+      ].join('\n'),
+    )
+  })
+
+  test('a new goal starts without the criteria and decisions of the one before', () => {
+    const state = fold([
+      a.goalOpened(),
+      ...decisionsWithAnOption(1),
+      ...criteria(1, 'D1'),
+      ...chosen(1),
+      a.goalAchieved(),
+      a.goalOpened({ goal: 'G2' }),
+    ])
+
+    expect(brief(state)).toBe(
+      'zg: the goal is G2 Pick a holiday\nFull view: mcp__zg__show.',
+    )
+  })
+
+  test('recency is when it was decided, not the ID: the five latest, the most recent last', () => {
+    const state = fold([
+      a.goalOpened(),
+      ...decisionsWithAnOption(7),
+      ...chosen(1, 3, 4, 5, 6, 7, 2),
+    ])
+
+    expect(brief(state)).toBe(
+      [
+        'zg: the goal is G Pick a holiday',
+        'Decisions:',
+        '- D4 Decision 4 → Option 4 (under G)',
+        '- D5 Decision 5 → Option 5 (under G)',
+        '- D6 Decision 6 → Option 6 (under G)',
+        '- D7 Decision 7 → Option 7 (under G)',
+        '- D2 Decision 2 → Option 2 (under G)',
+        'Full view: mcp__zg__show.',
+      ].join('\n'),
+    )
+  })
+
+  test('lists ten criteria then counts the rest, and five decisions', () => {
+    const state = fold([
+      a.goalOpened(),
+      ...decisionsWithAnOption(8),
+      ...criteria(12),
+      ...chosen(1, 2, 3, 4, 5, 6, 7, 8),
+    ])
+
+    expect(brief(state)).toBe(
+      [
+        'zg: the goal is G Pick a holiday',
+        'Criteria: C1 Criterion 1 (D1) · C2 Criterion 2 (D1) · C3 Criterion 3 (D1) · C4 Criterion 4 (D1) · C5 Criterion 5 (D1) · C6 Criterion 6 (D1) · C7 Criterion 7 (D1) · C8 Criterion 8 (D1) · C9 Criterion 9 (D1) · C10 Criterion 10 (D1) · and 2 more',
+        'Decisions:',
+        '- D4 Decision 4 → Option 4 (under G)',
+        '- D5 Decision 5 → Option 5 (under G)',
+        '- D6 Decision 6 → Option 6 (under G)',
+        '- D7 Decision 7 → Option 7 (under G)',
+        '- D8 Decision 8 → Option 8 (under G)',
+        'Full view: mcp__zg__show.',
+      ].join('\n'),
+    )
+  })
+
+  test('a decision decided again appears once, with its latest pick, where it was last decided', () => {
+    const state = fold([
+      a.goalOpened(),
+      ...decisionsWithAnOption(2),
+      a.optionAdded({ option: 'D1.2', decision: 'D1', title: 'Rhodes' }),
+      ...chosen(1, 2),
+      a.decisionMade({ decision: 'D1', option: 'D1.2' }),
+    ])
+
+    expect(brief(state)).toBe(
+      [
+        'zg: the goal is G Pick a holiday',
+        'Decisions:',
+        '- D2 Decision 2 → Option 2 (under G)',
+        '- D1 Decision 1 → Rhodes (under G)',
+        'Full view: mcp__zg__show.',
+      ].join('\n'),
+    )
+  })
+
+  test('a revised criterion shows its current text', () => {
+    const state = fold([
+      a.goalOpened(),
+      ...decisionsWithAnOption(1),
+      ...criteria(2),
+      a.criterionRevised({ criterion: 'C2', text: 'sea ≥ 20°C' }),
+    ])
+
+    expect(brief(state)).toBe(
+      [
+        'zg: the goal is G Pick a holiday',
+        'Criteria: C1 Criterion 1 (D1) · C2 sea ≥ 20°C (D1)',
+        'Open nodes:',
+        '- D1 Decision 1 (under G)',
+        '- D1.1 Option 1 (under D1)',
+        'Full view: mcp__zg__show.',
+      ].join('\n'),
+    )
+  })
+
+  test('a cancelled decision is in neither line, nor are its criteria', () => {
+    const state = fold([
+      a.goalOpened(),
+      ...decisionsWithAnOption(2),
+      ...criteria(1, 'D1'),
+      a.nodeCancelled({ node: 'D1' }),
+      ...chosen(2),
+      a.nodeCancelled({ node: 'D2' }),
+    ])
+
+    expect(brief(state)).toBe(
+      'zg: the goal is G Pick a holiday\nFull view: mcp__zg__show.',
+    )
+  })
+
+  test('cuts a criterion at 60 characters', () => {
+    const state = fold([
+      a.goalOpened(),
+      ...decisionsWithAnOption(1),
+      ...criteria(1, 'D1', () => `${'c'.repeat(59)}yz`),
+    ])
+
+    expect(brief(state)?.split('\n')[1]).toBe(
+      `Criteria: C1 ${'c'.repeat(59)}… (D1)`,
+    )
+  })
+
+  test('cuts a decision and its pick together at 120 characters, keeping where it sits', () => {
+    const state = fold([
+      a.goalOpened(),
+      ...decisionsWithAnOption(
+        1,
+        () => 'd'.repeat(100),
+        () => 'o'.repeat(50),
+      ),
+      ...chosen(1),
+    ])
+
+    expect(brief(state)).toBe(
+      [
+        'zg: the goal is G Pick a holiday',
+        'Decisions:',
+        `- D1 ${'d'.repeat(100)} → ${'o'.repeat(16)}… (under G)`,
+        'Full view: mcp__zg__show.',
+      ].join('\n'),
+    )
+  })
 })

@@ -86,6 +86,9 @@ export type State = {
   replies: Reply[]
   moves: Move[]
   merges: Merge[]
+  // Decision IDs by when they were last decided, the latest last; a position
+  // in the log, because timestamps can tie.
+  decidedOrder: string[]
   handoff?: Handoff
   // False once anything happens after the handoff was written: it no longer
   // describes the session, and has to be written again.
@@ -101,6 +104,7 @@ export const initial: State = {
   replies: [],
   moves: [],
   merges: [],
+  decidedOrder: [],
   handoffStands: false,
   isClosed: false,
 }
@@ -276,6 +280,10 @@ const happened = (state: State, event: Event): State => {
     case 'DecisionMade':
       return {
         ...state,
+        decidedOrder: [
+          ...state.decidedOrder.filter(id => id !== event.decision),
+          event.decision,
+        ],
         nodes: state.nodes.map(node => {
           if (node.id === event.decision) {
             return {
