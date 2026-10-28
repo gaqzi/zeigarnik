@@ -5,6 +5,7 @@ import { details } from './details.ts'
 import type { Event } from './events.ts'
 import { fold } from './evolve.ts'
 import type { Line } from './overview.ts'
+import { readmeDecisionOverview } from './readme-decision-overview.ts'
 
 // What zg knows about one item: its block of lines, each dim once the item is
 // closed, like its row in the pane.
@@ -276,6 +277,65 @@ describe('a closed decision’s details', () => {
         '   earlier: D1.2 Costa del Sol · because (chat): then the bars won',
         '   earlier: D1.3 Paphos · because (chat): first thought',
       ),
+    )
+  })
+
+  test('the README’s Decision overview is what show renders for its events', () => {
+    const given = [
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.optionAdded(),
+      a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
+      a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+      a.decisionOpened({ decision: 'D2', title: 'How long a transfer?' }),
+      a.optionAdded({
+        option: 'D2.1',
+        decision: 'D2',
+        title: 'transfers ≤ 30 min',
+      }),
+      a.decisionMade({
+        decision: 'D2',
+        option: 'D2.1',
+        reason: 'transfers must be short',
+      }),
+      a.criterionAdded(),
+      a.criterionAdded({ criterion: 'C2', text: 'sea ≥ 18°C' }),
+      a.criterionAdded({ criterion: 'C3', text: 'sunny' }),
+      a.criterionAdded({ criterion: 'C4', text: 'good bars' }),
+      a.criterionAdded({
+        criterion: 'C5',
+        text: 'transfer ≤ 30 min',
+        origin: 'D2',
+      }),
+      a.nodeReplied({
+        node: 'D1.1',
+        author: 'claude',
+        text: 'best beach of the lot, but 2h by bus from the airport (fails C5)',
+      }),
+      a.nodeReplied({
+        node: 'D1.2',
+        author: 'claude',
+        text: 'bars, easy flights; sea borderline for C2 in late May',
+      }),
+      a.nodeReplied({
+        node: 'D1.3',
+        author: 'claude',
+        text: 'warmest sea, short transfer; fewer bars than D1.2',
+      }),
+      a.threadOpened({
+        thread: 'T6',
+        parent: 'D1.3',
+        title: 'Check Paphos flights',
+      }),
+      a.threadResolved({
+        thread: 'T6',
+        outcome: 'direct, Thursday and Sunday',
+      }),
+      a.decisionMade(),
+    ]
+
+    expect(details(fold(given), 'D1')).toEqual(
+      block(false, ...readmeDecisionOverview),
     )
   })
 

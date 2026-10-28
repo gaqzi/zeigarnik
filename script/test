@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Usage: script/test [unit|wiring|eval|all]
 #
-# With no layer, runs the free tests: typecheck, lint, the domain core and
-# the mod wiring. Formats the code first, or on CI (CI set) checks the
+# With no layer, runs the free tests: typecheck, lint, the README's decision
+# overview held to src/core/readme-decision-overview.ts, the domain core
+# and the mod wiring. Formats the code first, or on CI (CI set) checks the
 # formatting instead. `eval` costs tokens and takes minutes; `all` runs every
 # layer, cheapest first, and stops at the first that fails (zg-564).
 
@@ -69,6 +70,29 @@ static() {
   echo "ok"
   step "Lint"
   node_modules/.bin/biome lint .
+  step "README"
+  readme_overview
+}
+
+# The README shows what show renders for a decision, and the unit tests pin
+# src/core/readme-decision-overview.ts to the render: the README holds to it.
+readme_overview() {
+  local module=src/core/readme-decision-overview.ts
+  local in_readme in_module
+  in_readme=$(awk '
+    found && /^```/ { fence++; if (fence == 2) exit; next }
+    found && fence == 1 { print }
+    /^The overview of a decision reads like this:$/ { found = 1 }
+  ' README.md)
+  in_module=$(node --input-type=module -e \
+    "import { readmeDecisionOverview as l } from './$module'; console.log(l.join('\n'))")
+  printf '%s\n' "$in_readme" >"$tree/readme"
+  printf '%s\n' "$in_module" >"$tree/module"
+  if ! diff "$tree/readme" "$tree/module"; then
+    echo "README.md's decision overview (under \"The overview of a decision reads like this:\") differs from $module: lines marked < are in the README, > in the module" >&2
+    return 1
+  fi
+  echo "ok"
 }
 
 eval_layer() {

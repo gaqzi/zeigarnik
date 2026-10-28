@@ -22,7 +22,7 @@ See [docs/development.md](docs/development.md): testing layers, tooling and
 scripts. Start on a bead with `script/context <id> --claim`.
 
 - `script/bootstrap` once; `script/test` before handing over (free: format,
-  typecheck, lint, domain core, mod wiring).
+  typecheck, lint, README decision overview, domain core, mod wiring).
 - `script/test unit` or `wiring` for one layer. `script/test eval` costs
   tokens: ask the human first, and run it outside the Bash sandbox.
 - Try zg in a session with `claude --plugin-dir .`.
