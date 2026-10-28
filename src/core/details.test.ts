@@ -4,6 +4,7 @@ import { a } from './a.ts'
 import { details } from './details.ts'
 import type { Event } from './events.ts'
 import { fold } from './evolve.ts'
+import type { Line } from './overview.ts'
 
 // What zg knows about one item: its block of lines, each dim once the item is
 // closed, like its row in the pane.
@@ -31,7 +32,7 @@ test('a thread’s details are its title, where it sits, how it stands, its chil
       'T5 2h bus?',
       'under T2',
       'open',
-      'children: T8 ✓ village is out',
+      'children: ✓ T8 Which village? → village is out',
       '#1 claude: The bus takes two hours each way',
       '#2 human: no, two hours with the kids is a no',
     ),
@@ -126,7 +127,7 @@ describe('a decision and its options', () => {
         '     ◇ D1.1 Greek village',
         '         #1 human: best beach of the lot, but 2h by bus',
         '     ◇ D1.2 Paphos',
-        '         T3 Check Paphos flights ○',
+        '         ○ T3 Check Paphos flights',
       ),
     )
   })
@@ -170,7 +171,7 @@ describe('a decision and its options', () => {
         'D1.2 Paphos',
         'under D1',
         'open',
-        'children: T3 ○ Check Paphos flights',
+        'children: ○ T3 Check Paphos flights',
       ),
     )
   })
@@ -195,8 +196,8 @@ describe('show lists in the pane’s sibling order, whatever the log order', () 
         'D1 Decision: Which holiday do we book?',
         '   Options:',
         '     ◇ D1.1 Greek village',
-        '         T5 Bus times ○',
-        '         D4 Which bus? ◆',
+        '         ○ T5 Bus times',
+        '         ◆ D4 Which bus?',
         '     ◇ D3.1 Direct',
       ),
     )
@@ -209,7 +210,7 @@ describe('show lists in the pane’s sibling order, whatever the log order', () 
         'D1.1 Greek village',
         'under D1',
         'open',
-        'children: T5 ○ Bus times, D4 ◆ Which bus?',
+        'children: ○ T5 Bus times, ◆ D4 Which bus?',
       ),
     )
   })
@@ -242,7 +243,7 @@ describe('a closed decision’s details', () => {
         '     ✗ D1.1 Greek village · too far with the kids',
         '     · D1.2 Costa del Sol',
         '     ✓ D1.3 Paphos',
-        '         T6 direct, Thursday and Sunday ✓',
+        '         ✓ T6 Check Paphos flights → direct, Thursday and Sunday',
       ),
     )
   })
@@ -271,7 +272,7 @@ describe('a closed decision’s details', () => {
         '     ✗ D1.1 Greek village · too far with the kids',
         '     · D1.2 Costa del Sol',
         '     ✓ D1.3 Paphos',
-        '         T6 direct, Thursday and Sunday ✓',
+        '         ✓ T6 Check Paphos flights → direct, Thursday and Sunday',
         '   earlier: D1.2 Costa del Sol · because (chat): then the bars won',
         '   earlier: D1.3 Paphos · because (chat): first thought',
       ),
@@ -432,7 +433,7 @@ describe('criteria in details', () => {
         `   Criteria: ${inherited}`,
         '   Options:',
         '     ◇ D3.1 Direct',
-        '         D7 Which seats? ◆',
+        '         ◆ D7 Which seats?',
       ),
     )
   })
@@ -471,7 +472,7 @@ describe('criteria in details', () => {
         'resolved → direct',
         'that covers it',
         `Criteria in force: ${inherited}`,
-        'children: T8 ✓ Aegean',
+        'children: ✓ T8 Which airline? → Aegean',
       ),
     )
   })
@@ -484,7 +485,7 @@ describe('criteria in details', () => {
         'under D3',
         'open',
         `Criteria in force: ${inherited}`,
-        'children: D7 ◆ Which seats?',
+        'children: ◆ D7 Which seats?',
       ),
     )
   })
@@ -547,6 +548,110 @@ describe('a revised criterion in details', () => {
         'D1 Decision: Which holiday do we book?',
         '   Criteria: C2 sea ≥ 20°C (from T5)',
         '   Options:',
+      ),
+    )
+  })
+})
+
+describe('a child reads as the pane’s line, wherever details lists it', () => {
+  const opened = { thread: 'T8', title: 'Which village?' }
+
+  const rows: {
+    state: string
+    child: (parent: string) => Event[]
+    line: string
+  }[] = [
+    {
+      state: 'resolved, outcome "village is out"',
+      child: parent => [
+        a.threadOpened({ ...opened, parent }),
+        a.threadResolved({ thread: 'T8', outcome: 'village is out' }),
+      ],
+      line: '✓ T8 Which village? → village is out',
+    },
+    {
+      state: 'merged into T5',
+      child: parent => [
+        a.threadOpened({ ...opened, parent }),
+        a.nodeMerged({ from: ['T8'], into: 'T5' }),
+      ],
+      line: '→ T8 Which village? → T5',
+    },
+    {
+      state: 'cancelled, reason "too far"',
+      child: parent => [
+        a.threadOpened({ ...opened, parent }),
+        a.nodeCancelled({ node: 'T8', reason: 'too far' }),
+      ],
+      line: '✗ T8 Which village? · too far',
+    },
+    {
+      state: 'open',
+      child: parent => [a.threadOpened({ ...opened, parent })],
+      line: '○ T8 Which village?',
+    },
+    {
+      state: 'decision decided for D4.1 Bus',
+      child: parent => [
+        a.decisionOpened({ decision: 'D4', parent, title: 'Which bus?' }),
+        a.optionAdded({ option: 'D4.1', decision: 'D4', title: 'Bus' }),
+        a.decisionMade({ decision: 'D4', option: 'D4.1' }),
+      ],
+      line: '✓ D4 Which bus? → D4.1 Bus',
+    },
+  ]
+
+  // A line nine spaces in: what is listed under an option in its decision's
+  // details.
+  const underAnOption = (line: Line) => /^ {9}\S/.test(line.text)
+
+  const given = (child: Event[]) =>
+    fold([
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T2', title: 'Places in Spain' }),
+      a.threadOpened({ thread: 'T5', title: 'Bus' }),
+      a.decisionOpened(),
+      a.optionAdded(),
+      ...child,
+    ])
+
+  for (const { state, child, line } of rows) {
+    test(`a thread’s children line reads a child ${state} as the pane does`, () => {
+      expect(
+        details(given(child('T2')), 'T2').filter(one =>
+          one.text.startsWith('children: '),
+        ),
+      ).toEqual(block(true, `children: ${line}`))
+    })
+
+    test(`the line under an option reads a child ${state} as the pane does`, () => {
+      expect(details(given(child('D1.1')), 'D1').filter(underAnOption)).toEqual(
+        block(true, `         ${line}`),
+      )
+    })
+  }
+
+  test('a decided decision lists a resolved child of its chosen option by title, then outcome', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.decisionOpened(),
+      a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
+      a.threadOpened({
+        thread: 'T6',
+        parent: 'D1.3',
+        title: 'Check Paphos flights',
+      }),
+      a.threadResolved({
+        thread: 'T6',
+        outcome: 'direct, Thursday and Sunday',
+      }),
+      a.decisionMade(),
+    ])
+
+    expect(details(state, 'D1').filter(underAnOption)).toEqual(
+      block(
+        false,
+        '         ✓ T6 Check Paphos flights → direct, Thursday and Sunday',
       ),
     )
   })

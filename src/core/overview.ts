@@ -134,16 +134,21 @@ const decisionEnd = (state: State, node: Node): string => {
   return option === undefined ? '' : ` → ${option.id} ${option.title}`
 }
 
+// A node as the pane words it: mark, id, title, and how it ended.
+export const nodeText = (state: State, node: Node, mark: string): string => {
+  const end =
+    node.status === 'decided' ? decisionEnd(state, node) : nodeEnd(node)
+
+  return `${mark} ${node.id} ${node.title}${end}`
+}
+
 const nodeLine = (
   state: State,
   { node, depth }: Placed,
   mark: string,
 ): Line => {
-  const end =
-    node.status === 'decided' ? decisionEnd(state, node) : nodeEnd(node)
-
   return {
-    text: `${'  '.repeat(depth)}${mark} ${node.id} ${node.title}${end}`,
+    text: `${'  '.repeat(depth)}${nodeText(state, node, mark)}`,
     isOpen: node.status === 'open',
     item: node.id,
   }

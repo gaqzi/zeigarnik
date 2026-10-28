@@ -915,6 +915,7 @@ const bus = [
   a.threadOpened({ thread: 'T5', parent: 'T2', title: '2h bus?' }),
   a.threadOpened({ thread: 'T8', parent: 'T5', title: 'Which village?' }),
   a.threadResolved({ thread: 'T8', outcome: 'village is out' }),
+  a.threadOpened({ thread: 'T9', parent: 'T5', title: 'Bus times' }),
   a.nodeReplied({
     node: 'T5',
     author: 'claude',
@@ -925,17 +926,18 @@ const bus = [
 
 const tree = [
   '○ G Pick a holiday',
-  '2 open · 1 closed',
+  '3 open · 1 closed',
   '  ✦ T2 Places in Spain',
   '    ○ T5 2h bus?',
   '      ✓ T8 Which village? → village is out',
+  '      ✦ T9 Bus times',
 ]
 
 const t5 = [
   'T5 2h bus?',
   'under T2',
   'open',
-  'children: T8 ✓ village is out',
+  'children: ✓ T8 Which village? → village is out, ○ T9 Bus times',
   '#1 claude: The bus takes two hours each way',
   '#2 human: no, two hours with the kids is a no',
 ]
@@ -1155,7 +1157,7 @@ test('show with the decision’s ID lists its options with their replies and thr
       '     ◇ D1.1 Greek village',
       '         #1 human: best beach of the lot, but 2h by bus',
       '     ◇ D1.2 Paphos',
-      '         T3 Check Paphos flights ○',
+      '         ○ T3 Check Paphos flights',
     ].join('\n'),
   })
 })
@@ -1232,10 +1234,10 @@ test('show with an ID that names nothing says so and appends nothing', async ($,
   const world = host(on, { [LOG]: log(bus) })
   await $.session.start(START)
 
-  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'T9' })
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'T99' })
 
   expect({ shown, files: world.files }).toEqual({
-    shown: { result: 'There is no item T9.' },
+    shown: { result: 'There is no item T99.' },
     files: { [LOG]: log(bus) },
   })
 })
@@ -1764,7 +1766,7 @@ test('show for a decision under an option lists the criteria it inherits', async
       `   Criteria: ${INHERITED}`,
       '   Options:',
       '     ◇ D3.1 Direct',
-      '         D7 Which seats? ◆',
+      '         ◆ D7 Which seats?',
     ].join('\n'),
   })
 })

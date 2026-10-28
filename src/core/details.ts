@@ -6,8 +6,8 @@ import {
   type Line,
   mergedFrom,
   nodeArrow,
-  nodeEnd,
   nodeMark,
+  nodeText,
   pickedOption,
   replyLines,
 } from './overview.ts'
@@ -18,12 +18,6 @@ import {
 const withArrow = (status: string, arrow: string | undefined): string =>
   arrow === undefined ? status : `${status} ${arrow}`
 
-// What names a thread in a list: its outcome once resolved, else its title.
-const outcomeOrTitle = (node: Node): string =>
-  node.status === 'resolved' && node.outcome !== undefined
-    ? node.outcome
-    : node.title
-
 // The nodes under a parent in the pane's sibling order.
 const childrenOf = (state: State, parent: string): Node[] =>
   state.nodes.filter(node => node.parent === parent).sort(bySiblingOrder)
@@ -32,8 +26,8 @@ const childrenLine = (state: State, parent: string): string[] => {
   const children = childrenOf(state, parent)
   if (children.length === 0) return []
 
-  const described = children.map(
-    child => `${child.id} ${nodeMark(child)} ${outcomeOrTitle(child)}`,
+  const described = children.map(child =>
+    nodeText(state, child, nodeMark(child)),
   )
 
   return [`children: ${described.join(', ')}`]
@@ -104,11 +98,11 @@ const nodeDetails = (state: State, node: Node): Line[] =>
 const optionLines = (state: State, option: Node): string[] => {
   const indent = ' '.repeat(9)
   const children = childrenOf(state, option.id).map(
-    child => `${indent}${child.id} ${outcomeOrTitle(child)} ${nodeMark(child)}`,
+    child => `${indent}${nodeText(state, child, nodeMark(child))}`,
   )
 
   return [
-    `     ${nodeMark(option)} ${option.id} ${option.title}${nodeEnd(option)}`,
+    `     ${nodeText(state, option, nodeMark(option))}`,
     ...replyLines(state, option.id, indent).map(line => line.text),
     ...children,
   ]

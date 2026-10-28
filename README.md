@@ -385,7 +385,7 @@ D1 Decision: Which holiday do we book?
          #1 claude: bars, easy flights; sea borderline for C2 in late May
      ✓ D1.3 Paphos
          #1 claude: warmest sea, short transfer; fewer bars than D1.2
-         T6 Check Paphos flights ✓ → direct, Thursday and Sunday
+         ✓ T6 Check Paphos flights → direct, Thursday and Sunday
 ```
 
 ### Action
