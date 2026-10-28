@@ -58,9 +58,11 @@ A decision bead records a lasting constraint. The test:
 > the handoff.
 
 - Only the human makes decisions. Propose one; never record it unasked.
-- The title is the rule, stated so it reads alone and applies beyond the
-  case that raised it (ask: which other beads would it constrain?). The
-  case goes in `## Context`; the why in the body, never the title.
+- The title is one rule, stated so it reads alone and applies beyond the
+  case that raised it (ask: which other beads would it constrain?). A title
+  that joins two rules with "and" or a semicolon is two beads: decisions are
+  found by scanning titles. The case goes in `## Context`; the why in the
+  body, never the title. Cite another rule by ID, never restate it.
 - The description has `## Context`, `## Decision`, `## Rationale` and
   `## Alternatives Considered`. Refer to rules and other decisions by name or
   bead ID, never by number.
