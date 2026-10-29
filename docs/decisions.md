@@ -35,6 +35,9 @@ zg-pvk.
 | zg-8ld | Everything under a goal is a node of one kind, thread, decision or option; a kind adds only where it may sit and how it ends | core, mod |
 | zg-64v | The log is append-only: closed items are never rewritten, a decision changes by being decided again, and rediscussion opens a new thread | core |
 | zg-b8o | A story's acceptance describes use, never how a test sets it up; harness workarounds live once in docs/development.md | evals, project |
+| zg-579 | A decision holds only options a person named in chat, and is never opened and decided in one step | core, mod |
+| zg-o1g | A topic is a thread until someone names a candidate to pick; the decision then opens where it was named | mod |
+| zg-wn9 | An answer resolves its thread; a limit it states is a criterion on the decision it serves | core, mod |
 
 ## Accepted
 
@@ -932,6 +935,81 @@ works and reduce the manual testing").
 #### How it was decided
 
 Decided 2026-10-24 with the human, after zg-bam.3.8 proved undispatchable. Their words: a test workaround 'is an implementation detail and not something that should leak into the acceptance criteria'; 'how could we resolve it so the acceptance criteria is focused on the visible actions rather than implementation, while also recording how to handle the complexity of the tech implementation?'. Chose a decision over a memory because the rule constrains two reviewed work products (acceptance text, eval cases) and a reviewer needs something to cite. On hand checks: 'verified by hand when changed, or something new that isn't a verbatim copy of previous cases. because I hope we then encourage ourselves to do the thing that works and reduce the manual testing.' Wording reviewed by two subagents (sonnet, opus) before creation; drafts in .dispatch/decision-acceptance/. 'd8: yes'.
+
+### zg-579: A decision holds only options a person named in chat, and is never opened and decided in one step
+
+Areas: core, mod
+
+#### Context
+
+Under zg-bam.5.8's rule, reply-attribution runs opened a decision under T1 with options Claude invented ("skip the tour", "a shorter tour") in 9 of 10 runs (zg-bam.5.11). The lake-house example showed the other edge: one named candidate, and the criteria still to work out.
+
+#### Decision
+
+Two things never happen to a decision. It is never opened and decided in the same breath on a single option: that is an answer, and it resolves its thread (zg-wn9). And no option is ever fabricated so it has more than one: every option is something a person named in chat, Claude's proposals included, and the human saw it before it entered the log. Everything else is open ground: a decision may sit open with one option or none while its criteria are worked out, options are explored in threads under them, and a criterion found on the way is pushed up to the decision it serves. There is no one-step record.
+
+#### Rationale
+
+The human: the point is "that we don't create and immediately close with only that option, and we don't fabricate options only so it has more than one (and often not seen by the human)", which "creates space to create the decision and then dig into the criteria".
+
+#### Alternatives Considered
+
+- "No decision with a single option" as a count: forbids the open decision with one candidate whose criteria are still being worked out, which is where most decisions start.
+- Letting Claude add candidates on its own judgment: the options nobody saw in zg-bam.5.11.
+
+#### How it was decided
+
+Decided by the human on 2026-10-28: 'the point is that we don't create and immediately close with only that option, and we don't fabricate options only so it has more than one (and often not seen by the human). which hopefully relaxes the rule and creates space to create the decision and then dig into the criteria and explore those options and pushing up any criterion we discover'.
+
+### zg-o1g: A topic is a thread until someone names a candidate to pick; the decision then opens where it was named
+
+Areas: mod
+
+#### Context
+
+thread-grain's graders expect "Venue" and "Dates" as threads; the human's live log showed them as decisions, and one tuned run opened them as decisions (zg-bam.5.8). Under zg-wn9 the kind matters: "skip the inland ones" on a thread is a reply that narrows it; on a decision it is a criterion.
+
+#### Decision
+
+A topic is a thread until somebody names a candidate to pick; then the decision opens where it was named: under the goal when named outright, under the thread whose research produced it. One named candidate the human is weighing is a decision with one open option, proposed like any inferred decision (zg-wn9). A question where several answers can be kept ("Which beaches") is a thread.
+
+#### Rationale
+
+The human chose thread-first for clarity and asked that it not produce threads that are thin wrappers around a decision; the "candidate named" test answers that, and a node's kind is fixed once opened (zg-8ld), so there is no conversion to offer.
+
+#### Alternatives Considered
+
+- Decision when the title is a choice, thread when a question: the model flips on that line, and an empty decision holds nothing.
+- Claude's judgment, no rule: the ambiguity that produced this redefinition.
+
+#### How it was decided
+
+Decided by the human on 2026-10-28: 'I lean a because it's clear, I wonder if that will in effect mean we'll do threads that are thin wrappers for decisions'; on the 'candidate named' refinement: 'I like this, let's decide on that'.
+
+### zg-wn9: An answer resolves its thread; a limit it states is a criterion on the decision it serves
+
+Areas: core, mod
+
+#### Context
+
+zg-bam.5.3 recorded a "realization" as a one-option decision in one step, and zg-bam.5.8 tuned the thread tool's description to call it ("a yes or no to what you proposed, a pick, a limit they set, is a decision"). The model resisted in 10 of 10 untuned runs: it resolved the thread and put the criterion on D1 "Where to go" with origin the thread, which is this rule.
+
+#### Decision
+
+An answer resolves its thread. The human's words are its reply and the resolve's reason; the outcome is always given: a short summary, or the answer itself when it is short enough that a summary adds nothing. A limit the human states, in an answer or outright, is a criterion on the decision it serves, with the node it came up in as its origin. When no decision in the log serves it, Claude proposes the decision it infers (its title, the criterion, the candidates already named if any) and records nothing until the human confirms; one sentence from them is the confirmation.
+
+#### Rationale
+
+The human: "should we be inland?" answered before "where are we going?" exists implies that decision; the answer becomes a constraint on it and "should lend itself to asking, what other constraints/criteria do we have?". Proposing rather than opening follows zg-4h7.
+
+#### Alternatives Considered
+
+- A one-option decision per answer (zg-bam.5.3, zg-bam.5.8): records decisions nobody weighed, and pushed the model to invent options (zg-bam.5.11).
+- Opening the inferred decision silently: cascades from an answer (zg-4h7).
+
+#### How it was decided
+
+Decided by the human on 2026-10-28 while redefining zg-bam.5.11: 'An answer is not a decision, and a one-option decision is never recorded'; the inferred decision is proposed, not opened: 'Claude should express what it infers if it doesn't clearly belong to something'. Outcome always given: 'there's always a summary, if the last message and explanation is short and a summary wouldn't add value, then keep the human's last message'.
 
 ## Superseded or withdrawn
 
