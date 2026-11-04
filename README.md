@@ -506,7 +506,7 @@ directions, and each one is tested on its own:
 
 | Direction | What happens | Who reacts |
 |---|---|---|
-| **Up** | A thread closes. Claude checks whether its parent can close too, and if not, says what's still needed: "T6 is in and nothing else is open under D1.3, so D1 can be decided." | the parent |
+| **Up** | A thread closes. zg tells Claude when that leaves its parent with nothing open, and Claude asks you: "T6 is in and nothing else is open under D1's options, so D1 can be decided." | the parent |
 | **Down** | A node changes: a criterion is added or revised, or a decision is made. Claude re-checks the descendants it affects: "C5 rules out D1.1 Greek village; drop it?" | each descendant |
 | **Across** | Your reply to one thread also settles others that aren't parent and child, because you saw the common thread between them. Claude proposes resolving those too, with outcomes. | each affected thread; the reply belongs to no thread |
 

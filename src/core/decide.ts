@@ -242,7 +242,7 @@ const refuseOpenChildren = (
     ? undefined
     : refuse(`Children close first: ${stillOpenUnder(children, parent)}`, fix)
 
-const openChildrenOf = (state: State, parent: string): Child[] =>
+export const openChildrenOf = (state: State, parent: string): Child[] =>
   state.nodes
     .filter(node => node.parent === parent && node.status === 'open')
     .map(node => ({ id: node.id, label: node.title }))

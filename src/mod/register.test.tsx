@@ -2123,7 +2123,10 @@ test('the human’s answer to a thread resolves it and its limit becomes a crite
   expect({ answers, files: world.files }).toEqual({
     answers: [
       { result: 'NodeReplied T5' },
-      { result: 'ThreadResolved T5' },
+      {
+        result:
+          'ThreadResolved T5\nNothing is open under T2 now: ask the human whether T2 can close.',
+      },
       { result: 'CriterionAdded C1' },
     ],
     files: {
@@ -2275,5 +2278,50 @@ test('pressing a waiting ID already in the draft leaves the box alone, and a sec
   expect(await reading(ui, world)).toEqual({
     details: ['', ...t5Asked],
     box: 'T5: ',
+  })
+})
+
+const underT2 = [
+  a.goalOpened(),
+  a.threadOpened({ thread: 'T2', parent: 'G', title: 'Where to stay' }),
+  a.threadOpened({ thread: 'T6', parent: 'T2', title: 'Beach or town?' }),
+  a.threadOpened({ thread: 'T9', parent: 'G', title: 'Food' }),
+]
+
+const resolveT6 = {
+  tool: 'mcp__zg__thread',
+  op: 'resolve',
+  id: 'T6',
+  outcome: 'the bus, 40 min is fine',
+  source: 'chat',
+  reason: 'the bus, 40 min is fine',
+} as const
+
+test('resolving the last open thread under T2 adds a line asking the human whether T2 can close', async ($, on) => {
+  host(on, { [LOG]: log(underT2) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call(resolveT6)
+
+  expect(answer).toEqual({
+    result:
+      'ThreadResolved T6\nNothing is open under T2 now: ask the human whether T2 can close.',
+  })
+})
+
+test('resolving a thread with a sibling still open adds a line naming the sibling', async ($, on) => {
+  const hotel = a.threadOpened({
+    thread: 'T7',
+    parent: 'T2',
+    title: 'Hotel near the port?',
+  })
+  host(on, { [LOG]: log([...underT2, hotel]) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call(resolveT6)
+
+  expect(answer).toEqual({
+    result:
+      'ThreadResolved T6\nT7 Hotel near the port? is still open under T2.',
   })
 })

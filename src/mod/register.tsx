@@ -3,6 +3,7 @@ import { atom, read, type Register, update } from 'claude-code'
 import { brief } from '../core/brief.ts'
 import { details } from '../core/details.ts'
 import { handoff } from '../core/handoff.ts'
+import { followOn } from '../core/follow-on.ts'
 import { fullView } from '../core/overview.ts'
 import { REPLY_TOKEN, replyRows } from '../core/reply-rows.ts'
 import { title } from '../core/title.ts'
@@ -76,27 +77,28 @@ export const register: Register = on => {
       }
     }
 
+    const events = ran.events
+      .map(event =>
+        [
+          event.type,
+          'goal' in event ? event.goal : '',
+          'action' in event ? event.action : '',
+          'thread' in event ? event.thread : '',
+          'option' in event && event.type !== 'DecisionMade'
+            ? event.option
+            : 'decision' in event
+              ? event.decision
+              : '',
+          'criterion' in event ? event.criterion : '',
+          'node' in event ? event.node : '',
+          'into' in event ? event.into : '',
+        ]
+          .filter(part => part !== '')
+          .join(' '),
+      )
+      .join(', ')
     return {
-      result: ran.events
-        .map(event =>
-          [
-            event.type,
-            'goal' in event ? event.goal : '',
-            'action' in event ? event.action : '',
-            'thread' in event ? event.thread : '',
-            'option' in event && event.type !== 'DecisionMade'
-              ? event.option
-              : 'decision' in event
-                ? event.decision
-                : '',
-            'criterion' in event ? event.criterion : '',
-            'node' in event ? event.node : '',
-            'into' in event ? event.into : '',
-          ]
-            .filter(part => part !== '')
-            .join(' '),
-        )
-        .join(', '),
+      result: [events, ...followOn(ran.state, ran.events)].join('\n'),
     }
   })
 
