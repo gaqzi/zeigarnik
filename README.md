@@ -139,8 +139,8 @@ You answer in the main chat, addressing items by ID:
 > T3: skip anything that's not on the coast road
 ```
 
-**Propagate.** Your answer resolves T5, so Claude records your reply, resolves
-T5 with your words as the reason, and decides nothing. The limit you state
+**Propagate.** Your "no" settles T5, a yes/no question, so Claude records your
+reply, resolves T5 with your words as the reason, and decides nothing. The limit you state
 becomes criterion C5 (transfer ≤ 30 min, from T5) on D1, the decision it
 serves. It then re-checks against C5: the Greek village is out, and two Spanish
 places fail C5. It proposes updating T2 and T3 in one batch. You confirm
@@ -339,6 +339,16 @@ question, a long exploration, or a sub-topic of one.
   stays a reply: the question was not yes/no, so the thread stays open and
   nothing else is opened. A plain no to a yes/no question is an answer instead
   (Propagate).
+- A worry about an idea someone named ("not sold on a lake house, the traffic
+  worries me"), with no decision open, is a thread for the idea, with your
+  words as its first reply. Nothing is recorded as a decision, option or
+  criterion. zg proposes the decision it infers, names the candidates named
+  so far (the idea alone, when it is the only one) and adds none of its own,
+  and says the idea is neither chosen nor rejected. It names what the worry is
+  about as what the decision is judged on and asks what it means to you (how long a
+  drive is too long), and asks what else the decision is judged on. It opens
+  when you take the proposal up. A reply that narrows a thread gets none of
+  this.
 
 ### Criterion
 

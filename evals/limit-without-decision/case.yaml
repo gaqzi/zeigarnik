@@ -1,0 +1,159 @@
+schema_version: "1.1"
+name: limit-without-decision
+description: >-
+  Claude resumes a history that holds only the goal G (plan the summer
+  holiday with the kids), nothing under it: the setup turn is the bare
+  /zg:open command, cut after the goal is opened, so the opening reply's own
+  threads are not in the fixture. The human floats a lake house a
+  partner suggested and says what worries them about it, the traffic getting
+  there, with no decision opened yet. Claude opens a thread for the lake-house
+  idea under G with the message verbatim as its first human reply, and records
+  no decision, option or criterion: a limit is a criterion only on a decision
+  that already exists (zg-wn9), and a decision opens where a candidate is
+  named, never from a worry alone (zg-579). Its last message proposes instead,
+  one llm grader per clause: it names the decision it infers (where to go), the lake house as the one
+  candidate named so far, neither chosen nor rejected, names getting there as what that
+  decision is judged on and asks what bad traffic means, asks what else the
+  decision is judged on, and does not say it recorded anything. Guardrails are
+  no DecisionOpened, OptionAdded, DecisionMade or CriterionAdded in the log,
+  no ThreadResolved or NodeCancelled (the thread opened for the idea stays
+  open; the fixture holds no thread, so any such event ends a thread of this
+  run), and every human reply recorded being the message verbatim, so nothing
+  is invented. Behaviours are the thread under G whose human reply is the message
+  (whether Claude opens one is its choice to improve, not a rule it breaks) and
+  the five LLM-graded clauses of the last message. The case has no no-plugin arm, because the
+  runner yields only the with arm for a resumed case, so its baseline is the
+  with arm. Not exercised - the turn after the proposal (the human saying yes
+  and Claude opening the decision with the lake house as its option), the human
+  declining or renaming the proposal, the exploration after, and the setup turn
+  (recorded, not live).
+tags: [guardrail, slice-3, decisions]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "My partner floated renting a lake house somewhere inland. I'm not entirely sold, I'm worried about the traffic getting there and that we'll all be too frustrated by it."
+  max_turns: 10
+  allowed_tools:
+    [
+      mcp__zg__decision,
+      mcp__zg__criterion,
+      mcp__zg__node,
+      mcp__zg__thread,
+      mcp__zg__show,
+    ]
+graders:
+  # Guardrail. The fixture holds the goal and nothing else, so any of these
+  # events was appended in the run: no decision to serve, so no decision,
+  # option or criterion (a limit with nothing to serve is only a reply).
+  - name: no-decision-option-or-criterion-recorded
+    type: regex
+    target: {source: file, path: .zg/sessions/2ed5c4f1-783f-421a-a741-da4160c60534.jsonl}
+    pattern: '"type":"(?:DecisionOpened|OptionAdded|DecisionMade|CriterionAdded)"'
+    match: not_contains
+  # Guardrail. The fixture holds no thread, so a ThreadResolved or a
+  # NodeCancelled in the log is the run ending the thread it opened for the
+  # idea (or a thread it invented): the idea is still being discussed.
+  - name: no-thread-resolved-or-cancelled
+    type: regex
+    target: {source: file, path: .zg/sessions/2ed5c4f1-783f-421a-a741-da4160c60534.jsonl}
+    pattern: '"type":"(?:ThreadResolved|NodeCancelled)"'
+    match: not_contains
+  # Guardrail. Any human reply whose text is not the message exactly. Every
+  # graded line is picked by per-line lookaheads on its fields
+  # ((?<![^\n]) is the line start), so the order of fields does not matter.
+  - name: no-human-reply-but-the-message-verbatim
+    type: regex
+    target: {source: file, path: .zg/sessions/2ed5c4f1-783f-421a-a741-da4160c60534.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"NodeReplied")(?=[^\n]*"author":"human")(?![^\n]*"text":"My partner floated renting a lake house somewhere inland\. I''m not entirely sold, I''m worried about the traffic getting there and that we''ll all be too frustrated by it\."[,}])'
+    match: not_contains
+  # Behaviour, baseline then ratchet. A thread opened under G, and a later
+  # human NodeReplied on that same thread (the backreference) holding the
+  # message verbatim.
+  - name: thread-under-G-with-the-message-as-human-reply
+    type: regex
+    target: {source: file, path: .zg/sessions/2ed5c4f1-783f-421a-a741-da4160c60534.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"ThreadOpened")(?=[^\n]*"parent":"G")[^\n]*"thread":"(T\d+)"[^\n]*\n(?:[^\n]*\n)*?(?<![^\n])(?=[^\n]*"type":"NodeReplied")(?=[^\n]*"node":"\1")(?=[^\n]*"author":"human")(?=[^\n]*"text":"My partner floated renting a lake house somewhere inland\. I''m not entirely sold, I''m worried about the traffic getting there and that we''ll all be too frustrated by it\."[,}])'
+    match: contains
+  # Behaviour, baseline then ratchet. Clause one of the last Then; an llm grader on Claude's last message alone, the criteria quote the prompt in case the grader's input does not repeat it.
+  - name: offers-the-decision-it-infers
+    type: llm
+    criteria: |
+      Behaviour, baseline then ratchet. Grade only Claude's last message. The
+      session's goal is "Plan our summer holiday with the kids", with nothing
+      recorded under it yet. The human's only message is, verbatim: "My
+      partner floated renting a lake house somewhere inland. I'm not entirely
+      sold, I'm worried about the traffic getting there and that we'll all be
+      too frustrated by it." Pass when the message
+      names the decision it infers from the message, in its own words and
+      about where to go (for example "where to go" or "where to stay"), and
+      offers it to the human to take up. Fail when it names no decision, or
+      names a decision other than where to go. Not a fail: offering the
+      decision as a proposal that waits for the human's yes, giving its
+      reasons.
+  # Clause two: the candidate.
+  - name: names-the-lake-house-as-the-one-candidate-neither-chosen-nor-rejected
+    type: llm
+    criteria: |
+      Behaviour, baseline then ratchet. Grade only Claude's last message. The
+      session's goal is "Plan our summer holiday with the kids", with nothing
+      recorded under it yet. The human's only message is, verbatim: "My
+      partner floated renting a lake house somewhere inland. I'm not entirely
+      sold, I'm worried about the traffic getting there and that we'll all be
+      too frustrated by it." Pass when the message
+      names the lake house as the one candidate named so far for the decision
+      of where to go, neither chosen nor rejected: it is presented as an idea
+      on the table, not as the pick and not as ruled out. Fail when it names
+      a second candidate itself, or presents the lake house as chosen,
+      decided, or ruled out. Not a fail: saying other candidates may be
+      added, explored or compared later, or calling the lake house the first
+      option, as long as it names no other candidate itself; saying it is
+      keeping the lake house idea open.
+  # Clause three: the worry as a criterion.
+  - name: names-getting-there-as-the-criterion-and-asks-what-it-means
+    type: llm
+    criteria: |
+      Behaviour, baseline then ratchet. Grade only Claude's last message. The
+      session's goal is "Plan our summer holiday with the kids", with nothing
+      recorded under it yet. The human's only message is, verbatim: "My
+      partner floated renting a lake house somewhere inland. I'm not entirely
+      sold, I'm worried about the traffic getting there and that we'll all be
+      too frustrated by it." Pass when the message
+      names getting there (the traffic, the journey) as something the
+      decision of where to go is judged on, and asks the human what bad
+      traffic means to them (for example how long a drive is too long). Fail
+      when it never asks what bad traffic means. Not a fail: giving its
+      reasons, offering the criterion as a proposal that waits for the
+      human's yes.
+  # Clause four: what else.
+  - name: asks-what-else-the-decision-is-judged-on
+    type: llm
+    criteria: |
+      Behaviour, baseline then ratchet. Grade only Claude's last message. The
+      session's goal is "Plan our summer holiday with the kids", with nothing
+      recorded under it yet. The human's only message is, verbatim: "My
+      partner floated renting a lake house somewhere inland. I'm not entirely
+      sold, I'm worried about the traffic getting there and that we'll all be
+      too frustrated by it." Pass when the message
+      asks what else the decision of where to go is judged on, in a question
+      to the human. Fail when it never asks what else matters. Not a fail:
+      giving its reasons, asking it in the same breath as other questions.
+  # Clause five: no claim of recording.
+  - name: does-not-say-it-recorded-anything
+    type: llm
+    criteria: |
+      Behaviour, baseline then ratchet. Grade only Claude's last message. The
+      session's goal is "Plan our summer holiday with the kids", with nothing
+      recorded under it yet. The human's only message is, verbatim: "My
+      partner floated renting a lake house somewhere inland. I'm not entirely
+      sold, I'm worried about the traffic getting there and that we'll all be
+      too frustrated by it." Fail when the
+      message says it recorded anything: "recorded", "added", "opened D1",
+      "noted down" as a criterion, or any claim that the worry became a
+      criterion or that a decision or option now exists. Pass otherwise. Not
+      a fail: saying it opened a thread or is keeping the lake house idea
+      open, saying the thread holds the human's words (its first reply or
+      note), e.g. "with your traffic worry as its first note", "put your
+      worry about the drive on it", giving its reasons, offering the
+      decision as a proposal that waits for the human's yes.

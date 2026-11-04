@@ -55,6 +55,14 @@ directory as its `cwd`, on macOS as `/private/tmp/zg-eval`: rewrite it to
 `/tmp/zg-eval` before committing, so no local path or username lands in the
 repo.
 
+A setup turn whose reply opens more than the case needs (a bare
+`/zg:open` also opens threads under the goal) is cut the same way: record the
+bare command, cut `history.jsonl` after the command's `tool_result`, dropping
+the assistant text and anything after, and cut `log.jsonl` after the event the
+case starts from. Do not steer the setup prompt to hold the reply back.
+The harness adds an assistant line "No response requested." before each live
+turn, because the cut history ends on a `tool_result`.
+
 A headless run never offers AskUserQuestion, so a dialog's answer is spliced
 in (zg-bam.14): record up to the command that asks, cut `history.jsonl` after
 that command's expansion, and append an `assistant` line holding the
