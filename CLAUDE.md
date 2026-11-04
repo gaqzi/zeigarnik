@@ -23,6 +23,10 @@ scripts. Start on a bead with `script/context <id> --claim`.
 
 - `script/bootstrap` once; `script/test` before handing over (free: format,
   typecheck, lint, README decision overview, domain core, mod wiring).
+- A worktree under `.claude/worktrees/` has no `node_modules`, and
+  `script/bootstrap` can't run in the sandbox. Whoever creates one links
+  the main checkout's right after:
+  `ln -s ../../../node_modules .claude/worktrees/<name>/node_modules`.
 - `script/test unit` or `wiring` for one layer. `script/test eval` costs
   tokens: ask the human first, and run it outside the Bash sandbox.
 - Try zg in a session with `claude --plugin-dir .`.
