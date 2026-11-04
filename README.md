@@ -311,11 +311,12 @@ reach it descends from it, so each goal has its own tree.
     goal. Sometimes the context at hand makes it worth doing now: close `G1`,
     and open `G2` in the same session. Claude points out what that costs in
     context before you choose.
-- There is no waiting state for goals. A goal for later is recorded as a
-  **decision** ("next goal: …") under the node where it came up. The pane lists
-  these under the current goal, so you can see there is more to come, and the
-  handoff picks them up. If one becomes `G2` in this session, `G1`'s tree
-  closes with it and `G2` starts a tree of its own.
+- There is no waiting state for goals. A goal for later is kept as an
+  **action** owned by you, its text starting "Next session:", added when the
+  thread it came up in is resolved. The pane lists it with the open actions,
+  so you can see there is more to come, and the handoff picks it up. If one
+  becomes `G2` in this session, `G1`'s tree closes with it and `G2` starts a
+  tree of its own.
 
 ### Thread
 
@@ -338,9 +339,9 @@ question, a long exploration, or a sub-topic of one.
     and whose they are
   - `merged`: folded into another thread, which carries on
 - Every thread must end `resolved`, `cancelled` or `merged`. To pursue
-  something outside this session, close the thread with a decision to do so.
-  That produces an action captured into your tracking, or it becomes the next
-  session's goal.
+  something outside this session, resolve the thread and add an action owned
+  by you. That action is captured into your tracking, or, when its text starts
+  "Next session:", it becomes the next session's goal.
 - A question is a thread too: its title names the thread, the question Claude
   asks is the thread's first reply, its outcome is the answer, and the answer
   may name other threads or decisions by ID.
@@ -528,8 +529,11 @@ Whenever a direct child of the goal closes, Claude asks whether the goal is met.
 ### Steers toward closing
 
 When a tangent doesn't serve the goal, Claude asks you to decide now: cancel it,
-make it an action captured into your tracking, or make it the next session's
-goal. Nothing is left hanging.
+make it an action for you, or keep it for the next session. Nothing is
+cancelled or filed until you answer. "Make it an action" resolves the thread and
+adds an action owned by you; "next session" does the same, with the action's
+text starting "Next session:", so it is easy to find again. Nothing is left
+hanging.
 
 ## Interactions
 
