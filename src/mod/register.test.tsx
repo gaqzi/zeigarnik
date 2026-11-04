@@ -106,6 +106,71 @@ test('a slash command other than /zg:open still gets the index', async ($, on) =
   })
 })
 
+const INDEX = 'zg open: T4 Places in Cyprus'
+
+const beachHoliday = [
+  a.goalOpened({ text: 'Pick our end-of-May beach holiday' }),
+  a.threadOpened({ thread: 'T4', title: 'Places in Cyprus' }),
+]
+
+const richCyprus = [
+  ...beachHoliday,
+  a.threadOpened({ thread: 'T5', parent: 'T4', title: 'Which coast?' }),
+  a.nodeReplied({
+    node: 'T4',
+    author: 'claude',
+    text: 'Paphos has the beaches',
+  }),
+]
+
+test('a prompt that is only a node’s ID gets its recap after the index', async ($, on) => {
+  host(on, { [LOG]: log(richCyprus) })
+
+  const answer = await $.classic.UserPromptSubmit({ prompt: 'T4' })
+
+  expect(answer).toEqual({
+    additionalContext: [
+      'zg open: T4 Places in Cyprus · T5 Which coast?',
+      'Recap T4\nT4 Places in Cyprus\nunder G\nopen\nchildren: ○ T5 Which coast?\n#1 claude: Paphos has the beaches',
+    ],
+  })
+})
+
+test('the recap body is what the show tool answers for that item', async ($, on) => {
+  host(on, { [LOG]: log(richCyprus) })
+  await $.session.start(START)
+
+  const prompted = await $.classic.UserPromptSubmit({ prompt: 'T4' })
+  const shown = await $.tool.call({ tool: 'mcp__zg__show', id: 'T4' })
+
+  expect({ recap: prompted?.additionalContext?.[1], shown }).toEqual({
+    recap:
+      'Recap T4\nT4 Places in Cyprus\nunder G\nopen\nchildren: ○ T5 Which coast?\n#1 claude: Paphos has the beaches',
+    shown: {
+      result:
+        'T4 Places in Cyprus\nunder G\nopen\nchildren: ○ T5 Which coast?\n#1 claude: Paphos has the beaches',
+    },
+  })
+})
+
+test('a prompt naming an unknown ID gets the index and that nothing is there', async ($, on) => {
+  host(on, { [LOG]: log(beachHoliday) })
+
+  const answer = await $.classic.UserPromptSubmit({ prompt: 'T99' })
+
+  expect(answer).toEqual({
+    additionalContext: [INDEX, 'There is no item T99.'],
+  })
+})
+
+test('a prompt that only mentions a node’s ID gets the index alone', async ($, on) => {
+  host(on, { [LOG]: log(beachHoliday) })
+
+  const answer = await $.classic.UserPromptSubmit({ prompt: 'T4?' })
+
+  expect(answer).toEqual({ additionalContext: [INDEX] })
+})
+
 test('/zg:open gets the index alongside the new title', async ($, on) => {
   const given = [a.goalOpened(), a.threadOpened()]
   host(on, { [LOG]: log(given) })

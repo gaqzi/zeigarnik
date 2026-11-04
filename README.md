@@ -518,9 +518,12 @@ out.
 
 ### Recaps on return
 
-When you come back to a thread you haven't touched in a while, Claude opens
-with a short recap: where it stood, what has been learned since (from its
-children and from criteria changes), and the next step to close it.
+When you come back to a node you haven't touched in a while, write its ID
+alone (`T4`, or `G` for the goal). Claude answers with a short recap: where it
+stood, what has been learned since (from its children and from criteria
+changes), and the next step to close it. The ID has to be the whole message:
+`T4?` or `see T4` is an ordinary message. A recap is not a reply, so nothing is
+recorded.
 
 ### Checks the goal
 

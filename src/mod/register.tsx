@@ -2,9 +2,10 @@ import { atom, read, type Register, update } from 'claude-code'
 
 import { brief } from '../core/brief.ts'
 import { details } from '../core/details.ts'
-import { handoff } from '../core/handoff.ts'
 import { followOn } from '../core/follow-on.ts'
+import { handoff } from '../core/handoff.ts'
 import { fullView } from '../core/overview.ts'
+import { recap } from '../core/recap.ts'
 import { REPLY_TOKEN, replyRows } from '../core/reply-rows.ts'
 import { title } from '../core/title.ts'
 import { turnIndex } from '../core/turn-index.ts'
@@ -23,17 +24,16 @@ const titled = { plugin: 'zg', key: 'titled' } as const
 const pane = atom({ plugin: 'zg', key: 'lines' } as const, [])
 const selection = atom({ plugin: 'zg', key: 'selected' } as const, '')
 
-// zg-n27: every prompt, slash commands included, brings the index of what is
-// open.
-const withIndex = <R extends { additionalContext?: string[] }>(
+// Adds a context string to the result when there is one.
+const withContext = <R extends { additionalContext?: string[] }>(
   result: R,
-  index: string | undefined,
+  context: string | undefined,
 ): R =>
-  index === undefined
+  context === undefined
     ? result
     : {
         ...result,
-        additionalContext: [...(result.additionalContext ?? []), index],
+        additionalContext: [...(result.additionalContext ?? []), context],
       }
 
 export const register: Register = on => {
@@ -77,7 +77,7 @@ export const register: Register = on => {
       }
     }
 
-    const events = ran.events
+    const summary = ran.events
       .map(event =>
         [
           event.type,
@@ -98,7 +98,7 @@ export const register: Register = on => {
       )
       .join(', ')
     return {
-      result: [events, ...followOn(ran.state, ran.events)].join('\n'),
+      result: [summary, ...followOn(ran.state, ran.events)].join('\n'),
     }
   })
 
@@ -107,7 +107,12 @@ export const register: Register = on => {
   // Once Claude has recorded the goal's origin, the next prompt adds it.
   on('classic.UserPromptSubmit', async ($, e, next) => {
     const state = await current($, await $.session.id())
-    const result = withIndex(await next(e), turnIndex(state))
+    // zg-n27: every prompt, slash commands included, brings the index of what
+    // is open; a prompt that is only a node's ID adds that node's recap after it.
+    const result = withContext(
+      withContext(await next(e), turnIndex(state)),
+      recap(state, e.prompt),
+    )
     const opening = OPENING.exec(e.prompt.trim())
     if (opening?.[1] !== undefined) {
       return { ...result, sessionTitle: title(opening[1]) }
