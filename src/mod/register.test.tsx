@@ -131,7 +131,7 @@ test('a prompt that is only a node’s ID gets its recap after the index', async
   expect(answer).toEqual({
     additionalContext: [
       'zg open: T4 Places in Cyprus · T5 Which coast?',
-      'Recap T4\nT4 Places in Cyprus\nunder G\nopen\nchildren: ○ T5 Which coast?\n#1 claude: Paphos has the beaches',
+      'Recap T4\nNothing has changed on T4 since it opened.\nT4 Places in Cyprus\nunder G\nopen\nchildren: ○ T5 Which coast?\n#1 claude: Paphos has the beaches',
     ],
   })
 })
@@ -145,7 +145,7 @@ test('the recap body is what the show tool answers for that item', async ($, on)
 
   expect({ recap: prompted?.additionalContext?.[1], shown }).toEqual({
     recap:
-      'Recap T4\nT4 Places in Cyprus\nunder G\nopen\nchildren: ○ T5 Which coast?\n#1 claude: Paphos has the beaches',
+      'Recap T4\nNothing has changed on T4 since it opened.\nT4 Places in Cyprus\nunder G\nopen\nchildren: ○ T5 Which coast?\n#1 claude: Paphos has the beaches',
     shown: {
       result:
         'T4 Places in Cyprus\nunder G\nopen\nchildren: ○ T5 Which coast?\n#1 claude: Paphos has the beaches',
@@ -2444,4 +2444,40 @@ test('resolving a thread nested under another adds no line about the goal', asyn
     result:
       'ThreadResolved T6\nNothing is open under T2 now: ask the human whether T2 can close.',
   })
+})
+
+test('a decision’s recap names what changed since the human last wrote on it', async ($, on) => {
+  const given = [
+    a.goalOpened({ text: 'Pick our end-of-May beach holiday' }),
+    a.decisionOpened({ decision: 'D1', title: 'Which holiday do we book?' }),
+    a.optionAdded({ option: 'D1.3', decision: 'D1', title: 'Paphos' }),
+    a.threadOpened({
+      thread: 'T8',
+      parent: 'D1.3',
+      title: 'Check Paphos flights',
+    }),
+    a.nodeReplied({
+      node: 'D1',
+      author: 'human',
+      text: 'what’s the cheapest week?',
+    }),
+    a.threadResolved({
+      thread: 'T8',
+      outcome: 'direct, Thursday and Sunday',
+    }),
+    a.criterionAdded({
+      criterion: 'C5',
+      on: 'D1',
+      text: 'transfer ≤ 30 min',
+      origin: 'T8',
+    }),
+  ]
+  host(on, { [LOG]: log(given) })
+
+  const answer = await $.classic.UserPromptSubmit({ prompt: 'D1' })
+
+  expect(answer?.additionalContext?.[1]?.split('\n').slice(0, 2)).toEqual([
+    'Recap D1',
+    'Since you last wrote on D1: T8 resolved → direct, Thursday and Sunday · C5 transfer ≤ 30 min added (from T8)',
+  ])
 })

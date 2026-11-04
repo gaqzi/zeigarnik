@@ -187,7 +187,7 @@ D1.2 not chosen. Claude asks whether G is achieved.
 
 **Return.** Had you gone for lunch before picking, coming back to D1 would
 start with a recap: "D1, which holiday: three options; C5 was added since you
-last looked (from T5); the Greek village fails it. Pending: your pick."
+last wrote on it (from T5); the Greek village fails it. Pending: your pick."
 
 **Close.**
 
@@ -520,10 +520,11 @@ out.
 
 When you come back to a node you haven't touched in a while, write its ID
 alone (`T4`, or `G` for the goal). Claude answers with a short recap: where it
-stood, what has been learned since (from its children and from criteria
-changes), and the next step to close it. The ID has to be the whole message:
-`T4?` or `see T4` is an ordinary message. A recap is not a reply, so nothing is
-recorded.
+stood, what has changed since you last wrote on it (children closed, criteria
+added or revised; "Since T9 opened" when you never wrote on it), and the next
+step to close it. A recap of `G` is the overview of the goal, with no "since"
+line. The ID has to be the whole message: `T4?` or `see T4` is an ordinary
+message. A recap is not a reply, so nothing is recorded.
 
 ### Checks the goal
 

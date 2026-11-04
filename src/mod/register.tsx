@@ -2,6 +2,7 @@ import { atom, read, type Register, update } from 'claude-code'
 
 import { brief } from '../core/brief.ts'
 import { details } from '../core/details.ts'
+import { fold } from '../core/evolve.ts'
 import { followOn } from '../core/follow-on.ts'
 import { handoff } from '../core/handoff.ts'
 import { fullView } from '../core/overview.ts'
@@ -9,6 +10,7 @@ import { recap } from '../core/recap.ts'
 import { REPLY_TOKEN, replyRows } from '../core/reply-rows.ts'
 import { title } from '../core/title.ts'
 import { turnIndex } from '../core/turn-index.ts'
+import { load } from '../storage/log.ts'
 import { current, now, run, select, show, startReply } from './session.ts'
 import { HANDOFF_TOOL, SHOW, specs, toCommand } from './tools.ts'
 
@@ -106,12 +108,13 @@ export const register: Register = on => {
   // one place a plugin can rename the session (see zg-bam.2's comments).
   // Once Claude has recorded the goal's origin, the next prompt adds it.
   on('classic.UserPromptSubmit', async ($, e, next) => {
-    const state = await current($, await $.session.id())
+    const events = await load($, await $.session.id())
+    const state = fold(events)
     // zg-n27: every prompt, slash commands included, brings the index of what
     // is open; a prompt that is only a node's ID adds that node's recap after it.
     const result = withContext(
       withContext(await next(e), turnIndex(state)),
-      recap(state, e.prompt),
+      recap(events, e.prompt),
     )
     const opening = OPENING.exec(e.prompt.trim())
     if (opening?.[1] !== undefined) {
