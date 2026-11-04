@@ -59,7 +59,6 @@ flowchart TD
   T3["T3 · Places in Spain"]
   T4["T4 · Places in Cyprus"]
   T5["T5 · Best Greek pick is 2h by bus<br/>from the airport. OK?"]
-  D2(["D2 · How long may the transfer be?<br/>→ D2.1 transfers ≤ 30 min"])
   D1(["D1 · Which holiday do we book?<br/>C1 Europe · C2 sea ≥ 18°C · C3 sunny<br/>C4 good bars · C5 transfer ≤ 30 min"])
   D11["D1.1 · Greek village"]
   D12["D1.2 · Costa del Sol"]
@@ -67,11 +66,11 @@ flowchart TD
   T6["T6 · Check Paphos flights"]
 
   G --> T1 & T2 & T3 & T4 & D1
-  T2 --> T5 --> D2
+  T2 --> T5
   D1 --> D11 & D12 & D13
   D13 --> T6
   T1 -.->|fans out| T2 & T3 & T4
-  D2 -.->|new criterion C5| D1
+  T5 -.->|new criterion C5| D1
   T2 & T3 & T4 -.->|fan in as options| D1
   D1 -.->|achieves| G
 ```
@@ -140,24 +139,20 @@ You answer in the main chat, addressing items by ID:
 > T3: skip anything that's not on the coast road
 ```
 
-**Propagate.** Your answer names a limit, not a pick, so Claude records your
-reply and decides nothing in that step. It opens D2 "How long may the
-transfer be?" under T5 with D2.1 transfers ≤ 30 min, the option you named in
-that reply, and asks you to confirm. When you do (`D2: yes, 30 min`), D2 is
-decided with your words as the reason. T5 resolves
-with "see D2", and Claude adds criterion C5 (transfer ≤ 30 min, from D2) to
-D1. It then re-checks against C5: the Greek village is out, and two Spanish
+**Propagate.** Your answer resolves T5, so Claude records your reply, resolves
+T5 with your words as the reason, and decides nothing. The limit you state
+becomes criterion C5 (transfer ≤ 30 min, from T5) on D1, the decision it
+serves. It then re-checks against C5: the Greek village is out, and two Spanish
 places fail C5. It proposes updating T2 and T3 in one batch. You confirm
 once.
 
 ```
 ┌ zg ────────────────────────────────────────────────────────────────────┐
 │ ○ G Pick our end-of-May beach holiday                                  │
-│ 4 open · 3 closed                                                      │
+│ 4 open · 2 closed                                                      │
 │   ✓ T1 Which countries are warm enough? → GR, ES, CY                   │
 │   ○ T2 Places in Greece                                                │
-│     ✓ T5 2h bus? → see D2                                              │
-│       ✓ D2 How long may the transfer be? → D2.1 transfers ≤ 30 min     │
+│     ✓ T5 2h bus? → no: two hours with the kids is a no                 │
 │   ○ T3 Places in Spain                                                 │
 │   ○ T4 Places in Cyprus                                                │
 │   ✦ D1 Which holiday do we book?                                       │
@@ -183,7 +178,7 @@ D1.2 not chosen. Claude asks whether G is achieved.
 
 **Return.** Had you gone for lunch before picking, coming back to D1 would
 start with a recap: "D1, which holiday: three options; C5 was added since you
-last looked (from D2); the Greek village fails it. Pending: your pick."
+last looked (from T5); the Greek village fails it. Pending: your pick."
 
 **Close.**
 
@@ -361,10 +356,12 @@ and can hold threads and decisions of its own when it needs exploring.
   you said them, hedges included ("fine for now, we can change it later"), and
   where they came from. The picked option is chosen, the others not chosen.
   Or it is cancelled, with your reason.
+- An answer resolves its thread, and a limit you state in it is a criterion
+  on the decision it serves, with that thread as its origin. "Keep transfers
+  under 30 min", said in answer to T5, resolves T5 and becomes a criterion on
+  D1; it decides nothing.
 - A decision is never opened and decided in one step, and holds only options
-  a person named in chat. A realization along the way ("transfers must be
-  short") is not decided in the same step: Claude opens the decision,
-  proposes the pick and waits for you.
+  a person named in chat. Claude proposes a pick and waits for you.
 - States: `open` → `decided` | `cancelled`. A decided decision can be decided
   again: you pick another option, or a new one, and the earlier pick stays in
   its history with your words. Nothing closed is rewritten; rediscussion that
@@ -380,7 +377,7 @@ The overview of a decision reads like this:
 D1 Decision: Which holiday do we book?
    Decision: D1.3 Paphos
    because (chat): Paphos then, the 20 min transfer settles it
-   Criteria: C1 Europe · C2 sea ≥ 18°C · C3 sunny · C4 good bars · C5 transfer ≤ 30 min (from D2)
+   Criteria: C1 Europe · C2 sea ≥ 18°C · C3 sunny · C4 good bars · C5 transfer ≤ 30 min (from T5)
    Options:
      · D1.1 Greek village
          #1 claude: best beach of the lot, but 2h by bus from the airport (fails C5)
@@ -487,8 +484,8 @@ directions, and each one is tested on its own:
 | **Across** | Your reply to one thread also settles others that aren't parent and child, because you saw the common thread between them. Claude proposes resolving those too, with outcomes. | each affected thread; the reply belongs to no thread |
 
 Changes often travel up, then down or across. In the holiday example, C5 is
-found deep in T5, recorded as D2 and attached to D1, where it will judge D1's
-options; Claude also carries it across to T2 and T3, whose places it rules
+found deep in T5, whose answer resolves it, and attached to D1, where it
+will judge D1's options; Claude also carries it across to T2 and T3, whose places it rules
 out.
 
 ### Recaps on return

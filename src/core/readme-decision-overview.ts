@@ -6,7 +6,7 @@ export const readmeDecisionOverview: string[] = [
   'D1 Decision: Which holiday do we book?',
   '   Decision: D1.3 Paphos',
   '   because (chat): Paphos then, the 20 min transfer settles it',
-  '   Criteria: C1 Europe · C2 sea ≥ 18°C · C3 sunny · C4 good bars · C5 transfer ≤ 30 min (from D2)',
+  '   Criteria: C1 Europe · C2 sea ≥ 18°C · C3 sunny · C4 good bars · C5 transfer ≤ 30 min (from T5)',
   '   Options:',
   '     · D1.1 Greek village',
   '         #1 claude: best beach of the lot, but 2h by bus from the airport (fails C5)',

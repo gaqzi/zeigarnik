@@ -1989,3 +1989,68 @@ test('a digit after a narrows the list to that action', async ($, on) => {
     ],
   })
 })
+
+// An answer resolves its thread, and a limit in it is a criterion on the decision it serves (zg-bam.5.12).
+
+const answering = [
+  a.goalOpened({ text: 'Plan our family summer holiday with the kids' }),
+  a.decisionOpened({ title: 'Where to go' }),
+  ...[
+    a.threadOpened({ thread: 'T2', title: 'Greek islands' }),
+    a.threadOpened({
+      thread: 'T5',
+      parent: 'T2',
+      title: 'Best Greek pick is 2h by bus from the airport. OK?',
+    }),
+  ],
+]
+
+test('the human’s answer to a thread resolves it and its limit becomes a criterion on the decision, with no decision opened, option added or made', async ($, on) => {
+  const world = host(on, { [LOG]: log(answering) })
+  await $.session.start(START)
+
+  const answers = [
+    await $.tool.call({
+      tool: 'mcp__zg__node',
+      op: 'reply',
+      id: 'T5',
+      author: 'human',
+      text: TRANSFER_WORDS,
+    }),
+    await $.tool.call({
+      tool: 'mcp__zg__thread',
+      op: 'resolve',
+      id: 'T5',
+      outcome: 'transfers under 30 min',
+      source: 'chat',
+      reason: TRANSFER_WORDS,
+    }),
+    await $.tool.call(add('D1', 'transfer ≤ 30 min', 'T5')),
+  ]
+
+  expect({ answers, files: world.files }).toEqual({
+    answers: [
+      { result: 'NodeReplied T5' },
+      { result: 'ThreadResolved T5' },
+      { result: 'CriterionAdded C1' },
+    ],
+    files: {
+      [LOG]: log([
+        ...answering,
+        a.nodeReplied({ node: 'T5', author: 'human', text: TRANSFER_WORDS }),
+        a.threadResolved({
+          thread: 'T5',
+          outcome: 'transfers under 30 min',
+          source: 'chat',
+          reason: TRANSFER_WORDS,
+        }),
+        a.criterionAdded({
+          criterion: 'C1',
+          on: 'D1',
+          text: 'transfer ≤ 30 min',
+          origin: 'T5',
+        }),
+      ]),
+    },
+  })
+})

@@ -59,7 +59,7 @@ export const specs: RegisteredToolSpec[] = [
   },
   {
     name: 'thread',
-    description: `Records a thread: each thing we are looking to close, such as a question whose answer only informs, opened under the goal or the thread it came up in. add one as soon as it comes up. parent: the goal's ID or a thread's. resolve closes it with outcome: a short summary, your words are fine. Before you resolve: a fact the human tells you is the outcome. An answer they could have given otherwise, a yes or no to what you proposed, a pick, a limit they set, is not an outcome. ${CLOSED_BY}`,
+    description: `Records a thread: each thing we are looking to close, such as a question whose answer only informs, opened under the goal or the thread it came up in. add one as soon as it comes up. parent: the goal's ID or a thread's. resolve closes it with outcome: a short summary of the answer, or the answer itself when it is short. The human's answer to a thread resolves it, a no or a limit they set included, unless it picks a candidate they or you named, which is a decision; cancel is for a thread no longer worth pursuing, never for one that was answered. A limit they state is a criterion on the decision it serves, not a decision. ${CLOSED_BY}`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -102,7 +102,7 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: 'criterion',
     description:
-      "Records a criterion: what a decision is judged on. add one in a few words as soon as the human states or implies it, on the decision it serves; the decisions under its options inherit it. origin: the decision recorded from the human's words when there is one, else the node where it came up; their words are already in that node's history. revise rewords one when the human changes it; origin is required, the node that changed it.",
+      "Records a criterion: what a decision is judged on. add one in a few words as soon as the human states or implies it, on the decision it serves; the decisions under its options inherit it. origin: the node where it came up, such as the thread the human answered; their words are already in that node's history. revise rewords one when the human changes it; origin is required, the node that changed it.",
     inputSchema: {
       type: 'object',
       properties: {

@@ -13,8 +13,7 @@ description: >-
   last message. The case has no no-plugin arm, because the runner yields only
   the with arm for a resumed case, so its baseline is the with arm. Not
   exercised - a dialog pick (a headless run cannot answer a dialog), the human
-  then confirming and Claude recording the decision (decide-from-reply covers
-  a decision recorded from chat words), and the setup turns (recorded, not
+  then confirming and Claude recording the decision, and the setup turns (recorded, not
   live).
 tags: [guardrail, slice-3, decisions]
 runs: 5

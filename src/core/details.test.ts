@@ -287,17 +287,6 @@ describe('a closed decision’s details', () => {
       a.optionAdded(),
       a.optionAdded({ option: 'D1.2', title: 'Costa del Sol' }),
       a.optionAdded({ option: 'D1.3', title: 'Paphos' }),
-      a.decisionOpened({ decision: 'D2', title: 'How long a transfer?' }),
-      a.optionAdded({
-        option: 'D2.1',
-        decision: 'D2',
-        title: 'transfers ≤ 30 min',
-      }),
-      a.decisionMade({
-        decision: 'D2',
-        option: 'D2.1',
-        reason: 'transfers must be short',
-      }),
       a.criterionAdded(),
       a.criterionAdded({ criterion: 'C2', text: 'sea ≥ 18°C' }),
       a.criterionAdded({ criterion: 'C3', text: 'sunny' }),
@@ -305,7 +294,7 @@ describe('a closed decision’s details', () => {
       a.criterionAdded({
         criterion: 'C5',
         text: 'transfer ≤ 30 min',
-        origin: 'D2',
+        origin: 'T5',
       }),
       a.nodeReplied({
         node: 'D1.1',

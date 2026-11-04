@@ -88,28 +88,21 @@ reply in chat      └─▶ command ─▶ decide(state, command)
 ## An example
 
 The reply `T5: no, two hours with the kids is a no. Keep transfers under
-30 min.` names a limit, not a pick, so nothing is decided in this turn:
+30 min.` answers T5 and states a limit. The answer resolves its thread, the
+limit is a criterion on the decision it serves, and nothing is decided
+(zg-wn9):
 
 ```
 Claude records the reply        ReplyToNode{T5, author: human, text}
                                   → NodeReplied{T5, author: human, text}
-Claude opens D2                 OpenDecision{parent: T5, title}
-                                  → DecisionOpened{D2, parent: T5, title}
-Claude adds the option          AddOption{decision: D2, title: choice}
-                                  → OptionAdded{D2.1, decision: D2, title: choice}
+Claude resolves T5              ResolveThread{T5, outcome, source: chat, reason}
+                                  → ThreadResolved{T5, outcome, source: chat, reason}
+Claude adds C5                  AddCriterion{on: D1, text, origin: T5}
+                                  → CriterionAdded{C5, on: D1, text, origin: T5}
 ```
 
-Claude asks you to confirm D2.1. The reply `D2: yes, 30 min` is the next
-turn:
-
-```
-Claude records the reply        ReplyToNode{D2, author: human, text}
-                                  → NodeReplied{D2, author: human, text}
-Claude records the pick         MakeDecision{decision: D2, option: D2.1, source: chat, reason}
-                                  → DecisionMade{D2, option: D2.1, source: chat, reason}
-Claude adds C5                  AddCriterion{on: D1, text, origin: D2}
-                                  → CriterionAdded{C5, on: D1, text, origin: D2}
-```
+The reason is the human's words. No decision is opened: nobody named a
+candidate to pick.
 
 One command may yield several events; they are appended together or not at
 all (zg-tjz).
