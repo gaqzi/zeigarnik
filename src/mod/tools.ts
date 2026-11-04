@@ -107,7 +107,7 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: 'criterion',
     description:
-      "Records a criterion: what a decision is judged on. add one in a few words as soon as the human states or implies it, on the decision it serves; the decisions under its options inherit it. origin: the node where it came up, such as the thread the human answered; their words are already in that node's history. revise rewords one when the human changes it; origin is required, the node that changed it.",
+      "Records a criterion: what a decision is judged on. add one in a few words as soon as the human states or implies it, on the decision it serves; the decisions under its options inherit it. origin: the node where it came up, such as the thread the human answered; their words are already in that node's history. revise rewords one when the human changes it; origin is required, the node that changed it. After add or revise, check which open options and threads it rules out and propose those closes as one batch, each with its grounds; close none until the human confirms.",
     inputSchema: {
       type: 'object',
       properties: {
