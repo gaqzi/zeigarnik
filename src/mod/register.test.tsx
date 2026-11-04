@@ -1,3 +1,7 @@
+import type {
+  PromptAutocompleteInput,
+  PromptAutocompleteResult,
+} from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 
 import { AT, a } from '../core/a.ts'
@@ -1873,5 +1877,79 @@ test('a revised criterion is logged with its origin, drawn with its new wording,
       result:
         'D1 Decision: Which holiday do we book?\n   Criteria: C1 Europe · C2 sea ≥ 20°C (from T5)\n   Options:',
     },
+  })
+})
+
+// Wiring of the reply list: the rule is replyRows, tested in src/core.
+const threads = [
+  a.threadOpened({ thread: 'T1', title: 'Places in Greece' }),
+  a.threadOpened({ thread: 'T2', title: 'Places in Spain' }),
+  a.threadOpened({ thread: 'T3', title: 'Places in Italy' }),
+  a.threadOpened({ thread: 'T4', title: 'Places in Malta' }),
+  a.threadOpened({ thread: 'T5', title: 'Bus village' }),
+  a.threadOpened({ thread: 'T6', title: 'Flights out' }),
+  a.threadResolved({ thread: 'T2' }),
+  a.threadResolved({ thread: 'T3' }),
+  a.threadResolved({ thread: 'T4' }),
+]
+
+const typed = (text: string, token: string) => ({
+  text,
+  cursor: text.length,
+  token,
+  start: text.length - token.length,
+})
+
+// The vendored types (2.1.309) lag the installed engine, which has
+// prompt.autocomplete at runtime.
+const autocomplete = (
+  $: { prompt: object },
+  input: PromptAutocompleteInput,
+): Promise<PromptAutocompleteResult> =>
+  (
+    $.prompt as {
+      autocomplete(
+        i: PromptAutocompleteInput,
+      ): Promise<PromptAutocompleteResult>
+    }
+  ).autocomplete(input)
+
+test('typing T at the start of a line lists the open threads that the draft does not name', async ($, on) => {
+  host(on, { [LOG]: log([a.goalOpened(), ...threads]) })
+
+  const answer = await autocomplete(
+    $,
+    typed('T5: skip the bus village\nT', 'T'),
+  )
+
+  expect(answer).toEqual({
+    suggestions: [
+      { text: 'T1: ', label: 'T1', description: 'Places in Greece' },
+      { text: 'T6: ', label: 'T6', description: 'Flights out' },
+    ],
+  })
+})
+
+test('taking a row writes the prefix in upper case', async ($, on) => {
+  host(on, { [LOG]: log([a.goalOpened(), ...threads]) })
+
+  const answer = await autocomplete($, typed('t', 't'))
+
+  expect(answer).toEqual({
+    suggestions: [
+      { text: 'T1: ', label: 'T1', description: 'Places in Greece' },
+      { text: 'T5: ', label: 'T5', description: 'Bus village' },
+      { text: 'T6: ', label: 'T6', description: 'Flights out' },
+    ],
+  })
+})
+
+test('a digit narrows the list to that thread', async ($, on) => {
+  host(on, { [LOG]: log([a.goalOpened(), ...threads]) })
+
+  const answer = await autocomplete($, typed('T5', 'T5'))
+
+  expect(answer).toEqual({
+    suggestions: [{ text: 'T5: ', label: 'T5', description: 'Bus village' }],
   })
 })

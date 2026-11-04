@@ -4,6 +4,7 @@ import { brief } from '../core/brief.ts'
 import { details } from '../core/details.ts'
 import { handoff } from '../core/handoff.ts'
 import { fullView } from '../core/overview.ts'
+import { replyRows } from '../core/reply-rows.ts'
 import { title } from '../core/title.ts'
 import { turnIndex } from '../core/turn-index.ts'
 import { current, now, run, select, show } from './session.ts'
@@ -130,6 +131,19 @@ export const register: Register = on => {
           additionalContext: [...(result.additionalContext ?? []), short],
         }
   })
+
+  // zg-bam.15: T at the start of a line offers the open threads to answer.
+  on('prompt.autocomplete', { token: /^[Tt]\d*$/ }, async ($, e, next) => ({
+    suggestions: [
+      ...(await next(e)).suggestions,
+      ...replyRows(
+        await current($, await $.session.id()),
+        e.text,
+        e.cursor,
+        e.token,
+      ),
+    ],
+  }))
 
   // A /clear after the handoff is how a session ends; a refusal (no handoff
   // stands) is only traced, as nobody is left to tell.

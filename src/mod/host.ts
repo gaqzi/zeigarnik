@@ -63,6 +63,7 @@ export const host = (
   })
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.end', (_, e) => ({ sessionId: e.sessionId }))
+  on('prompt.autocomplete', () => ({ suggestions: [] }))
   on('classic.UserPromptSubmit', () => ({}))
   on('classic.SessionStart', () => ({}))
 

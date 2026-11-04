@@ -11,7 +11,7 @@ zg is a Claude Code mod written in TypeScript.
 | Directory | Holds |
 |---|---|
 | `src/core/` | the domain: commands, events, `decide`, `evolve` and views, as pure functions (zg-orj) |
-| `src/mod/` | hooks, tools, the pane and its selection hook, context injection (zg-5mi, zg-zo2) |
+| `src/mod/` | hooks (including `prompt.autocomplete`), tools, the pane and its selection hook, context injection (zg-5mi, zg-zo2) |
 | `src/storage/` | the session log and the refusal trace (zg-r1g, zg-vgk) |
 | `evals/` | model-behaviour evals (zg-egt) |
 
