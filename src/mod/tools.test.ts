@@ -554,7 +554,13 @@ describe('a tool call missing what it needs is refused', () => {
         name: 'a decision call with no op zg has a name for',
         tool: 'decision',
         input: decisionOpen({ op: 'drop' }),
-        missing: 'decision needs op: open, option, decide or record.',
+        missing: 'decision needs op: open, option or decide.',
+      },
+      {
+        name: 'a decision call with op record is refused like any unknown op',
+        tool: 'decision',
+        input: decisionOpen({ op: 'record' }),
+        missing: 'decision needs op: open, option or decide.',
       },
       {
         name: 'a decision opened without its parent',
@@ -789,104 +795,6 @@ describe('a decision decided', () => {
       name: 'a pick with both an option and a new option’s title',
       input: decide({ title: 'Rhodes' }),
       missing: "decide takes an option or a new option's title, not both.",
-    },
-  ]
-  for (const { name, input, missing: reason } of missing) {
-    test(`${name} is refused`, () => {
-      expect(toCommand('decision', input, AT)).toEqual({ missing: reason })
-    })
-  }
-})
-
-describe('a decision recorded', () => {
-  const record = (overrides: Input = {}) => ({
-    op: 'record',
-    parent: 'T5',
-    title: 'How long may the transfer be?',
-    choice: 'transfers ≤ 30 min',
-    source: 'chat',
-    reason: 'no, two hours with the kids is a no. Keep transfers under 30 min.',
-    ...overrides,
-  })
-  const recorded = (overrides: Parameters<typeof a.recordDecision>[0] = {}) =>
-    a.recordDecision({
-      parent: 'T5',
-      title: 'How long may the transfer be?',
-      choice: 'transfers ≤ 30 min',
-      reason:
-        'no, two hours with the kids is a no. Keep transfers under 30 min.',
-      ...overrides,
-    })
-
-  test('is the parent, the choice made, its source and the human’s words as the command', () => {
-    expect(toCommand('decision', record(), AT)).toEqual(recorded())
-  })
-
-  test('from a dialog pick keeps the words asked for in chat', () => {
-    expect(toCommand('decision', record({ source: 'dialog' }), AT)).toEqual(
-      recorded({ source: 'dialog' }),
-    )
-  })
-
-  const reasonMissing =
-    "record needs the reason: the human's words on why, verbatim."
-  const sourceMissing = 'record needs source: chat or dialog.'
-  const missing: { name: string; input: Input; missing: string }[] = [
-    {
-      name: 'a record without its parent',
-      input: record({ parent: ' ' }),
-      missing:
-        "record needs the parent: the goal's ID, a thread's or an option's.",
-    },
-    {
-      name: 'a record with no title',
-      input: record({ title: undefined }),
-      missing: 'record needs the title: the choice that was made.',
-    },
-    {
-      name: 'a record with a blank title',
-      input: record({ title: '  ' }),
-      missing: 'record needs the title: the choice that was made.',
-    },
-    {
-      name: 'a record with no choice',
-      input: record({ choice: undefined }),
-      missing: 'record needs the choice: what was decided.',
-    },
-    {
-      name: 'a record with a blank choice',
-      input: record({ choice: '  ' }),
-      missing: 'record needs the choice: what was decided.',
-    },
-    {
-      name: 'a dialog record with no reason',
-      input: record({ source: 'dialog', reason: undefined }),
-      missing: reasonMissing,
-    },
-    {
-      name: 'a chat record with no reason',
-      input: record({ reason: undefined }),
-      missing: reasonMissing,
-    },
-    {
-      name: 'a record with a blank reason',
-      input: record({ reason: '  ' }),
-      missing: reasonMissing,
-    },
-    {
-      name: 'a record with no source',
-      input: record({ source: undefined }),
-      missing: sourceMissing,
-    },
-    {
-      name: 'a record on Claude’s own word',
-      input: record({ source: 'claude' }),
-      missing: sourceMissing,
-    },
-    {
-      name: 'a record from the pane',
-      input: record({ source: 'pane' }),
-      missing: sourceMissing,
     },
   ]
   for (const { name, input, missing: reason } of missing) {

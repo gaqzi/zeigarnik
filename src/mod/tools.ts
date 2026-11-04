@@ -59,7 +59,7 @@ export const specs: RegisteredToolSpec[] = [
   },
   {
     name: 'thread',
-    description: `Records a thread: each thing we are looking to close, such as a question whose answer only informs, opened under the goal or the thread it came up in. add one as soon as it comes up. parent: the goal's ID or a thread's. resolve closes it with outcome: a short summary, your words are fine. Before you resolve: a fact the human tells you is the outcome. An answer they could have given otherwise, a yes or no to what you proposed, a pick, a limit they set, is a decision: decision record (parent the thread; source and reason as for decide); a limit is also criterion add on the decision it serves, origin the new one. ${CLOSED_BY}`,
+    description: `Records a thread: each thing we are looking to close, such as a question whose answer only informs, opened under the goal or the thread it came up in. add one as soon as it comes up. parent: the goal's ID or a thread's. resolve closes it with outcome: a short summary, your words are fine. Before you resolve: a fact the human tells you is the outcome. An answer they could have given otherwise, a yes or no to what you proposed, a pick, a limit they set, is not an outcome. ${CLOSED_BY}`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -77,18 +77,17 @@ export const specs: RegisteredToolSpec[] = [
   {
     name: 'decision',
     description:
-      "Records a decision: a choice the human has to make. open one when a choice comes up, naming the choice as the title (parent: the goal, a thread or an option). option adds a candidate as the human or you name it in chat, numbered under the decision (D1.1). A candidate that needs exploring gets a thread under its option. A question whose answer only informs is a thread. An answer that settles a choice is a decision: decision record, the human's words as its one option. Never add options the human has not named. Dropping an option is node cancel. decide: id is the decision, option the ID of the option picked, only on the human's words: source chat or dialog, reason their words on why, verbatim, hedges included. A dialog pick alone isn't enough: ask why in chat and record those words with source chat. Never decide on your own judgment: propose and wait. record: when the human states a choice outright, it opens the decision (parent, title the choice to make, as for open), adds the option (choice the option picked) and decides it in one step (source, reason as for decide). decide with title instead of option adds that new option and picks it. A decided decision is decided again with decide, never reopened. open, option and decide are for a choice still being worked.",
+      "Records a decision: a choice the human has to make. open one when a choice comes up, naming the choice as the title (parent: the goal, a thread or an option). option adds a candidate as the human or you name it in chat, numbered under the decision (D1.1). A candidate that needs exploring gets a thread under its option. A question whose answer only informs is a thread. A decision is never opened and decided in one step, and it holds only options a person named in chat, your proposals included: an answer that is not a pick is a thread reply; propose a pick and wait for the human. Dropping an option is node cancel. decide: id is the decision, option the ID of the option picked, only on the human's words: source chat or dialog, reason their words on why, verbatim, hedges included. A dialog pick alone isn't enough: ask why in chat and record those words with source chat. Never decide on your own judgment: propose and wait. decide with title instead of option adds that new option and picks it. A decided decision is decided again with decide, never reopened.",
     inputSchema: {
       type: 'object',
       properties: {
-        op: { enum: ['open', 'option', 'decide', 'record'] },
-        parent: { ...text, description: 'open, record: G…, T… or D…' },
+        op: { enum: ['open', 'option', 'decide'] },
+        parent: { ...text, description: 'open: G…, T… or D…' },
         title: {
           ...text,
           description:
-            'open, record: the choice; option: the candidate; decide: a new option, picked in the same step',
+            'open: the choice; option: the candidate; decide: a new option, picked in the same step',
         },
-        choice: { ...text, description: 'record: the option picked' },
         id: { ...text, description: 'option, decide: D…' },
         option: {
           ...text,
@@ -323,45 +322,6 @@ export const toCommand = (
         if (title === undefined) return { missing: 'option needs the title.' }
         return { type: 'AddOption', at, decision: id, title }
       }
-      if (input.op === 'record') {
-        const parent = str(input, 'parent')
-        if (parent === undefined) {
-          return {
-            missing:
-              "record needs the parent: the goal's ID, a thread's or an option's.",
-          }
-        }
-        const title = str(input, 'title')
-        if (title === undefined) {
-          return {
-            missing: 'record needs the title: the choice that was made.',
-          }
-        }
-        const choice = str(input, 'choice')
-        if (choice === undefined) {
-          return { missing: 'record needs the choice: what was decided.' }
-        }
-        const source = sourceOf(input)
-        if (source === undefined) {
-          return { missing: 'record needs source: chat or dialog.' }
-        }
-        const reason = str(input, 'reason')
-        if (reason === undefined) {
-          return {
-            missing:
-              "record needs the reason: the human's words on why, verbatim.",
-          }
-        }
-        return {
-          type: 'RecordDecision',
-          at,
-          parent,
-          title,
-          choice,
-          source,
-          reason,
-        }
-      }
       if (input.op === 'decide') {
         const id = str(input, 'id')
         if (id === undefined) return { missing: 'decide needs the id.' }
@@ -398,7 +358,7 @@ export const toCommand = (
         return { ...pick, source, reason }
       }
       if (input.op !== 'open') {
-        return { missing: 'decision needs op: open, option, decide or record.' }
+        return { missing: 'decision needs op: open, option or decide.' }
       }
       const parent = str(input, 'parent')
       if (parent === undefined) {

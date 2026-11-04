@@ -140,9 +140,11 @@ You answer in the main chat, addressing items by ID:
 > T3: skip anything that's not on the coast road
 ```
 
-**Propagate.** Your answer is a realization, so Claude records it as a
-decision with one option, in one step: D2 "How long may the transfer be?" →
-D2.1 transfers ≤ 30 min, under T5, with your words as the reason. T5 resolves
+**Propagate.** Your answer names a limit, not a pick, so Claude records your
+reply and decides nothing in that step. It opens D2 "How long may the
+transfer be?" under T5 with D2.1 transfers ≤ 30 min, the option you named in
+that reply, and asks you to confirm. When you do (`D2: yes, 30 min`), D2 is
+decided with your words as the reason. T5 resolves
 with "see D2", and Claude adds criterion C5 (transfer ≤ 30 min, from D2) to
 D1. It then re-checks against C5: the Greek village is out, and two Spanish
 places fail C5. It proposes updating T2 and T3 in one batch. You confirm
@@ -359,8 +361,10 @@ and can hold threads and decisions of its own when it needs exploring.
   you said them, hedges included ("fine for now, we can change it later"), and
   where they came from. The picked option is chosen, the others not chosen.
   Or it is cancelled, with your reason.
-- A realization along the way ("transfers must be short") is recorded as a
-  decision with a single option, in one step.
+- A decision is never opened and decided in one step, and holds only options
+  a person named in chat. A realization along the way ("transfers must be
+  short") is not decided in the same step: Claude opens the decision,
+  proposes the pick and waits for you.
 - States: `open` → `decided` | `cancelled`. A decided decision can be decided
   again: you pick another option, or a new one, and the earlier pick stays in
   its history with your words. Nothing closed is rewritten; rediscussion that

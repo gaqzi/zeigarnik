@@ -77,15 +77,6 @@ export type Command =
       reason: string
     }
   | {
-      type: 'RecordDecision'
-      at: string
-      parent: string
-      title: string
-      choice: string
-      source: Source
-      reason: string
-    }
-  | {
       type: 'AddCriterion'
       at: string
       on: string

@@ -1512,13 +1512,13 @@ test('cancelling a decision with an open thread under an option is refused and t
   })
 })
 
-// Recording a realization in one call (zg-bam.5.3).
+// A decision decided in one step, as a log written while `record` existed holds it.
 
 const transferBus = a.threadOpened({ thread: 'T5', title: '2h bus?' })
 const TRANSFER_WORDS =
   'no, two hours with the kids is a no. Keep transfers under 30 min.'
 
-const recordedEvents = [
+const oneStepEvents = [
   {
     type: 'DecisionOpened',
     at: AT,
@@ -1540,60 +1540,37 @@ const recordedEvents = [
   }),
 ]
 
-const recordedGiven = [a.goalOpened(), transferBus, decisionOpened]
-
-const recordCall = {
-  tool: 'mcp__zg__decision',
-  op: 'record',
-  parent: 'T5',
-  title: 'How long may the transfer be?',
-  choice: 'transfers ≤ 30 min',
-  source: 'chat',
-  reason: TRANSFER_WORDS,
-} as const
-
-test('a record appends the opened decision, its option and the pick in that order and names them', async ($, on) => {
-  const world = host(on, { [LOG]: log(recordedGiven) })
+test('a decision call with op record is refused as an error, and nothing is logged', async ($, on) => {
+  const given = [a.goalOpened(), transferBus, decisionOpened]
+  const world = host(on, { [LOG]: log(given) })
   await $.session.start(START)
 
-  const answer = await $.tool.call(recordCall)
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__decision',
+    op: 'record',
+    parent: 'T5',
+    title: 'How long may the transfer be?',
+    choice: 'transfers ≤ 30 min',
+    source: 'chat',
+    reason: TRANSFER_WORDS,
+  })
 
   expect({ answer, files: world.files }).toEqual({
-    answer: {
-      result: 'DecisionOpened D2, OptionAdded D2.1, DecisionMade D2',
-    },
-    files: { [LOG]: log([...recordedGiven, ...recordedEvents]) },
+    answer: { deny: 'decision needs op: open, option or decide.' },
+    files: { [LOG]: log(given) },
   })
-})
-
-test('a recorded decision shows dimmed under its thread with its pick, and the thread stays open', async ($, on) => {
-  host(on, { [LOG]: log(recordedGiven) })
-  await $.session.start(START)
-  await $.tool.call(recordCall)
-
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  const pane = (await ui.findAll({ type: 'Text' })).map(text => ({
-    text: text.text,
-    isDim: text.props.dimColor,
-  }))
-
-  expect(pane).toEqual([
-    { text: '○ G Pick a holiday', isDim: false },
-    { text: '2 open · 2 closed', isDim: false },
-    { text: '  ✦ T5 2h bus?', isDim: false },
-    {
-      text: '    ✓ D2 How long may the transfer be? → D2.1 transfers ≤ 30 min',
-      isDim: true,
-    },
-    { text: '  ✦ D1 Which holiday do we book?', isDim: false },
-  ])
 })
 
 // A decision decided again with a new option (zg-bam.5.6).
 
 const TAXI_WORDS = "actually 45 min is fine if it's a taxi"
 
-const decidedOnce = [...recordedGiven, ...recordedEvents]
+const decidedOnce = [
+  a.goalOpened(),
+  transferBus,
+  decisionOpened,
+  ...oneStepEvents,
+]
 
 const decideAgain = {
   tool: 'mcp__zg__decision',

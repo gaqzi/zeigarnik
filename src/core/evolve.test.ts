@@ -3,6 +3,7 @@ import { describe, expect, test } from 'claude-code/testing'
 import { AT, a } from './a.ts'
 import type { Event } from './events.ts'
 import { fold } from './evolve.ts'
+import { overview } from './overview.ts'
 
 // zg-8ex: logs outlive builds. A log written by a newer zg may hold events
 // this build doesn't know; it still replays what it does.
@@ -36,6 +37,84 @@ describe('a NodeMerged this build cannot read changes nothing', () => {
       expect(fold([...given, merged])).toEqual(fold(given))
     })
   }
+})
+
+test('an old log’s decision, option and pick at one moment replay as a decided decision, in the nodes and the pane', () => {
+  const written = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+    a.decisionOpened({
+      decision: 'D2',
+      parent: 'T5',
+      title: 'How long may the transfer be?',
+    }),
+    a.optionAdded({
+      option: 'D2.1',
+      decision: 'D2',
+      title: 'transfers ≤ 30 min',
+    }),
+    a.decisionMade({
+      decision: 'D2',
+      option: 'D2.1',
+      reason: 'no, two hours with the kids is a no.',
+    }),
+  ]
+  const state = fold(written)
+
+  expect({ state, pane: overview(state) }).toEqual({
+    state: {
+      goals: [{ id: 'G', text: 'Pick a holiday', status: 'open' }],
+      actions: [],
+      criteria: [],
+      replies: [],
+      moves: [],
+      merges: [],
+      decidedOrder: ['D2'],
+      handoffStands: false,
+      isClosed: false,
+      nodes: [
+        {
+          id: 'T5',
+          kind: 'thread',
+          parent: 'G',
+          title: '2h bus?',
+          status: 'open',
+        },
+        {
+          id: 'D2',
+          kind: 'decision',
+          parent: 'T5',
+          title: 'How long may the transfer be?',
+          status: 'decided',
+          picks: [
+            {
+              option: 'D2.1',
+              source: 'chat',
+              reason: 'no, two hours with the kids is a no.',
+              at: AT,
+            },
+          ],
+        },
+        {
+          id: 'D2.1',
+          kind: 'option',
+          parent: 'D2',
+          title: 'transfers ≤ 30 min',
+          status: 'chosen',
+        },
+      ],
+    },
+    pane: [
+      { text: '○ G Pick a holiday', isOpen: true },
+      { text: '1 open · 2 closed', isOpen: true },
+      { text: '  ✦ T5 2h bus?', isOpen: true, item: 'T5' },
+      {
+        text: '    ✓ D2 How long may the transfer be? → D2.1 transfers ≤ 30 min',
+        isOpen: false,
+        item: 'D2',
+      },
+    ],
+  })
 })
 
 describe('a moved reply', () => {
