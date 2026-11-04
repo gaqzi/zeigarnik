@@ -318,7 +318,12 @@ test('both sides of an exchange are kept on a thread and show under it', async (
         '    #2 claude: Noted: transfers under 30 minutes',
       ].join('\n'),
     },
-    pane: ['○ G Pick a holiday', '1 open · 0 closed', '  ○ T5 2h bus?'],
+    pane: [
+      '○ G Pick a holiday',
+      '1 open · 0 closed',
+      'Waiting on you: T5',
+      '  ○ T5 2h bus?',
+    ],
     files: {
       [LOG]: log([
         a.goalOpened(),
@@ -779,6 +784,7 @@ test('an untouched thread is new in the pane, with its line not dimmed', async (
     pane: [
       { text: '○ G Pick a holiday', isDim: false },
       { text: '1 open · 0 closed', isDim: false },
+      { text: 'Waiting on you: T1', isDim: false },
       { text: '  ✦ T1 Places in Greece', isDim: false },
     ],
     files: {
@@ -899,6 +905,7 @@ test('threads merged on the human’s word are logged, show as merged in the pan
     pane: [
       { text: '○ G Pick a holiday', isDim: false },
       { text: '2 open · 2 closed', isDim: false },
+      { text: 'Waiting on you: T5', isDim: false },
       { text: '  → T4 Spain trip → T5', isDim: true },
       { text: '  ○ T5 Places in Spain', isDim: false },
       { text: '    ✦ T7 Ferries', isDim: false },
@@ -1041,7 +1048,9 @@ test('the details follow the log: a reply recorded on the selected thread shows 
   const pane = (await ui.findAll({ type: 'Text' })).map(text => text.text)
 
   expect(pane).toEqual([
-    ...tree,
+    ...tree.slice(0, 2),
+    'Waiting on you: T5',
+    ...tree.slice(2),
     '',
     ...t5,
     '#3 claude: Noted: the village is out',
@@ -2102,5 +2111,59 @@ test('the human’s answer to a thread resolves it and its limit becomes a crite
         }),
       ]),
     },
+  })
+})
+
+test('a thread Claude opens with a question waits on the human, on the line after the counts', async ($, on) => {
+  host(on, { [LOG]: log([a.goalOpened()]) })
+  await $.session.start(START)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  await $.tool.call({
+    tool: 'mcp__zg__thread',
+    op: 'add',
+    parent: 'G',
+    title: '2h bus?',
+    question: 'Best Greek pick is 2h by bus from the airport. OK?',
+  })
+  const pane = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+
+  expect(pane).toEqual([
+    '○ G Pick a holiday',
+    '1 open · 0 closed',
+    'Waiting on you: T1',
+    '  ✦ T1 2h bus?',
+  ])
+})
+
+test('the human’s follow-up on a thread takes it off the waiting line', async ($, on) => {
+  const bus = a.threadOpened({ thread: 'T5', title: '2h bus?' })
+  const asked = a.nodeReplied({
+    node: 'T5',
+    author: 'claude',
+    text: 'Best Greek pick is 2h by bus from the airport. OK?',
+  })
+  host(on, { [LOG]: log([a.goalOpened(), bus, asked]) })
+  await $.session.start(START)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const before = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+
+  await $.tool.call({
+    tool: 'mcp__zg__node',
+    op: 'reply',
+    id: 'T5',
+    author: 'human',
+    text: 'what about ferries?',
+  })
+  const after = (await ui.findAll({ type: 'Text' })).map(text => text.text)
+
+  expect({ before, after }).toEqual({
+    before: [
+      '○ G Pick a holiday',
+      '1 open · 0 closed',
+      'Waiting on you: T5',
+      '  ✦ T5 2h bus?',
+    ],
+    after: ['○ G Pick a holiday', '1 open · 0 closed', '  ○ T5 2h bus?'],
   })
 })

@@ -132,7 +132,14 @@ T2:
 → new T5 under T2: Best Greek pick is 2h by bus from the airport. OK?
 ```
 
-The question is Claude's first reply on T5.
+The question is Claude's first reply on T5, so the pane lists T5 as waiting on
+you, under the goal's count, until you answer:
+
+```
+│ ○ G Pick our end-of-May beach holiday                                  │
+│ 5 open · 1 closed                                                      │
+│ Waiting on you: T5                                                     │
+```
 
 You answer in the main chat, addressing items by ID:
 
@@ -533,6 +540,7 @@ goal. Nothing is left hanging.
 |---|---|
 | Start a session | `/zg:open <text>`, or accept Claude's proposed goal |
 | See the structure | the pane: zg opens it when Claude Code starts, including `claude --resume`, shown once the terminal is 144 columns wide; `ctrl+x x` closes it until Claude Code next starts |
+| See what waits on you | the pane's "Waiting on you" line under the goal lists the open threads where Claude spoke last, until you reply with an answer or an acknowledgement |
 | Reply to a node | `T4: …` in chat; a block runs over paragraphs until the next ID line, and text before the first ID goes on no existing thread, or opens a new one with it as the first reply |
 | Pick the ID to reply to | type `T`, `D`, `A` or `C` at the start of a line in the reply box: zg lists the open threads, or the decisions, actions or criteria, to answer, skipping any the draft already names; a digit narrows the list |
 | Reply to several | several `T4:` blocks in one message, or a range `T4–T6:` for the same words on each |

@@ -3,10 +3,12 @@ import { criteriaOn, currentText } from './in-force.ts'
 import { handoff } from './handoff.ts'
 import { isNew } from './is-new.ts'
 import { repliesOn } from './replies-on.ts'
+import { waitingOnYou } from './waiting-on-you.ts'
 
 // The full view of the session, line by line: `show` sends Claude all of it
 // on request, and the pane draws a subset (zg-zo2), except that the pane also
-// marks a new thread ✦, which `show` does not.
+// marks a new thread ✦ and draws the "Waiting on you" line, which `show` does
+// not.
 
 // `item` is the node or action a pane row draws, which can be selected.
 export type Line = { text: string; isOpen: boolean; item?: string }
@@ -163,6 +165,23 @@ const countLine = (placed: readonly Placed[], goal: Goal): Line => {
   }
 }
 
+const WAITING_LEAD = 'Waiting on you: '
+
+// Under a goal's count: the open threads of that goal where Claude spoke last.
+const waitingLines = (state: State, goal: Goal): Line[] => {
+  const inGoal = new Set(nodesInGoal(state, goal).map(node => node.id))
+  const waiting = waitingOnYou(state).filter(id => inGoal.has(id))
+
+  return waiting.length === 0
+    ? []
+    : [
+        {
+          text: WAITING_LEAD + waiting.join(', '),
+          isOpen: goal.status === 'open',
+        },
+      ]
+}
+
 const goalLine = (goal: Goal): Line => {
   const origin = goal.origin === undefined ? '' : ` (${goal.origin})`
   const end =
@@ -236,6 +255,7 @@ const view = (
   state: State,
   folds: (node: Node) => boolean,
   linesOf: (one: Placed) => Line[],
+  extraLines: (goal: Goal) => Line[] = () => [],
 ): Line[] => {
   if (state.goals.length === 0) return [{ text: 'No goal yet.', isOpen: false }]
   const actions =
@@ -258,7 +278,12 @@ const view = (
     const placed = nodesUnder(state, goal.id, collapsesNothing)
     const drawn = nodesUnder(state, goal.id, folds)
 
-    return [goalLine(goal), countLine(placed, goal), ...drawn.flatMap(linesOf)]
+    return [
+      goalLine(goal),
+      countLine(placed, goal),
+      ...extraLines(goal),
+      ...drawn.flatMap(linesOf),
+    ]
   })
 
   return [...goals, ...actions, ...written]
@@ -266,10 +291,15 @@ const view = (
 
 // The pane lines: threads without what was said on them.
 export const overview = (state: State): Line[] =>
-  view(state, collapsesChildren, one => [
-    nodeLine(state, one, paneMark(one.node, state)),
-    ...(collapsesChildren(one.node) ? [] : criteriaLines(state, one)),
-  ])
+  view(
+    state,
+    collapsesChildren,
+    one => [
+      nodeLine(state, one, paneMark(one.node, state)),
+      ...(collapsesChildren(one.node) ? [] : criteriaLines(state, one)),
+    ],
+    goal => waitingLines(state, goal),
+  )
 
 // What `show` answers: the overview with each thread's replies, and the
 // handoff when one is written.

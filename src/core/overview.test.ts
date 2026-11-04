@@ -176,6 +176,7 @@ test('the pane’s overview leaves replies out', () => {
   expect(overview(fold(talk)).map(line => line.text)).toEqual([
     '○ G Pick a holiday',
     '3 open · 0 closed',
+    'Waiting on you: T5',
     '  ○ T5 2h bus?',
     '    ✦ T6 Transfers',
     '  ○ T7 Flights',
@@ -199,6 +200,7 @@ describe('threads merged into another', () => {
     expect(overview(merged)).toEqual([
       { text: '○ G Pick a holiday', isOpen: true },
       { text: '2 open · 2 closed', isOpen: true },
+      { text: 'Waiting on you: T5', isOpen: true },
       { text: '  → T4 Spain trip → T5', isOpen: false, item: 'T4' },
       { text: '  ○ T5 Places in Spain', isOpen: true, item: 'T5' },
       { text: '    ✦ T7 Ferries', isOpen: true, item: 'T7' },
@@ -565,5 +567,112 @@ describe('a revised criterion in the pane', () => {
     expect(overview(fold(given)).filter(line => line.item === 'C2')).toEqual([
       { text: '      C2 sea ≥ 20°C', isOpen: true, item: 'C2' },
     ])
+  })
+})
+
+describe('the pane’s line of threads that wait on the human', () => {
+  const question = 'Best Greek pick is 2h by bus from the airport. OK?'
+
+  test('a thread opened with Claude’s question waits, on the line right after the counts', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+      a.nodeReplied({ node: 'T5', author: 'claude', text: question }),
+    ])
+
+    expect(overview(state)).toEqual([
+      { text: '○ G Pick a holiday', isOpen: true },
+      { text: '1 open · 0 closed', isOpen: true },
+      { text: 'Waiting on you: T5', isOpen: true },
+      { text: '  ✦ T5 2h bus?', isOpen: true, item: 'T5' },
+    ])
+  })
+
+  test('a thread with no reply has no such line', () => {
+    const state = fold([a.goalOpened(), a.threadOpened()])
+
+    expect(overview(state).map(line => line.text)).toEqual([
+      '○ G Pick a holiday',
+      '1 open · 0 closed',
+      '  ✦ T1 Places in Greece',
+    ])
+  })
+
+  test('Claude getting back on a thread puts it on the line', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.threadOpened(),
+      a.nodeReplied({
+        author: 'claude',
+        text: 'GR, ES and CY are warm enough; that rules Croatia out for D1.',
+      }),
+    ])
+
+    expect(overview(state).map(line => line.text)).toEqual([
+      '○ G Pick a holiday',
+      '1 open · 0 closed',
+      'Waiting on you: T1',
+      '  ✦ T1 Places in Greece',
+    ])
+  })
+
+  test('waiting threads are listed in ID order, a child under the first of them', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+      a.nodeReplied({ node: 'T2', author: 'claude', text: 'Islands only?' }),
+      a.threadOpened({ thread: 'T3', title: 'Places in Spain' }),
+      a.nodeReplied({ node: 'T3', author: 'claude', text: 'Coast road only?' }),
+      a.threadOpened({ thread: 'T5', parent: 'T2', title: '2h bus?' }),
+      a.nodeReplied({ node: 'T5', author: 'claude', text: question }),
+    ])
+
+    expect(overview(state).map(line => line.text)).toEqual([
+      '○ G Pick a holiday',
+      '3 open · 0 closed',
+      'Waiting on you: T2, T3, T5',
+      '  ✦ T2 Places in Greece',
+      '    ✦ T5 2h bus?',
+      '  ✦ T3 Places in Spain',
+    ])
+  })
+
+  test('each goal lists only its own waiting threads, under its own counts', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+      a.nodeReplied({ node: 'T5', author: 'claude', text: question }),
+      a.goalOpened({ goal: 'G2', text: 'Plan the bars' }),
+      a.threadOpened({ thread: 'T6', parent: 'G2', title: 'Rooftops' }),
+      a.nodeReplied({ node: 'T6', author: 'claude', text: 'Any view?' }),
+    ])
+
+    expect(overview(state).map(line => line.text)).toEqual([
+      '○ G Pick a holiday',
+      '1 open · 0 closed',
+      'Waiting on you: T5',
+      '  ✦ T5 2h bus?',
+      '○ G2 Plan the bars',
+      '1 open · 0 closed',
+      'Waiting on you: T6',
+      '  ✦ T6 Rooftops',
+    ])
+  })
+
+  test('the full view that show answers has no such line', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+      a.nodeReplied({ node: 'T5', author: 'claude', text: question }),
+    ])
+
+    expect(fullView(state)).toBe(
+      [
+        '○ G Pick a holiday',
+        '1 open · 0 closed',
+        '  ○ T5 2h bus?',
+        `    #1 claude: ${question}`,
+      ].join('\n'),
+    )
   })
 })
