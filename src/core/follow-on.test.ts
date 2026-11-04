@@ -85,13 +85,107 @@ test('a decision made under a thread asks whether the thread can close', () => {
   ])
 })
 
-test('a thread directly under the goal adds no line when it closes', () => {
+const t1UnderGoal = (): Event[] => [
+  a.goalOpened(),
+  a.threadOpened({ thread: 'T1' }),
+  a.threadOpened({ thread: 'T9', title: 'Food' }),
+]
+
+const goalLine = (id: string): string =>
+  `${id} was a direct child of G: ask the human whether G is met, unless they are already closing it.`
+
+describe('a node directly under the open goal closes', () => {
+  const closes: {
+    name: string
+    id: string
+    given: Event[]
+    settling: Event[]
+  }[] = [
+    {
+      name: 'a thread resolved',
+      id: 'T1',
+      given: t1UnderGoal(),
+      settling: [a.threadResolved({ thread: 'T1' })],
+    },
+    {
+      name: 'a thread cancelled',
+      id: 'T1',
+      given: t1UnderGoal(),
+      settling: [a.nodeCancelled({ node: 'T1' })],
+    },
+    {
+      name: 'a decision made',
+      id: 'D1',
+      given: [
+        a.goalOpened(),
+        a.decisionOpened(),
+        a.optionAdded({ option: 'D1.3', decision: 'D1', title: 'Paphos' }),
+      ],
+      settling: [a.decisionMade({ decision: 'D1', option: 'D1.3' })],
+    },
+    {
+      name: 'a decision cancelled',
+      id: 'D1',
+      given: [a.goalOpened(), a.decisionOpened()],
+      settling: [a.nodeCancelled({ node: 'D1' })],
+    },
+  ]
+  for (const { name, id, given, settling } of closes) {
+    test(`it asks whether the goal is met when ${name}`, () => {
+      expect(settle(given, settling)).toEqual([goalLine(id)])
+    })
+  }
+})
+
+test('merging direct children of the open goal into another thread asks about the goal for each, in event order', () => {
   expect(
     settle(
-      [a.goalOpened(), a.threadOpened({ thread: 'T1' })],
+      [...t1UnderGoal(), a.threadOpened({ thread: 'T2' })],
+      [a.nodeMerged({ from: ['T1', 'T2'], into: 'T9' })],
+    ),
+  ).toEqual([goalLine('T1'), goalLine('T2')])
+})
+
+test('a decision decided again under the goal adds no line', () => {
+  expect(
+    settle(
+      [
+        a.goalOpened(),
+        a.decisionOpened(),
+        a.optionAdded({ option: 'D1.3', decision: 'D1', title: 'Paphos' }),
+        a.decisionMade({ decision: 'D1', option: 'D1.3' }),
+        a.optionAdded({ option: 'D1.4', decision: 'D1', title: 'Rhodes' }),
+      ],
+      [a.decisionMade({ decision: 'D1', option: 'D1.4' })],
+    ),
+  ).toEqual([])
+})
+
+test('a goal that is no longer open adds no line when its child closes', () => {
+  expect(
+    settle(
+      [...t1UnderGoal(), a.goalAchieved()],
       [a.threadResolved({ thread: 'T1' })],
     ),
   ).toEqual([])
+})
+
+test('the goal line comes after the up lines whatever the event order', () => {
+  expect(
+    settle(
+      [...t6UnderT2(), a.threadOpened({ thread: 'T1' })],
+      [a.threadResolved({ thread: 'T1' }), a.threadResolved({ thread: 'T6' })],
+    ),
+  ).toEqual([nothingUnderT2, goalLine('T1')])
+})
+
+test('two direct children closing add a goal line each, in event order', () => {
+  expect(
+    settle(t1UnderGoal(), [
+      a.threadResolved({ thread: 'T9' }),
+      a.threadResolved({ thread: 'T1' }),
+    ]),
+  ).toEqual([goalLine('T9'), goalLine('T1')])
 })
 
 test('two closes under the same parent add one line', () => {

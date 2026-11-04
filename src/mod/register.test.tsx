@@ -218,7 +218,7 @@ test('Claude resolves its own research thread with its outcome and the words tha
   }))
 
   expect({ answer, pane, files: world.files }).toEqual({
-    answer: { result: 'ThreadResolved T1' },
+    answer: { result: `ThreadResolved T1\n${goalLine('T1')}` },
     pane: [
       { text: '○ G Pick a holiday', isDim: false },
       { text: '0 open · 1 closed', isDim: false },
@@ -260,7 +260,7 @@ test("the human's words end a thread, cancelled with the reason verbatim", async
   }))
 
   expect({ answer, pane, files: world.files }).toEqual({
-    answer: { result: 'NodeCancelled T4' },
+    answer: { result: `NodeCancelled T4\n${goalLine('T4')}` },
     pane: [
       { text: '○ G Pick a holiday', isDim: false },
       { text: '0 open · 1 closed', isDim: false },
@@ -889,7 +889,9 @@ test('threads merged on the human’s word are logged, show as merged in the pan
   }))
 
   expect({ answer, shown, pane, files: world.files }).toEqual({
-    answer: { result: 'NodeMerged T5' },
+    answer: {
+      result: `NodeMerged T5\n${goalLine('T4')}\n${goalLine('T6')}`,
+    },
     shown: {
       result: [
         '○ G Pick a holiday',
@@ -1428,7 +1430,10 @@ test('a pick decides the decision and appends exactly one DecisionMade', async (
   const { world, answer } = await picked($, on)
 
   expect({ answer, files: world.files }).toEqual({
-    answer: { result: 'DecisionMade D1' },
+    answer: {
+      result:
+        'DecisionMade D1\nD1 was a direct child of G: ask the human whether G is met, unless they are already closing it.',
+    },
     files: { [LOG]: log([...undecided, a.decisionMade()]) },
   })
 })
@@ -1524,7 +1529,10 @@ test('cancelling a decision appends the one NodeCancelled and nothing for its op
   const answer = await $.tool.call(cancelD1)
 
   expect({ answer, files: world.files }).toEqual({
-    answer: { result: 'NodeCancelled D1' },
+    answer: {
+      result:
+        'NodeCancelled D1\nD1 was a direct child of G: ask the human whether G is met, unless they are already closing it.',
+    },
     files: {
       [LOG]: log([
         ...everyOptionOpen,
@@ -2323,5 +2331,52 @@ test('resolving a thread with a sibling still open adds a line naming the siblin
   expect(answer).toEqual({
     result:
       'ThreadResolved T6\nT7 Hotel near the port? is still open under T2.',
+  })
+})
+
+const goalLine = (id: string): string =>
+  `${id} was a direct child of G: ask the human whether G is met, unless they are already closing it.`
+
+test('resolving a thread directly under the goal adds a line asking the human whether the goal is met', async ($, on) => {
+  host(on, { [LOG]: log(underT2) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    ...resolveT6,
+    id: 'T9',
+    outcome: 'the tavernas',
+    reason: 'the tavernas',
+  })
+
+  expect(answer).toEqual({ result: `ThreadResolved T9\n${goalLine('T9')}` })
+})
+
+test('deciding a decision directly under the goal adds a line asking the human whether the goal is met', async ($, on) => {
+  host(on, { [LOG]: log(undecided) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call(pick)
+
+  expect(answer).toEqual({ result: `DecisionMade D1\n${goalLine('D1')}` })
+})
+
+test('cancelling a thread directly under the goal adds a line asking the human whether the goal is met', async ($, on) => {
+  host(on, { [LOG]: log(underT2) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({ ...cancelD1, id: 'T9' })
+
+  expect(answer).toEqual({ result: `NodeCancelled T9\n${goalLine('T9')}` })
+})
+
+test('resolving a thread nested under another adds no line about the goal', async ($, on) => {
+  host(on, { [LOG]: log(underT2) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call(resolveT6)
+
+  expect(answer).toEqual({
+    result:
+      'ThreadResolved T6\nNothing is open under T2 now: ask the human whether T2 can close.',
   })
 })

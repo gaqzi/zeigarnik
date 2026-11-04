@@ -523,10 +523,7 @@ children and from criteria changes), and the next step to close it.
 
 ### Checks the goal
 
-Whenever a direct child of the goal closes, and whenever the conversation
-drifts, Claude asks whether the goal is met. If the drift points to a
-different goal, Claude asks whether to revise the goal, replace it, or keep the
-new one for the next session (see [Goal](#goal)).
+Whenever a direct child of the goal closes, Claude asks whether the goal is met.
 
 ### Steers toward closing
 
