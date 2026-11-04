@@ -1990,6 +1990,35 @@ test('a digit narrows the list to that thread', async ($, on) => {
   })
 })
 
+// zg-clv: a thread that waits on the human is marked in the list.
+test('typing T at the start of a line marks the thread waiting on you', async ($, on) => {
+  host(on, {
+    [LOG]: log([
+      a.goalOpened({ text: 'Pick a holiday' }),
+      a.threadOpened({ thread: 'T3', title: 'Places in Spain' }),
+      a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+      a.nodeReplied({
+        node: 'T5',
+        author: 'claude',
+        text: 'Best Greek pick is 2h by bus from the airport. OK?',
+      }),
+    ]),
+  })
+
+  const answer = await autocomplete($, typed('T', 'T'))
+
+  expect(answer).toEqual({
+    suggestions: [
+      { text: 'T3: ', label: 'T3', description: 'Places in Spain' },
+      {
+        text: 'T5: ',
+        label: 'T5',
+        description: 'waiting on you · 2h bus?',
+      },
+    ],
+  })
+})
+
 // zg-bam.16: the other kinds' letters list their items; the rules are in
 // src/core/reply-rows.test.ts.
 const items = [

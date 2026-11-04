@@ -617,3 +617,81 @@ test('offers nothing for an A that stands in the middle of a line', () => {
     ),
   ).toEqual([])
 })
+
+// zg-clv: an open thread that waits on the human (the latest reply is Claude's)
+// is marked in the list, so the human answers what is waiting first.
+
+const claudeAsks = (node: string, at = '2026-10-22T11:00:00.000Z') =>
+  a.nodeReplied({ node, author: 'claude', text: 'OK?', at })
+const humanAnswers = (node: string, at = '2026-10-22T12:00:00.000Z') =>
+  a.nodeReplied({ node, author: 'human', text: 'Fine', at })
+
+const waiting = (overrides: Partial<ReturnType<typeof row>> = {}) =>
+  row({ description: 'waiting on you · Places in Greece', ...overrides })
+
+describe('which rows are marked as waiting on you', () => {
+  const cases: {
+    name: string
+    typed: ReturnType<typeof typing>
+    rows: ReturnType<typeof row>[]
+  }[] = [
+    {
+      name: 'Claude has the latest reply on a thread',
+      typed: typing({ given: [a.goalOpened(), places, claudeAsks('T1')] }),
+      rows: [waiting()],
+    },
+    {
+      name: 'the human answered after Claude',
+      typed: typing({
+        given: [a.goalOpened(), places, claudeAsks('T1'), humanAnswers('T1')],
+      }),
+      rows: [row()],
+    },
+    {
+      name: 'only one of two threads waits, in ID order',
+      typed: typing({
+        given: [a.goalOpened(), places, getting, claudeAsks('T2')],
+      }),
+      rows: [
+        row(),
+        row({
+          text: 'T2: ',
+          label: 'T2',
+          description: 'waiting on you · Getting there',
+        }),
+      ],
+    },
+    {
+      name: 'a decision has a reply from Claude',
+      typed: typing({
+        given: [a.goalOpened(), holiday, claudeAsks('D1')],
+        text: 'D',
+        token: 'D',
+      }),
+      rows: [decision()],
+    },
+    {
+      name: 'an action has a reply from Claude',
+      typed: typing({
+        given: [a.goalOpened(), checkDates, claudeAsks('A1')],
+        text: 'A',
+        token: 'A',
+      }),
+      rows: [action()],
+    },
+    {
+      name: 'a criterion has a reply from Claude',
+      typed: typing({
+        given: [a.goalOpened(), holiday, europe, claudeAsks('C1')],
+        text: 'C',
+        token: 'C',
+      }),
+      rows: [criterion()],
+    },
+  ]
+  for (const { name, typed, rows } of cases) {
+    test(`offers the right rows when ${name}`, () => {
+      expect(rowsFor(typed)).toEqual(rows)
+    })
+  }
+})

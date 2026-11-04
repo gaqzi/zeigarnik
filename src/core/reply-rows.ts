@@ -1,6 +1,7 @@
 import type { State } from './evolve.ts'
 import { currentText } from './in-force.ts'
 import type { Kind } from './ids.ts'
+import { waitingOnYou } from './waiting-on-you.ts'
 
 // zg-bam.15, zg-bam.16: typing T, D, A or C at the start of a line in the reply
 // box offers what that letter names, each as the prefix of an answer: the open
@@ -16,10 +17,17 @@ type Candidate = { id: string; description: string }
 
 const candidates = (state: State, kind: Kind): Candidate[] => {
   switch (kind) {
-    case 'T':
+    case 'T': {
+      const waiting = waitingOnYou(state)
       return state.nodes
         .filter(node => node.kind === 'thread' && node.status === 'open')
-        .map(node => ({ id: node.id, description: node.title }))
+        .map(node => ({
+          id: node.id,
+          description: waiting.includes(node.id)
+            ? `waiting on you · ${node.title}`
+            : node.title,
+        }))
+    }
     case 'D':
       return state.nodes
         .filter(node => node.kind === 'decision')
