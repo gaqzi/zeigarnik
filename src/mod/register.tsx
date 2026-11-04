@@ -7,7 +7,7 @@ import { fullView } from '../core/overview.ts'
 import { REPLY_TOKEN, replyRows } from '../core/reply-rows.ts'
 import { title } from '../core/title.ts'
 import { turnIndex } from '../core/turn-index.ts'
-import { current, now, run, select, show } from './session.ts'
+import { current, now, run, select, show, startReply } from './session.ts'
 import { HANDOFF_TOOL, SHOW, specs, toCommand } from './tools.ts'
 
 // Hooks only: each turns its input into a core command or a view, and
@@ -195,8 +195,22 @@ export const register: Register = on => {
 
     return (
       <Box flexDirection="column">
-        {lines.map(({ item, text, isOpen }) =>
-          item === undefined ? (
+        {lines.map(({ item, text, isOpen, waiting }) =>
+          waiting !== undefined ? (
+            <Box flexDirection="row">
+              <Text dimColor={!isOpen}>{waiting.lead}</Text>
+              {waiting.ids.flatMap((id, at) => [
+                ...(at === 0 ? [] : [<Text dimColor={!isOpen}>, </Text>]),
+                <Button
+                  key={`waiting-${id}`}
+                  plain
+                  onPress={() => startReply($, id)}
+                >
+                  <Text dimColor={!isOpen}>{id}</Text>
+                </Button>,
+              ])}
+            </Box>
+          ) : item === undefined ? (
             <Text dimColor={!isOpen}>{text}</Text>
           ) : (
             <Button key={item} plain onPress={() => select($, item)}>

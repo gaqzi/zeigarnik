@@ -3,7 +3,12 @@
 // Line, as a contract stands alone; tsc checks the two agree where the pane
 // is drawn.
 
-export type ZgLine = { text: string; isOpen: boolean; item?: string }
+export type ZgLine = {
+  text: string
+  isOpen: boolean
+  item?: string
+  waiting?: { lead: string; ids: string[] }
+}
 
 declare module 'claude-code' {
   interface PluginState {

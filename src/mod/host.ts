@@ -15,6 +15,9 @@ type Host = {
   // Every move of the focus ring zg asked for: a `ui.focus`, or a `ui.open`
   // that carries `focus`. Focus belongs to the engine; zg can only ask.
   focused: unknown[]
+  // The reply box (the prompt box): what the human has typed so far, and
+  // where the caret stands. zg reads it and appends to it; it never replaces.
+  box: { text: string; cursor: number }
 }
 
 // The engine hands `$.fs` hooks absolute paths, resolved against the test's
@@ -26,12 +29,14 @@ export const host = (
   on: On,
   files: Record<string, string> = {},
   clipboard: UiCopyResult = { isCopied: true },
+  draft = '',
 ): Host => {
   const world: Host = {
     files: { ...files },
     copied: [],
     tools: [],
     focused: [],
+    box: { text: draft, cursor: draft.length },
   }
   on('session.id', () => ({ value: SESSION }))
   on('clock.now', () => ({ value: NOW }))
@@ -60,6 +65,12 @@ export const host = (
   on('ui.focus', (_, e) => {
     world.focused.push(e)
     return {}
+  })
+  on('prompt.read', () => ({ value: { ...world.box } }))
+  on('prompt.fill', (_, e) => {
+    const text = world.box.text + e.text
+    world.box = { text, cursor: text.length }
+    return { isFilled: true }
   })
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.end', (_, e) => ({ sessionId: e.sessionId }))

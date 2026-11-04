@@ -540,7 +540,7 @@ goal. Nothing is left hanging.
 |---|---|
 | Start a session | `/zg:open <text>`, or accept Claude's proposed goal |
 | See the structure | the pane: zg opens it when Claude Code starts, including `claude --resume`, shown once the terminal is 144 columns wide; `ctrl+x x` closes it until Claude Code next starts |
-| See what waits on you | the pane's "Waiting on you" line under the goal lists the open threads where Claude spoke last, until you reply with an answer or an acknowledgement |
+| See what waits on you | the pane's "Waiting on you" line under the goal lists the open threads where Claude spoke last, until you reply with an answer or an acknowledgement; press an ID there to show the thread and start a reply to it in the box |
 | Reply to a node | `T4: …` in chat; a block runs over paragraphs until the next ID line, and text before the first ID goes on no existing thread, or opens a new one with it as the first reply |
 | Pick the ID to reply to | type `T`, `D`, `A` or `C` at the start of a line in the reply box: zg lists the open threads (those waiting on you marked "waiting on you ·"), or the decisions, actions or criteria, to answer, skipping any the draft already names; a digit narrows the list |
 | Reply to several | several `T4:` blocks in one message, or a range `T4–T6:` for the same words on each |

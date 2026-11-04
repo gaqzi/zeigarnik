@@ -11,7 +11,12 @@ import { waitingOnYou } from './waiting-on-you.ts'
 // not.
 
 // `item` is the node or action a pane row draws, which can be selected.
-export type Line = { text: string; isOpen: boolean; item?: string }
+export type Line = {
+  text: string
+  isOpen: boolean
+  item?: string
+  waiting?: { lead: string; ids: string[] }
+}
 
 const GOAL_MARK: Record<Goal['status'], string> = {
   open: '○',
@@ -178,6 +183,7 @@ const waitingLines = (state: State, goal: Goal): Line[] => {
         {
           text: WAITING_LEAD + waiting.join(', '),
           isOpen: goal.status === 'open',
+          waiting: { lead: WAITING_LEAD, ids: waiting },
         },
       ]
 }

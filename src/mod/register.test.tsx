@@ -321,7 +321,8 @@ test('both sides of an exchange are kept on a thread and show under it', async (
     pane: [
       '○ G Pick a holiday',
       '1 open · 0 closed',
-      'Waiting on you: T5',
+      'Waiting on you: ',
+      'T5',
       '  ○ T5 2h bus?',
     ],
     files: {
@@ -784,7 +785,8 @@ test('an untouched thread is new in the pane, with its line not dimmed', async (
     pane: [
       { text: '○ G Pick a holiday', isDim: false },
       { text: '1 open · 0 closed', isDim: false },
-      { text: 'Waiting on you: T1', isDim: false },
+      { text: 'Waiting on you: ', isDim: false },
+      { text: 'T1', isDim: false },
       { text: '  ✦ T1 Places in Greece', isDim: false },
     ],
     files: {
@@ -905,7 +907,8 @@ test('threads merged on the human’s word are logged, show as merged in the pan
     pane: [
       { text: '○ G Pick a holiday', isDim: false },
       { text: '2 open · 2 closed', isDim: false },
-      { text: 'Waiting on you: T5', isDim: false },
+      { text: 'Waiting on you: ', isDim: false },
+      { text: 'T5', isDim: false },
       { text: '  → T4 Spain trip → T5', isDim: true },
       { text: '  ○ T5 Places in Spain', isDim: false },
       { text: '    ✦ T7 Ferries', isDim: false },
@@ -1049,7 +1052,8 @@ test('the details follow the log: a reply recorded on the selected thread shows 
 
   expect(pane).toEqual([
     ...tree.slice(0, 2),
-    'Waiting on you: T5',
+    'Waiting on you: ',
+    'T5',
     ...tree.slice(2),
     '',
     ...t5,
@@ -2160,7 +2164,8 @@ test('a thread Claude opens with a question waits on the human, on the line afte
   expect(pane).toEqual([
     '○ G Pick a holiday',
     '1 open · 0 closed',
-    'Waiting on you: T1',
+    'Waiting on you: ',
+    'T1',
     '  ✦ T1 2h bus?',
   ])
 })
@@ -2190,9 +2195,85 @@ test('the human’s follow-up on a thread takes it off the waiting line', async 
     before: [
       '○ G Pick a holiday',
       '1 open · 0 closed',
-      'Waiting on you: T5',
+      'Waiting on you: ',
+      'T5',
       '  ✦ T5 2h bus?',
     ],
     after: ['○ G Pick a holiday', '1 open · 0 closed', '  ○ T5 2h bus?'],
+  })
+})
+
+// Pressing an ID in the waiting line selects that thread, as its row does but
+// never toggling it off, and starts the reply in the box. The rules for what
+// goes into the box are replyStart's, tested in src/core.
+const asking = [
+  a.goalOpened(),
+  a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+  a.nodeReplied({
+    node: 'T5',
+    author: 'claude',
+    text: 'Best Greek pick is 2h by bus from the airport. OK?',
+  }),
+]
+
+const t5Asked = [
+  'T5 2h bus?',
+  'under G',
+  'open',
+  '#1 claude: Best Greek pick is 2h by bus from the airport. OK?',
+]
+
+// The pane's details (what follows the tree and the waiting line) and the
+// reply box, as one state.
+const reading = async (
+  ui: { findAll: (q: { type: 'Text' }) => Promise<{ text: string }[]> },
+  world: { box: { text: string } },
+) => ({
+  details: (await ui.findAll({ type: 'Text' })).map(text => text.text).slice(5),
+  box: world.box.text,
+})
+
+test('pressing a waiting ID shows its details and starts the reply in an empty box', async ($, on) => {
+  const world = host(on, { [LOG]: log(asking) })
+  await $.session.start(START)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  await ui.press({ key: 'waiting-T5' })
+
+  expect(await reading(ui, world)).toEqual({
+    details: ['', ...t5Asked],
+    box: 'T5: ',
+  })
+})
+
+test('pressing a waiting ID adds its line to a draft', async ($, on) => {
+  const world = host(
+    on,
+    { [LOG]: log(asking) },
+    { isCopied: true },
+    'T3: coast road only',
+  )
+  await $.session.start(START)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  await ui.press({ key: 'waiting-T5' })
+
+  expect(await reading(ui, world)).toEqual({
+    details: ['', ...t5Asked],
+    box: 'T3: coast road only\nT5: ',
+  })
+})
+
+test('pressing a waiting ID already in the draft leaves the box alone, and a second press keeps the details', async ($, on) => {
+  const world = host(on, { [LOG]: log(asking) }, { isCopied: true }, 'T5: ')
+  await $.session.start(START)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  await ui.press({ key: 'waiting-T5' })
+  await ui.press({ key: 'waiting-T5' })
+
+  expect(await reading(ui, world)).toEqual({
+    details: ['', ...t5Asked],
+    box: 'T5: ',
   })
 })

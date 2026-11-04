@@ -200,7 +200,11 @@ describe('threads merged into another', () => {
     expect(overview(merged)).toEqual([
       { text: '○ G Pick a holiday', isOpen: true },
       { text: '2 open · 2 closed', isOpen: true },
-      { text: 'Waiting on you: T5', isOpen: true },
+      {
+        text: 'Waiting on you: T5',
+        isOpen: true,
+        waiting: { lead: 'Waiting on you: ', ids: ['T5'] },
+      },
       { text: '  → T4 Spain trip → T5', isOpen: false, item: 'T4' },
       { text: '  ○ T5 Places in Spain', isOpen: true, item: 'T5' },
       { text: '    ✦ T7 Ferries', isOpen: true, item: 'T7' },
@@ -583,7 +587,11 @@ describe('the pane’s line of threads that wait on the human', () => {
     expect(overview(state)).toEqual([
       { text: '○ G Pick a holiday', isOpen: true },
       { text: '1 open · 0 closed', isOpen: true },
-      { text: 'Waiting on you: T5', isOpen: true },
+      {
+        text: 'Waiting on you: T5',
+        isOpen: true,
+        waiting: { lead: 'Waiting on you: ', ids: ['T5'] },
+      },
       { text: '  ✦ T5 2h bus?', isOpen: true, item: 'T5' },
     ])
   })
@@ -635,6 +643,24 @@ describe('the pane’s line of threads that wait on the human', () => {
       '    ✦ T5 2h bus?',
       '  ✦ T3 Places in Spain',
     ])
+  })
+
+  test('the waiting line carries its lead and the waiting IDs apart, in ID order', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+      a.nodeReplied({ node: 'T2', author: 'claude', text: 'Islands only?' }),
+      a.threadOpened({ thread: 'T3', title: 'Places in Spain' }),
+      a.nodeReplied({ node: 'T3', author: 'claude', text: 'Coast road only?' }),
+      a.threadOpened({ thread: 'T5', title: '2h bus?' }),
+      a.nodeReplied({ node: 'T5', author: 'claude', text: question }),
+    ])
+
+    expect(overview(state)[2]).toEqual({
+      text: 'Waiting on you: T2, T3, T5',
+      isOpen: true,
+      waiting: { lead: 'Waiting on you: ', ids: ['T2', 'T3', 'T5'] },
+    })
   })
 
   test('each goal lists only its own waiting threads, under its own counts', () => {

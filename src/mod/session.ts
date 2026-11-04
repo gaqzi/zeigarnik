@@ -5,6 +5,7 @@ import { decide, type Refusal } from '../core/decide.ts'
 import type { Event } from '../core/events.ts'
 import { fold, type State } from '../core/evolve.ts'
 import { overview } from '../core/overview.ts'
+import { replyStart } from '../core/reply-start.ts'
 import { load, save, trace } from '../storage/log.ts'
 
 // What zg's hooks share. `run` is one command through the core: load
@@ -30,6 +31,16 @@ export async function show($: EngineInterface, state: State) {
 export async function select($: EngineInterface, id: string) {
   const selected = await read($, selection)
   await update($, selection, () => (selected === id ? '' : id))
+}
+
+// Pressing a waiting ID shows the thread and starts a reply to it. The result
+// of fill is ignored on purpose: a pane press has nobody to report a failure
+// to.
+export async function startReply($: EngineInterface, id: string) {
+  await update($, selection, () => id)
+  const { text } = await $.prompt.read()
+  const add = replyStart(text, id)
+  if (add !== '') await $.prompt.fill({ text: add, mode: 'append' })
 }
 
 export async function current($: EngineInterface, sessionId: string) {
