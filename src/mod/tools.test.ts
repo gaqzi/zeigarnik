@@ -184,6 +184,12 @@ describe('a tool call becomes', () => {
       command: a.openThread(),
     },
     {
+      name: 'a thread opened with the question Claude asks on it',
+      tool: 'thread',
+      input: thread({ question: 'Best Greek pick is 2h by bus. OK?' }),
+      command: a.openThread({ question: 'Best Greek pick is 2h by bus. OK?' }),
+    },
+    {
       name: 'a decision opened under its parent',
       tool: 'decision',
       input: decisionOpen(),
@@ -802,6 +808,36 @@ describe('a decision decided', () => {
       expect(toCommand('decision', input, AT)).toEqual({ missing: reason })
     })
   }
+})
+
+describe('a thread opens with an optional question', () => {
+  test('with no question carries none', () => {
+    expect(toCommand('thread', thread(), AT)).toEqual({
+      type: 'OpenThread',
+      at: AT,
+      parent: 'G',
+      title: 'Places in Greece',
+    })
+  })
+
+  test('the tool takes the question beside the parent and the title', () => {
+    const spec = specs.find(one => one.name === 'thread')
+    const schema = spec?.inputSchema as
+      | { properties?: Record<string, unknown>; required?: string[] }
+      | undefined
+
+    expect({
+      question: schema?.properties?.question,
+      required: schema?.required,
+    }).toEqual({
+      question: {
+        type: 'string',
+        description:
+          'add: the question put to the human, when the thread is opened to ask it',
+      },
+      required: ['op'],
+    })
+  })
 })
 
 describe('a criterion attaches to a decision', () => {

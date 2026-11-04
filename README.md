@@ -132,6 +132,8 @@ T2:
 → new T5 under T2: Best Greek pick is 2h by bus from the airport. OK?
 ```
 
+The question is Claude's first reply on T5.
+
 You answer in the main chat, addressing items by ID:
 
 ```
@@ -317,8 +319,9 @@ question, a long exploration, or a sub-topic of one.
   it is open it can be nested under another open parent; a closed thread stays
   where it rolled up.
 - Has a **history**: what you and Claude said about it, word for word, so you
-  can reread later how it was settled. Claude's side is the part of each reply
-  that addresses the thread.
+  can reread later how it was settled. Claude's side is what it gets back to you
+  with on the thread (a question, or an answer to what you asked), never
+  narration.
 - Closes with an **outcome**: a short summary of what was learned or settled,
   which rolls up into the parent.
 - States:
@@ -331,8 +334,9 @@ question, a long exploration, or a sub-topic of one.
   something outside this session, close the thread with a decision to do so.
   That produces an action captured into your tracking, or it becomes the next
   session's goal.
-- A question is a thread too: its title asks, its outcome is the answer, and
-  the answer may name other threads or decisions by ID.
+- A question is a thread too: its title names the thread, the question Claude
+  asks is the thread's first reply, its outcome is the answer, and the answer
+  may name other threads or decisions by ID.
 - A topic is a thread until someone names a candidate to pick; a decision
   opens only then, where it was named. A reply that only narrows a thread
   ("two hours is too much", to a "How long should the boat tour be?" thread)

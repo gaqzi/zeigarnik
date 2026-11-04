@@ -57,7 +57,13 @@ export type Command =
       references: string[]
     }
   | { type: 'CloseSession'; at: string; via: 'clear' }
-  | { type: 'OpenThread'; at: string; parent: string; title: string }
+  | {
+      type: 'OpenThread'
+      at: string
+      parent: string
+      title: string
+      question?: string
+    }
   | { type: 'OpenDecision'; at: string; parent: string; title: string }
   | { type: 'AddOption'; at: string; decision: string; title: string }
   | {

@@ -371,17 +371,21 @@ const decideOpenThread = (
   )
   if (misplaced !== undefined) return misplaced
 
+  const thread = nextId(
+    'T',
+    state.nodes.map(node => node.id),
+  )
+  const opened = { type: 'ThreadOpened', at, thread, parent, title } as const
+  if (command.question === undefined) return { events: [opened] }
   return {
     events: [
+      opened,
       {
-        type: 'ThreadOpened',
+        type: 'NodeReplied',
         at,
-        thread: nextId(
-          'T',
-          state.nodes.map(node => node.id),
-        ),
-        parent,
-        title,
+        node: thread,
+        author: 'claude',
+        text: command.question,
       },
     ],
   }

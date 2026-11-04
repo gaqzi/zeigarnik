@@ -85,6 +85,38 @@ describe('one parent', () => {
     })
   })
 
+  test('a thread opened with a question gets Claude’s question as its first reply', () => {
+    expect(
+      when(
+        [a.goalOpened()],
+        a.openThread({ question: 'Best Greek pick is 2h by bus. OK?' }),
+      ),
+    ).toEqual({
+      events: [
+        a.threadOpened(),
+        a.nodeReplied({
+          node: 'T1',
+          author: 'claude',
+          text: 'Best Greek pick is 2h by bus. OK?',
+        }),
+      ],
+    })
+  })
+
+  test('the question goes to the new thread, whatever its number', () => {
+    expect(
+      when(
+        underGoal,
+        a.openThread({ parent: 'T1', title: 'Rhodes', question: 'Rhodes OK?' }),
+      ),
+    ).toEqual({
+      events: [
+        a.threadOpened({ thread: 'T2', parent: 'T1', title: 'Rhodes' }),
+        a.nodeReplied({ node: 'T2', author: 'claude', text: 'Rhodes OK?' }),
+      ],
+    })
+  })
+
   test('a thread opens under an open thread', () => {
     expect(
       when(underGoal, a.openThread({ parent: 'T1', title: 'Rhodes' })),
@@ -150,6 +182,28 @@ describe('one parent', () => {
       given: [...underGoal, a.nodeCancelled()],
       command: a.openThread({ parent: 'T1' }),
       reason: 'One parent: T1 is already cancelled.',
+      fix: "Open it under T1's parent G, or under another open thread.",
+    },
+    {
+      name: 'refuses a thread with a question when no goal is open',
+      given: [],
+      command: a.openThread({ question: 'Rhodes OK?' }),
+      reason:
+        "One parent: a thread belongs to the open goal's tree, and no goal is open.",
+      fix: 'Open a goal first: the human starts one with /zg:open.',
+    },
+    {
+      name: 'refuses a thread with a question under a parent that does not exist',
+      given: underGoal,
+      command: a.openThread({ parent: 'T7', question: 'Rhodes OK?' }),
+      reason: 'One parent: there is no thread T7.',
+      fix: 'The open threads are T1.',
+    },
+    {
+      name: 'refuses a thread with a question under a resolved parent',
+      given: [...underGoal, a.threadResolved()],
+      command: a.openThread({ parent: 'T1', question: 'Rhodes OK?' }),
+      reason: 'One parent: T1 is already resolved.',
       fix: "Open it under T1's parent G, or under another open thread.",
     },
   ]

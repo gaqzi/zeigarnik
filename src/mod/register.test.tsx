@@ -338,6 +338,56 @@ test('both sides of an exchange are kept on a thread and show under it', async (
   })
 })
 
+test('a thread opened with a question logs Claude’s question as its first reply', async ($, on) => {
+  const world = host(on, { [LOG]: log([a.goalOpened()]) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__thread',
+    op: 'add',
+    parent: 'G',
+    title: '2h bus?',
+    question: 'Best Greek pick is 2h by bus from the airport. OK?',
+  })
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: { result: 'ThreadOpened T1, NodeReplied T1' },
+    files: {
+      [LOG]: log([
+        a.goalOpened(),
+        a.threadOpened({ thread: 'T1', title: '2h bus?' }),
+        a.nodeReplied({
+          node: 'T1',
+          author: 'claude',
+          text: 'Best Greek pick is 2h by bus from the airport. OK?',
+        }),
+      ]),
+    },
+  })
+})
+
+test('a thread opened without a question logs no reply', async ($, on) => {
+  const world = host(on, { [LOG]: log([a.goalOpened()]) })
+  await $.session.start(START)
+
+  const answer = await $.tool.call({
+    tool: 'mcp__zg__thread',
+    op: 'add',
+    parent: 'G',
+    title: '2h bus?',
+  })
+
+  expect({ answer, files: world.files }).toEqual({
+    answer: { result: 'ThreadOpened T1' },
+    files: {
+      [LOG]: log([
+        a.goalOpened(),
+        a.threadOpened({ thread: 'T1', title: '2h bus?' }),
+      ]),
+    },
+  })
+})
+
 test('a thread refused for want of a goal goes back as an error and is traced', async ($, on) => {
   const world = host(on)
   await $.session.start(START)

@@ -59,13 +59,18 @@ export const specs: RegisteredToolSpec[] = [
   },
   {
     name: 'thread',
-    description: `Records a thread: each thing we are looking to close, such as a question whose answer only informs, opened under the goal or the thread it came up in. add one as soon as it comes up. parent: the goal's ID or a thread's. resolve closes it with outcome: a short summary of the answer, or the answer itself when it is short. A topic is a thread until someone names a candidate to pick; only then is it a decision. The human's answer resolves a thread when it settles the question, a plain no to your yes/no question included, unless it picks a candidate they or you named, which is a decision. A reply that only narrows it (a preference, an objection to how) stays a reply and leaves the thread open, and opens no decision. cancel is for a thread no longer worth pursuing, never for one that was answered. A limit they state is a criterion on the decision it serves, not a decision; with no decision in the log to serve it, it is only a reply. A worry about an idea someone named, with no decision open (never a narrowing reply on a thread), is also only a reply: open a thread for the idea with the human's words as its first reply, record no decision, option or criterion, and say nothing of recording, noting or adding anything but the thread you opened. Then propose the decision you infer: name the candidates named so far (the idea alone, when it is the only one), add none of your own, say in words that it is neither chosen nor rejected, say the decision is judged on what the worry is about and ask what that means to them, ask what else it is judged on, and offer to open it (ask whether they want it); it opens when the human takes the proposal up. ${CLOSED_BY}`,
+    description: `Records a thread: each thing we are looking to close, such as a question whose answer only informs, opened under the goal or the thread it came up in. add one as soon as it comes up; give question when you open it to ask the human something (their answer is the reply). parent: the goal's ID or a thread's. resolve closes it with outcome: a short summary of the answer, or the answer itself when it is short. A topic is a thread until someone names a candidate to pick; only then is it a decision. The human's answer resolves a thread when it settles the question, a plain no to your yes/no question included, unless it picks a candidate they or you named, which is a decision. A reply that only narrows it (a preference, an objection to how) stays a reply and leaves the thread open, and opens no decision. cancel is for a thread no longer worth pursuing, never for one that was answered. A limit they state is a criterion on the decision it serves, not a decision; with no decision in the log to serve it, it is only a reply. A worry about an idea someone named, with no decision open (never a narrowing reply on a thread), is also only a reply: open a thread for the idea with the human's words as its first reply, record no decision, option or criterion, and say nothing of recording, noting or adding anything but the thread you opened. Then propose the decision you infer: name the candidates named so far (the idea alone, when it is the only one), add none of your own, say in words that it is neither chosen nor rejected, say the decision is judged on what the worry is about and ask what that means to them, ask what else it is judged on, and offer to open it (ask whether they want it); it opens when the human takes the proposal up. ${CLOSED_BY}`,
     inputSchema: {
       type: 'object',
       properties: {
         op: { enum: ['add', 'resolve'] },
         parent: { ...text, description: 'add: G… or T…' },
         title: { ...text, description: 'add: the thread' },
+        question: {
+          ...text,
+          description:
+            'add: the question put to the human, when the thread is opened to ask it',
+        },
         id: { ...text, description: 'resolve: T…' },
         outcome: text,
         source: { enum: NODE_SOURCES },
@@ -124,7 +129,7 @@ export const specs: RegisteredToolSpec[] = [
   },
   {
     name: 'node',
-    description: `Acts on any node (a thread, decision or option). cancel closes it when it is no longer worth pursuing. ${CLOSED_BY} nest moves it under parent when the human says it belongs elsewhere, or when you put it in the wrong place yourself; say so in your reply. source: chat for the human's words, claude for your own correction. merge folds the from threads that turned out to be the same into the thread into, when the human says so; source and reason as for closing. reply records what is said to a node: when the human writes a line beginning with a node's ID and a colon (any case), a reply runs from it to the next such line or the message's end, paragraphs included; a range like T4–T6: gives each the same words; quoted or fenced lines are not replies. Reply author human with those words exactly, marker excluded, then author claude with your part about that node only; one of each per node per message, even when the words also close it (reply first, then close if they do). Text before the first marker is on no existing node: leave it, or open a thread for what it starts, with the text as its first human reply. move_reply moves a reply that landed on the wrong thread to thread to: ordinal is its number as show lists it, the latest when left out.`,
+    description: `Acts on any node (a thread, decision or option). cancel closes it when it is no longer worth pursuing. ${CLOSED_BY} nest moves it under parent when the human says it belongs elsewhere, or when you put it in the wrong place yourself; say so in your reply. source: chat for the human's words, claude for your own correction. merge folds the from threads that turned out to be the same into the thread into, when the human says so; source and reason as for closing. reply records what is said to a node: when the human writes a line beginning with a node's ID and a colon (any case), a reply runs from it to the next such line or the message's end, paragraphs included; a range like T4–T6: gives each the same words; quoted or fenced lines are not replies. Reply author human with those words exactly, marker excluded, one per node per message. Log a Claude reply (author claude) only when you get back to the human with something for them to act on (a question, or an answer to what they asked), never narration like 'I'll go check'; it may come with no human reply before it; at most one per node per message, even when the words also close it (reply first, then close if they do). Text before the first marker is on no existing node: leave it, or open a thread for what it starts, with the text as its first human reply. move_reply moves a reply that landed on the wrong thread to thread to: ordinal is its number as show lists it, the latest when left out.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -311,7 +316,13 @@ export const toCommand = (
       }
       const title = str(input, 'title')
       if (title === undefined) return { missing: 'add needs the title.' }
-      return { type: 'OpenThread', at, parent, title }
+      return {
+        type: 'OpenThread',
+        at,
+        parent,
+        title,
+        ...optional('question', str(input, 'question')),
+      }
     }
     case 'decision': {
       if (input.op === 'option') {
