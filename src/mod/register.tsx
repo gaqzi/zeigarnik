@@ -15,6 +15,7 @@ import {
   contextMeter,
   current,
   now,
+  pinConfigWarning,
   run,
   select,
   show,
@@ -53,6 +54,7 @@ export const register: Register = on => {
     }
     await update($, selection, () => '')
     await show($, await current($, await $.session.id()))
+    await pinConfigWarning($)
     void $.ui.open({ id: PANE, title: 'zg' })
 
     return next(e)
@@ -118,10 +120,14 @@ export const register: Register = on => {
   on('classic.UserPromptSubmit', async ($, e, next) => {
     const events = await load($, await $.session.id())
     const state = fold(events)
+    const configText = await pinConfigWarning($)
     // zg-n27: every prompt, slash commands included, brings the index of what
     // is open; a prompt that is only a node's ID adds that node's recap after it.
     const result = withContext(
-      withContext(await next(e), turnIndex(state, await contextMeter($))),
+      withContext(
+        await next(e),
+        turnIndex(state, await contextMeter($, configText)),
+      ),
       recap(events, e.prompt),
     )
     const opening = OPENING.exec(e.prompt.trim())

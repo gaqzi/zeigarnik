@@ -1,6 +1,7 @@
 import { atom, type EngineInterface, read, update } from 'claude-code'
 
 import type { Command } from '../core/commands.ts'
+import { config, unreadableConfig } from '../core/config.ts'
 import { decide, type Refusal } from '../core/decide.ts'
 import type { Event } from '../core/events.ts'
 import { fold, type State } from '../core/evolve.ts'
@@ -72,21 +73,38 @@ export async function run(
   return { events: decided.events, state }
 }
 
-// The config text, or undefined when the file is absent or unreadable.
-async function readConfig($: EngineInterface, path: string) {
+// What .zg/config.json holds: its text (undefined when absent), and the
+// warning about it that goes in the status line (undefined when usable).
+// An unreadable file gives no text, so the defaults apply.
+async function readConfig($: EngineInterface) {
+  const path = '.zg/config.json'
   try {
-    return (await $.fs.exists(path)) ? await $.fs.read(path) : undefined
-  } catch {
-    return undefined
+    const text = (await $.fs.exists(path)) ? await $.fs.read(path) : undefined
+
+    return { text, warning: config(text).warning }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+
+    return { text: undefined, warning: unreadableConfig(message).warning }
   }
 }
 
+// Pins zg's warning under the prompt, or clears it (zg-bam.6.11). Returns the
+// config text for the meter, so a prompt reads the file once.
+export async function pinConfigWarning($: EngineInterface) {
+  const { text, warning } = await readConfig($)
+  await $.ui.status(warning)
+
+  return text
+}
+
 // The meter line for this prompt: the session's context tokens against the
-// thresholds in .zg/config.json, read afresh each time (zg-n27).
-export async function contextMeter($: EngineInterface) {
-  const path = '.zg/config.json'
-  const config = await readConfig($, path)
+// thresholds in the config text, read afresh each prompt (zg-n27).
+export async function contextMeter(
+  $: EngineInterface,
+  configText: string | undefined,
+) {
   const { context } = await $.session.usage()
 
-  return meter(context.tokens, config)
+  return meter(context.tokens, configText)
 }

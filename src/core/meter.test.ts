@@ -78,6 +78,12 @@ describe('the meter line', () => {
       line: nudge(100, 100),
     },
     {
+      name: 'takes the default nudge_at for a nudge_at of 0',
+      tokens: 100_000,
+      config: '{"nudge_at":0}',
+      line: nudge(100, 100),
+    },
+    {
       name: 'says nothing without a token count',
       tokens: undefined,
       config: undefined,

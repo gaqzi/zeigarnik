@@ -154,7 +154,9 @@ test('a config that exists but cannot be read gives the defaults', async ($, on)
     a.goalOpened(),
     a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
   ]
-  host(on, { [LOG]: log(given) }, undefined, 100_000, ['.zg/config.json'])
+  host(on, { [LOG]: log(given) }, undefined, undefined, 100_000, [
+    '.zg/config.json',
+  ])
 
   const answer = await $.classic.UserPromptSubmit({ prompt: 'what next?' })
 
@@ -162,6 +164,80 @@ test('a config that exists but cannot be read gives the defaults', async ($, on)
     additionalContext: [
       'zg open: T2 Places in Greece · context 100k, past nudge_at 100k: suggest closing',
     ],
+  })
+})
+
+const NOT_JSON =
+  "zg: .zg/config.json isn't valid JSON, so zg uses its defaults. Fix it, or delete the file to use the defaults."
+const UNREADABLE =
+  "zg: .zg/config.json can't be read (permission denied), so zg uses its defaults. Fix its permissions, or delete it to use the defaults."
+
+test('a config that is not valid JSON is named in the status line, and the defaults meter', async ($, on) => {
+  const given = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+  ]
+  const files = { [LOG]: log(given), '.zg/config.json': '{"nudge_at": 50000' }
+  const world = host(on, files, undefined, undefined, 100_000)
+
+  const answer = await $.classic.UserPromptSubmit({ prompt: 'next?' })
+
+  expect({ status: world.status, answer }).toEqual({
+    status: NOT_JSON,
+    answer: {
+      additionalContext: [
+        'zg open: T2 Places in Greece · context 100k, past nudge_at 100k: suggest closing',
+      ],
+    },
+  })
+})
+
+test('a config that is not valid JSON is named when the session starts', async ($, on) => {
+  const world = host(on, { '.zg/config.json': '{"nudge_at": 50000' })
+
+  await $.session.start(START)
+
+  expect(world.status).toBe(NOT_JSON)
+})
+
+test('fixing the config clears the status line on the next prompt', async ($, on) => {
+  const world = host(on, { '.zg/config.json': '{"nudge_at": 50000' })
+  await $.classic.UserPromptSubmit({ prompt: 'next?' })
+  const broken = world.status
+
+  world.files['.zg/config.json'] = '{"nudge_at": 50000}'
+  await $.classic.UserPromptSubmit({ prompt: 'next?' })
+
+  expect([broken, world.status]).toEqual([NOT_JSON, undefined])
+})
+
+test('a session with no config file pins no status line', async ($, on) => {
+  const world = host(on)
+
+  await $.session.start(START)
+  await $.classic.UserPromptSubmit({ prompt: 'next?' })
+
+  expect(world.status).toBeUndefined()
+})
+
+test('a config that cannot be read is named in the status line, and the defaults meter', async ($, on) => {
+  const given = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+  ]
+  const world = host(on, { [LOG]: log(given) }, undefined, undefined, 100_000, [
+    '.zg/config.json',
+  ])
+
+  const answer = await $.classic.UserPromptSubmit({ prompt: 'next?' })
+
+  expect({ status: world.status, answer }).toEqual({
+    status: UNREADABLE,
+    answer: {
+      additionalContext: [
+        'zg open: T2 Places in Greece · context 100k, past nudge_at 100k: suggest closing',
+      ],
+    },
   })
 })
 

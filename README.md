@@ -203,7 +203,7 @@ the funding round`), there is no dialog: Claude cancels every open item with
 those words as the reason. Then it captures what needs to outlive the session:
 
 ```
-Capture (sink: reminders)
+Capture
   A1 Check school dates    done
   A2 Book flights          → exported  reminders://x-9f2
   D1 Paphos (+ C1–C5)      → exported  notes/holiday-2027.md
@@ -567,9 +567,13 @@ Later: replying and tidying from the pane.
 
 ## Configuration
 
+zg warns in its status line under the prompt while `.zg/config.json` can't be
+used: invalid JSON, not an object, a bad value, an unknown key, or a file it
+can't read. It uses the defaults for whatever it can't use. Fixing the file
+clears the warning on the next prompt.
+
 | Option | Default | What it does |
 |---|---|---|
-| `sink` | the handoff | Where captured items go, in plain words: "issues and lasting decisions go to bd as beads". At close, Claude files each item with the tools it already uses for your tracker, and zg records the reference it gets back. The sink also says how to mark the goal's origin in progress at open and update it at close. With no sink, the handoff lists everything for you to file yourself. |
 | `nudge_at` | 100k tokens | Session size at which Claude suggests closing |
 | `push_at` | 150k tokens | Session size at which Claude presses to close |
 

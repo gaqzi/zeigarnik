@@ -2,8 +2,8 @@ import type { On, RegisteredToolSpec, UiCopyResult } from 'claude-code'
 
 // For wiring tests: the engine beneath zg, as a test stands for it. Nothing
 // sits beneath a plugin in `claude plugin test`, so these hooks answer what
-// zg asks of the session: its ID, the time, its context usage, files in memory, the clipboard,
-// and the classic events' own (empty) results.
+// zg asks of the session: its ID, the time, its context usage, files in
+// memory, the clipboard, and the classic events' own (empty) results.
 
 const SESSION = 's1'
 const NOW = Date.parse('2026-10-22T10:00:00.000Z')
@@ -18,6 +18,9 @@ type Host = {
   // The reply box (the prompt box): what the human has typed so far, and
   // where the caret stands. zg reads it and appends to it; it never replaces.
   box: { text: string; cursor: number }
+  // The line zg last pinned under the prompt with `ui.status`; undefined when
+  // it was cleared or never pinned.
+  status: string | undefined
 }
 
 // The engine hands `$.fs` hooks absolute paths, resolved against the test's
@@ -42,6 +45,7 @@ export const host = (
     tools: [],
     focused: [],
     box: { text: draft, cursor: draft.length },
+    status: undefined,
   }
   on('session.id', () => ({ value: SESSION }))
   on('clock.now', () => ({ value: NOW }))
@@ -87,6 +91,10 @@ export const host = (
     const text = world.box.text + e.text
     world.box = { text, cursor: text.length }
     return { isFilled: true }
+  })
+  on('ui.status', (_, e) => {
+    world.status = e.text
+    return { value: undefined }
   })
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.end', (_, e) => ({ sessionId: e.sessionId }))
