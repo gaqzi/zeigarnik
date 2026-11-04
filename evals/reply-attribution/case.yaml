@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: reply-attribution
-description: In one message the human puts a preamble about something new, replies to T1 over two paragraphs, and replies to T3, while T2 is not addressed. Claude records each reply on its own thread word for word, with the second paragraph on T1 and the preamble on neither, nothing on T2, then answers T1 and T3 each on its own thread; the preamble may be dropped from the log or become the first human reply of a thread Claude opens for it. Guardrails are the exact T1 and T3 replies (each also forbids any other human reply on its thread, though a second human reply with the identical text is not caught and is unexercised, zg-b8o), nothing on T2, and the preamble in no human reply on G, T1, T2 or T3, where the preamble guardrail fails on a human reply there holding either half of it, verbatim ("Quick thought first" or "check ferry times"), so a split second reply is caught; it does not cover Claude's replies, action quotes, cancel or resolve reasons, or any line naming a thread opened in the run, and it does not catch a paraphrase. The two behaviours are Claude's own reply on T1 and on T3, each about its thread, and a ferry-times thread whose first human reply holds the preamble. The case has no no-plugin arm, because the runner yields only the with arm for a resumed case and a history holding the plugin's command expansion means nothing without the plugin, so its baseline is the with arm. Not exercised - the setup turns, which are recorded and not live (the goal and the three threads, with the boat tour and the beach list proposed in chat only, so no reply sits on any thread), Claude's reply to T2 or to the preamble in chat, a range of IDs (reply-range), the preamble settling other threads (across-propagation, slice 4), and replies to threads other than T1 and T3.
+description: In one message the human puts a preamble about something new, replies to T1 over two paragraphs, and replies to T3, while T2 is not addressed. Claude records each reply on its own thread word for word, with the second paragraph on T1 and the preamble on neither, nothing on T2, then answers T1 and T3 each on its own thread; the preamble may be dropped from the log or become the first human reply of a thread Claude opens for it. Guardrails are the exact T1 and T3 replies (each also forbids any other human reply on its thread, though a second human reply with the identical text is not caught and is unexercised, zg-b8o), nothing on T2, T1 still open (no ThreadResolved or NodeCancelled on T1, no NodeMerged taking T1 as a source), no DecisionOpened, OptionAdded or DecisionMade and no CriterionAdded appended (the fixture holds none, and the run offers the decision and criterion tools, so a reply that narrows a thread opens nothing, zg-o1g), and the preamble in no human reply on G, T1, T2 or T3, where the preamble guardrail fails on a human reply there holding either half of it, verbatim ("Quick thought first" or "check ferry times"), so a split second reply is caught; it does not cover Claude's replies, action quotes, cancel or resolve reasons, or any line naming a thread opened in the run, and it does not catch a paraphrase. The two behaviours are Claude's own reply on T1 and on T3, each about its thread, and a ferry-times thread whose first human reply holds the preamble. The case has no no-plugin arm, because the runner yields only the with arm for a resumed case and a history holding the plugin's command expansion means nothing without the plugin, so its baseline is the with arm. Not exercised - the setup turns, which are recorded and not live (the goal and the three threads, with the boat tour and the beach list proposed in chat only, so no reply sits on any thread), Claude's reply to T2 or to the preamble in chat, a range of IDs (reply-range), the preamble settling other threads (across-propagation, slice 4), and replies to threads other than T1 and T3.
 tags: [guardrail, slice-2b, replies]
 runs: 5
 context:
@@ -15,6 +15,8 @@ execution:
       mcp__zg__thread,
       mcp__zg__node,
       mcp__zg__action,
+      mcp__zg__decision,
+      mcp__zg__criterion,
       mcp__zg__show,
     ]
 graders:
@@ -47,6 +49,29 @@ graders:
     type: regex
     target: {source: file, path: .zg/sessions/3bf8991c-0f82-4e39-bbe0-c6f6655e5ed0.jsonl}
     pattern: '"type":"NodeReplied"[^\n]*"node":"T2"'
+    match: not_contains
+  # Guardrail. T1 stays open: the human only narrowed it. Closing T1 is a
+  # ThreadResolved or NodeCancelled naming it, or a NodeMerged listing it in
+  # from. Every graded line is picked by per-line lookaheads on its fields
+  # ((?<![^\n]) is the line start), so the order of fields does not matter.
+  - name: T1-still-open
+    type: regex
+    target: {source: file, path: .zg/sessions/3bf8991c-0f82-4e39-bbe0-c6f6655e5ed0.jsonl}
+    pattern: '(?<![^\n])(?:(?=[^\n]*"type":"ThreadResolved")(?=[^\n]*"thread":"T1")|(?=[^\n]*"type":"NodeCancelled")(?=[^\n]*"node":"T1")|(?=[^\n]*"type":"NodeMerged")(?=[^\n]*"from":\[(?:"[^"\]]*",)*"T1"[,\]]))'
+    match: not_contains
+  # Guardrail. Nothing is recorded as a decision: the fixture holds no
+  # decision or option, so any of these events was appended in the run.
+  - name: no-decision-opened-optioned-or-made
+    type: regex
+    target: {source: file, path: .zg/sessions/3bf8991c-0f82-4e39-bbe0-c6f6655e5ed0.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"(?:DecisionOpened|OptionAdded|DecisionMade)")'
+    match: not_contains
+  # Guardrail. The fixture holds no criterion, so any CriterionAdded was
+  # appended in the run.
+  - name: no-criterion-added
+    type: regex
+    target: {source: file, path: .zg/sessions/3bf8991c-0f82-4e39-bbe0-c6f6655e5ed0.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"CriterionAdded")'
     match: not_contains
   # Guardrail. The fixture holds only G, T1, T2 and T3; any other node exists
   # because this run opened it. Only a human NodeReplied on G, T1, T2 or T3

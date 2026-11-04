@@ -59,7 +59,7 @@ export const specs: RegisteredToolSpec[] = [
   },
   {
     name: 'thread',
-    description: `Records a thread: each thing we are looking to close, such as a question whose answer only informs, opened under the goal or the thread it came up in. add one as soon as it comes up. parent: the goal's ID or a thread's. resolve closes it with outcome: a short summary of the answer, or the answer itself when it is short. The human's answer to a thread resolves it, a no or a limit they set included, unless it picks a candidate they or you named, which is a decision; cancel is for a thread no longer worth pursuing, never for one that was answered. A limit they state is a criterion on the decision it serves, not a decision. ${CLOSED_BY}`,
+    description: `Records a thread: each thing we are looking to close, such as a question whose answer only informs, opened under the goal or the thread it came up in. add one as soon as it comes up. parent: the goal's ID or a thread's. resolve closes it with outcome: a short summary of the answer, or the answer itself when it is short. A topic is a thread until someone names a candidate to pick; only then is it a decision. The human's answer resolves a thread when it settles the question, a plain no to your yes/no question included, unless it picks a candidate they or you named, which is a decision. A reply that only narrows it (a preference, an objection to how) stays a reply and leaves the thread open, and opens no decision. cancel is for a thread no longer worth pursuing, never for one that was answered. A limit they state is a criterion on the decision it serves, not a decision; with no decision in the log to serve it, it is only a reply. ${CLOSED_BY}`,
     inputSchema: {
       type: 'object',
       properties: {

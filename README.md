@@ -333,6 +333,12 @@ question, a long exploration, or a sub-topic of one.
   session's goal.
 - A question is a thread too: its title asks, its outcome is the answer, and
   the answer may name other threads or decisions by ID.
+- A topic is a thread until someone names a candidate to pick; a decision
+  opens only then, where it was named. A reply that only narrows a thread
+  ("two hours is too much", to a "How long should the boat tour be?" thread)
+  stays a reply: the question was not yes/no, so the thread stays open and
+  nothing else is opened. A plain no to a yes/no question is an answer instead
+  (Propagate).
 
 ### Criterion
 
