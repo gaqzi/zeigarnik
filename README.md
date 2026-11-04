@@ -513,6 +513,7 @@ goal. Nothing is left hanging.
 | Start a session | `/zg:open <text>`, or accept Claude's proposed goal |
 | See the structure | the pane: zg opens it when Claude Code starts, including `claude --resume`, shown once the terminal is 144 columns wide; `ctrl+x x` closes it until Claude Code next starts |
 | Reply to a node | `T4: …` in chat; a block runs over paragraphs until the next ID line, and text before the first ID goes on no existing thread, or opens a new one with it as the first reply |
+| Pick the ID to reply to | type `T`, `D`, `A` or `C` at the start of a line in the reply box: zg lists the open threads, or the decisions, actions or criteria, to answer, skipping any the draft already names; a digit narrows the list |
 | Reply to several | several `T4:` blocks in one message, or a range `T4–T6:` for the same words on each |
 | Merge, nest or cancel nodes | `T4–T7 merge T5`, `T5 under T2`, `T4 cancel` in chat |
 | Move a reply to the right thread | `T5 #2 to T3` in chat; without a number, the latest reply moves |

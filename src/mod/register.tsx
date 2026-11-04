@@ -4,7 +4,7 @@ import { brief } from '../core/brief.ts'
 import { details } from '../core/details.ts'
 import { handoff } from '../core/handoff.ts'
 import { fullView } from '../core/overview.ts'
-import { replyRows } from '../core/reply-rows.ts'
+import { REPLY_TOKEN, replyRows } from '../core/reply-rows.ts'
 import { title } from '../core/title.ts'
 import { turnIndex } from '../core/turn-index.ts'
 import { current, now, run, select, show } from './session.ts'
@@ -132,8 +132,9 @@ export const register: Register = on => {
         }
   })
 
-  // zg-bam.15: T at the start of a line offers the open threads to answer.
-  on('prompt.autocomplete', { token: /^[Tt]\d*$/ }, async ($, e, next) => ({
+  // zg-bam.15, zg-bam.16: T, D, A or C at the start of a line offers the
+  // items of that kind to answer.
+  on('prompt.autocomplete', { token: REPLY_TOKEN }, async ($, e, next) => ({
     suggestions: [
       ...(await next(e)).suggestions,
       ...replyRows(

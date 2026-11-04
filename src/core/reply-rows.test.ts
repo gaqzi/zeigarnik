@@ -349,3 +349,271 @@ describe('threads the draft already names', () => {
     ).toEqual([])
   })
 })
+
+// zg-bam.16: A, D and C list the existing actions, decisions and criteria of
+// that kind, each with its text. Items of every status are listed; a
+// decision's options are not.
+
+const checkDates = a.actionAdded({ action: 'A1', text: 'Check school dates' })
+const bookFlights = a.actionAdded({ action: 'A2', text: 'Book the flights' })
+const holiday = a.decisionOpened({
+  decision: 'D1',
+  title: 'Which holiday do we book?',
+})
+const transfer = a.decisionOpened({
+  decision: 'D2',
+  title: 'How do we get there?',
+})
+const europe = a.criterionAdded({ criterion: 'C1', on: 'D1', text: 'Europe' })
+const sea = a.criterionAdded({ criterion: 'C2', on: 'D1', text: 'sea ≥ 18°C' })
+const budget = a.criterionAdded({
+  criterion: 'C3',
+  on: 'D2',
+  text: 'under 900',
+})
+
+const action = (overrides: Partial<ReturnType<typeof row>> = {}) =>
+  row({
+    text: 'A1: ',
+    label: 'A1',
+    description: 'Check school dates',
+    ...overrides,
+  })
+const decision = (overrides: Partial<ReturnType<typeof row>> = {}) =>
+  row({
+    text: 'D1: ',
+    label: 'D1',
+    description: 'Which holiday do we book?',
+    ...overrides,
+  })
+const criterion = (overrides: Partial<ReturnType<typeof row>> = {}) =>
+  row({ text: 'C1: ', label: 'C1', description: 'Europe', ...overrides })
+
+const action2 = () =>
+  action({ text: 'A2: ', label: 'A2', description: 'Book the flights' })
+const decision2 = () =>
+  decision({ text: 'D2: ', label: 'D2', description: 'How do we get there?' })
+const criterion2 = (overrides: Partial<ReturnType<typeof row>> = {}) =>
+  criterion({
+    text: 'C2: ',
+    label: 'C2',
+    description: 'sea ≥ 18°C',
+    ...overrides,
+  })
+const criterion3 = () =>
+  criterion({ text: 'C3: ', label: 'C3', description: 'under 900' })
+
+describe('which actions, decisions and criteria are offered', () => {
+  const cases: {
+    name: string
+    typed: ReturnType<typeof typing>
+    rows: ReturnType<typeof row>[]
+  }[] = [
+    {
+      name: 'A lists the actions, in ID order, not the thread',
+      typed: typing({
+        given: [a.goalOpened(), places, checkDates, bookFlights],
+        text: 'A',
+        token: 'A',
+      }),
+      rows: [action(), action2()],
+    },
+    {
+      name: 'a lower case a lists the actions in upper case',
+      typed: typing({
+        given: [a.goalOpened(), checkDates, bookFlights],
+        text: 'a',
+        token: 'a',
+      }),
+      rows: [action(), action2()],
+    },
+    {
+      name: 'a digit narrows the actions',
+      typed: typing({
+        given: [a.goalOpened(), checkDates, bookFlights],
+        text: 'a2',
+        cursor: 2,
+        token: 'a2',
+      }),
+      rows: [action2()],
+    },
+    {
+      name: 'a done and a cancelled action are still listed',
+      typed: typing({
+        given: [
+          a.goalOpened(),
+          checkDates,
+          bookFlights,
+          a.actionDone({ action: 'A1' }),
+          a.actionCancelled({ action: 'A2' }),
+        ],
+        text: 'A',
+        token: 'A',
+      }),
+      rows: [action(), action2()],
+    },
+    {
+      name: 'd lists the decisions, never their options, and not the thread',
+      typed: typing({
+        given: [
+          a.goalOpened(),
+          places,
+          holiday,
+          a.optionAdded({ option: 'D1.1', decision: 'D1' }),
+          a.optionAdded({ option: 'D1.2', decision: 'D1', title: 'Rhodes' }),
+          transfer,
+        ],
+        text: 'd',
+        token: 'd',
+      }),
+      rows: [decision(), decision2()],
+    },
+    {
+      name: 'a decision decided twice, a decided one and a cancelled one are listed',
+      typed: typing({
+        given: [
+          a.goalOpened(),
+          holiday,
+          a.optionAdded({ option: 'D1.1', decision: 'D1' }),
+          a.optionAdded({ option: 'D1.2', decision: 'D1', title: 'Rhodes' }),
+          a.decisionMade({ decision: 'D1', option: 'D1.1' }),
+          a.decisionMade({ decision: 'D1', option: 'D1.2' }),
+          transfer,
+          a.nodeCancelled({ node: 'D2' }),
+        ],
+        text: 'D',
+        token: 'D',
+      }),
+      rows: [decision(), decision2()],
+    },
+    {
+      name: 'D1 narrows to that decision, not its options',
+      typed: typing({
+        given: [
+          a.goalOpened(),
+          holiday,
+          a.optionAdded({ option: 'D1.1', decision: 'D1' }),
+          transfer,
+        ],
+        text: 'D1',
+        cursor: 2,
+        token: 'D1',
+      }),
+      rows: [decision()],
+    },
+    {
+      name: 'c lists the criteria',
+      typed: typing({
+        given: [a.goalOpened(), holiday, transfer, europe, sea, budget],
+        text: 'c',
+        token: 'c',
+      }),
+      rows: [criterion(), criterion2(), criterion3()],
+    },
+    {
+      name: 'a revised criterion shows its new text',
+      typed: typing({
+        given: [
+          a.goalOpened(),
+          holiday,
+          europe,
+          sea,
+          a.criterionRevised({ criterion: 'C2', text: 'sea ≥ 20°C' }),
+        ],
+        text: 'C',
+        token: 'C',
+      }),
+      rows: [criterion(), criterion2({ description: 'sea ≥ 20°C' })],
+    },
+    {
+      name: 'there are no decisions',
+      typed: typing({
+        given: [a.goalOpened(), places, checkDates],
+        text: 'D',
+        token: 'D',
+      }),
+      rows: [],
+    },
+    {
+      name: 'there are no criteria',
+      typed: typing({
+        given: [a.goalOpened(), holiday],
+        text: 'C',
+        token: 'C',
+      }),
+      rows: [],
+    },
+  ]
+  for (const { name, typed, rows } of cases) {
+    test(`offers the right rows when ${name}`, () => {
+      expect(rowsFor(typed)).toEqual(rows)
+    })
+  }
+})
+
+describe('actions, decisions and criteria the draft already names', () => {
+  const given = [
+    a.goalOpened(),
+    holiday,
+    a.optionAdded({ option: 'D1.1', decision: 'D1' }),
+    transfer,
+    checkDates,
+    bookFlights,
+    europe,
+    sea,
+  ]
+  const cases: {
+    name: string
+    typed: ReturnType<typeof typing>
+    rows: ReturnType<typeof row>[]
+  }[] = [
+    {
+      name: 'an action on a line before the cursor',
+      typed: typing({ given, text: 'A1: done\nA', cursor: 10, token: 'A' }),
+      rows: [action2()],
+    },
+    {
+      name: 'an action in lower case after the cursor',
+      typed: typing({ given, text: 'A\na2: later', cursor: 1, token: 'A' }),
+      rows: [action()],
+    },
+    {
+      name: 'a decision by its own ID',
+      typed: typing({ given, text: 'D1: yes\nD', cursor: 9, token: 'D' }),
+      rows: [decision2()],
+    },
+    {
+      name: 'an option, which does not hide its decision',
+      typed: typing({ given, text: 'D1.1: yes\nD', cursor: 11, token: 'D' }),
+      rows: [decision(), decision2()],
+    },
+    {
+      name: 'a criterion in the middle of a line',
+      typed: typing({
+        given,
+        text: 'but C2 is wrong\nC',
+        cursor: 17,
+        token: 'C',
+      }),
+      rows: [criterion()],
+    },
+  ]
+  for (const { name, typed, rows } of cases) {
+    test(`leaves out the named item when the draft names ${name}`, () => {
+      expect(rowsFor(typed)).toEqual(rows)
+    })
+  }
+})
+
+test('offers nothing for an A that stands in the middle of a line', () => {
+  expect(
+    rowsFor(
+      typing({
+        given: [a.goalOpened(), checkDates],
+        text: 'T1: take a',
+        cursor: 10,
+        token: 'a',
+      }),
+    ),
+  ).toEqual([])
+})

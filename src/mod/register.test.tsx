@@ -1953,3 +1953,62 @@ test('a digit narrows the list to that thread', async ($, on) => {
     suggestions: [{ text: 'T5: ', label: 'T5', description: 'Bus village' }],
   })
 })
+
+// zg-bam.16: the other kinds' letters list their items; the rules are in
+// src/core/reply-rows.test.ts.
+const items = [
+  a.goalOpened(),
+  a.threadOpened({ thread: 'T1', title: 'Places in Greece' }),
+  a.actionAdded({ action: 'A1', text: 'Check school dates' }),
+  a.actionAdded({ action: 'A2', text: 'Book the flights' }),
+  a.decisionOpened({ decision: 'D1', title: 'Which holiday do we book?' }),
+  a.optionAdded({ option: 'D1.1', decision: 'D1', title: 'Greek village' }),
+  a.criterionAdded({ criterion: 'C1', on: 'D1', text: 'Europe' }),
+]
+
+test('typing a at the start of a line lists the actions with their text', async ($, on) => {
+  host(on, { [LOG]: log(items) })
+
+  const answer = await autocomplete($, typed('a', 'a'))
+
+  expect(answer).toEqual({
+    suggestions: [
+      { text: 'A1: ', label: 'A1', description: 'Check school dates' },
+      { text: 'A2: ', label: 'A2', description: 'Book the flights' },
+    ],
+  })
+})
+
+test('typing d at the start of a line lists the decisions and not their options', async ($, on) => {
+  host(on, { [LOG]: log(items) })
+
+  const answer = await autocomplete($, typed('d', 'd'))
+
+  expect(answer).toEqual({
+    suggestions: [
+      { text: 'D1: ', label: 'D1', description: 'Which holiday do we book?' },
+    ],
+  })
+})
+
+test('typing c at the start of a line lists the criteria', async ($, on) => {
+  host(on, { [LOG]: log(items) })
+
+  const answer = await autocomplete($, typed('c', 'c'))
+
+  expect(answer).toEqual({
+    suggestions: [{ text: 'C1: ', label: 'C1', description: 'Europe' }],
+  })
+})
+
+test('a digit after a narrows the list to that action', async ($, on) => {
+  host(on, { [LOG]: log(items) })
+
+  const answer = await autocomplete($, typed('a2', 'a2'))
+
+  expect(answer).toEqual({
+    suggestions: [
+      { text: 'A2: ', label: 'A2', description: 'Book the flights' },
+    ],
+  })
+})
