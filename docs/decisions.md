@@ -38,6 +38,14 @@ zg-pvk.
 | zg-579 | A decision holds only options a person named in chat, and is never opened and decided in one step | core, mod |
 | zg-o1g | A topic is a thread until someone names a candidate to pick; the decision then opens where it was named | mod |
 | zg-wn9 | An answer resolves its thread; a limit it states is a criterion on the decision it serves | core, mod |
+| zg-5he | Claude finds a change's follow-on effects in its own reply, not in a forked or subagent check | evals, mod |
+| zg-gue | zg tracks a session and leaves how its results are used to the project | core, docs |
+| zg-dia | A session's kept items are recorded the way the project's own instructions say, else listed in the handoff | core, mod |
+| zg-m2b | zg never writes to the goal's origin | mod |
+| zg-3t0 | Claude records a reply on a node only when it gets back to the human with something to act on | core, mod |
+| zg-w93 | An open thread waits on the human while its latest reply is Claude's | core |
+| zg-8pl | Build only what use has shown is needed: an optimisation, too, waits for measured evidence | core, mod, project |
+| zg-a0y | Claude proposes, the human decides: whatever decides or ends something says whose call it was, in their words | core, mod |
 
 ## Accepted
 
@@ -122,6 +130,7 @@ The log reads as the story of the session, and partial or reordered writes would
 #### How it was decided
 
 Agreed in chat on 2026-10-22, while designing before slice 0. The human: 'the events are about the domain and not about the UI'. First agreed to keep raw chat out of the log, then revised: 'sometimes you agree to something quite complex/bad just because you were tired and went yeah, yeah, we can change it later but it's a good start, and seeing that was what the agreement/decision came from is crucial'. Then: 'ThreadReplied also need to contain what the agent said, since a lot of stuff is bounced off each other.'
+Narrowed on 2026-11-04 while defining zg-clv: Claude's side of a thread is what it gets back to the human with; narration is not part of the exchange and is not logged (see zg-3t0). The human: 'yes, that narration of "okay boss, I'll go do as you said" isn't helpful as I need to respond now'.
 
 ### zg-su8: A command that would break a rule is refused with the reason and a fix; zg never surprises the human
 
@@ -682,6 +691,7 @@ travel with the repo and are reviewed like any other change.
 #### How it was decided
 
 Agreed in chat on 2026-10-23, slicing zg-bam. The human: 'config in repo, in case we end up being multiplayer we should have the same settings and workflow (gut feel, maybe it'll have to be revisited later and allow for a config.local or similar, but that's a future problem)'. The file name and JSON were Claude's proposal; the human: 'ok'.
+2026-11-04: the sink is gone (zg-dia superseded zg-2x6). Configuration holds the context meter's thresholds (nudge_at, push_at) only; this decision's rule stands for those.
 
 ### zg-4h7: A command changes only the items it names; what follows from an outcome is proposed, never cascaded
 
@@ -1010,6 +1020,334 @@ The human: "should we be inland?" answered before "where are we going?" exists i
 #### How it was decided
 
 Decided by the human on 2026-10-28 while redefining zg-bam.5.11: 'An answer is not a decision, and a one-option decision is never recorded'; the inferred decision is proposed, not opened: 'Claude should express what it infers if it doesn't clearly belong to something'. Outcome always given: 'there's always a summary, if the last message and explanation is short and a summary wouldn't add value, then keep the human's last message'.
+
+### zg-5he: Claude finds a change's follow-on effects in its own reply, not in a forked or subagent check
+
+Areas: evals, mod
+
+#### Context
+
+Slice 4 (zg-bam.6) had to choose how Claude finds the up, down and across effects of an added criterion, a made decision or a resolved thread: a `$.model.fork` check from the tool.call hook, an inline instruction, or a subagent. A spike on 2026-11-04 ran three recorded transcripts (down, across, up) at 5 runs per arm.
+
+#### Decision
+
+The criterion, decision and thread tools each carry one short standing sentence: after add, decide or resolve, check what the change rules out or settles, and propose those closes as one batch. Claude makes the check in its own reply. zg forks no model call and starts no subagent to find these effects. Revisit forks only if evals on long sessions show inline missing effects.
+
+#### Rationale
+
+Both arms named every expected effect (15/15) with no wrong proposals, so the fork's advantage of not competing with the reply did not show. Inline cost about 86 fixed tokens, inside zg-n27's 3k. A forked check cost about 4s and $0.03–0.04 each, ran one after another per event, and carried an uncached tail of up to 3.9k tokens. The sentence also keeps Claude proposing rather than closing (zg-4h7): without it, Claude closed T2/T3 on its own in 5/5 runs, before a fork's answer could arrive. The fork did see the current message, so freshness was not a reason against it.
+
+#### Alternatives Considered
+
+- Forked check per event: no fixed tokens, but slower and dearer per check, and it arrives after Claude's parallel calls have acted. It still needs the same sentence to stop closes made without asking.
+- Subagent per check: only worth it if both arms missed more than 20% of effects; neither missed any.
+- The sentence in the tool result instead of the descriptions: zero fixed tokens. Not measured.
+
+#### How it was decided
+
+Decided by the human, 2026-11-04: "spike decision: good, file the decision". Evidence: the spike comments on zg-bam.6.
+
+### zg-gue: zg tracks a session and leaves how its results are used to the project
+
+Areas: core, docs
+
+#### Context
+
+Defining slice 5 (zg-bam.7), two rules came out of one stance: kept items
+are recorded the way the project's own instructions say, and zg never
+writes to the goal's origin. The human asked for the stance itself to be
+written down, so that later features are judged against it, and zg can be
+used in many kinds of project and workflow.
+
+#### Decision
+
+zg is a thin layer that helps a human keep track of how they work in one
+session: it records the session's goal, threads, decisions, criteria and
+actions, shows them, and encourages a way of working (closing threads,
+checking the goal, a short handoff). What happens to anything it helped
+drive, once the session hands it over, is the project's: where it is
+recorded, who claims or updates tracked work, which process files it. A
+feature that would make zg act on the project's behalf beyond the session
+is out of scope unless the human decides otherwise.
+
+#### Rationale
+
+To stay minimal and useful: a small tool that does one thing well, in the
+unix tradition. Tracking a session is that one thing; recording, claiming
+and filing are what each project's own tools already do. Doing one thing
+and leaving the rest to the project is how zg gets reused across many kinds
+of project and workflow. That is the bet, not yet shown by use.
+
+#### Alternatives Considered
+
+- zg owns capture and filing through its own configuration (the sink of
+  zg-2x6): it duplicates what each project already says, and ties zg to
+  one way of working.
+- Leave the stance implicit in individual decisions: later features are
+  judged case by case, and the boundary drifts.
+
+#### How it was decided
+
+2026-11-04, defining slice 5 (zg-bam.7). The human: "should we have a design tenet or similar in CLAUDE.md to specify that we're a thin layer to help humans track how they work in a session and that apart from providing some encouragement in workflow, how anything we've helped drive is handled by the project. so it can be used in many different type of projects and workflows?" On the rationale: "The rationale for the decision is thin, the reason is so that we stay minimal and useful, the unix philosophy of small tools doing one thing well, and this is how we get reuse (at least, that's the bet)."
+
+### zg-dia: A session's kept items are recorded the way the project's own instructions say, else listed in the handoff
+
+Areas: core, mod
+
+#### Context
+
+zg-2x6 made a sink a plain-language instruction in zg's configuration: at
+close, Claude filed each item as the sink said and reported the reference
+back. Defining slice 5 (zg-bam.7), the human placed the "how" with the
+project: a project already says, in its own instructions, how it records
+decisions and work.
+
+#### Decision
+
+At close, each item the human marks to keep (an action to file, a lasting
+decision) is recorded the way the project's own instructions say: its
+CLAUDE.md, rules, injected context or skills. Claude records it with its
+own tools and exports it with the reference it got back. When those
+instructions give no way for that kind of item, or recording fails, the
+item is exported to the handoff, which lists it for the human to decide.
+zg has no sink setting and no integration code. Its code never reads the
+project's instructions; it enforces that every export carries a reference.
+
+#### Rationale
+
+The project's main ways are already where its people look, and a second
+instruction in zg would compete with them. The handoff is the one output
+every session has, so nothing marked to keep is ever lost. This follows
+zg-gue.
+
+#### Alternatives Considered
+
+- A sink instruction in .zg/config.json (zg-2x6): duplicates what the
+  project's instructions already say.
+- Always the handoff, the human files by hand: ignores the project's ways
+  where they exist.
+- An adapter per tracker: code to build and maintain for each.
+
+#### How it was decided
+
+2026-11-04, defining slice 5 (zg-bam.7). The human: "I do wonder if the new `feedback` skill kinda obviates some of the wording around decisions since it has wording around how to record decisions? ... So that we more make it so that we have them and then it's up to the project to decide how they're used? in keeping with keeping zeigarnik a thin layer coordinating and displaying, but decisions after belongs to the user". Then: "I think it should rely on the project's setting. if the project has no way to record lasting decisions, then export to handoff. this needs to be the standing rule, we use the projects main ways when available, and otherwise we display it and let the human decide". Approved: "kept items recorded in project's way: yes".
+
+### zg-m2b: zg never writes to the goal's origin
+
+Areas: mod
+
+#### Context
+
+A goal has an optional origin, the tracked item it works on, such as a bead
+the human gives with /zg:open. The README promised to mark it in progress at
+open, update it at close and link new items back to it. Slice 1 already
+renames the Claude session with the origin's ID.
+
+#### Decision
+
+zg records the origin on the goal and names the session after it, and does
+nothing else with it: it never marks, claims, closes, comments on or links
+to the origin. Claiming the item and updating it are the project's session
+setup.
+
+#### Rationale
+
+Writing to the project's tracker is outside what zg is for, which is keeping
+track of a session's questions and decisions; this follows zg-gue. The
+rename stays because it only makes the session easy to find.
+
+#### Alternatives Considered
+
+- Keep the origin in step through the sink instruction: an external write
+  zg would make on the project's behalf.
+- Ask the human before each write: still zg acting in the project's tracker.
+
+#### How it was decided
+
+2026-11-04, defining slice 5 (zg-bam.7). The human: "I feel the claiming etc. has nothing to do with zeigarnik and purely something that the project's settings handle. we do the rename of the session for ease of use but the rest belongs to session setup. the point of this mod is just to help make it easy to keep track of all the questions and decisions, the rest belongs to the projects to decide so we stay as far away from it as possible." Approved: "zg never writes to the goal's origin: yes".
+
+### zg-3t0: Claude records a reply on a node only when it gets back to the human with something to act on
+
+Areas: core, mod
+
+#### Context
+
+The node tool asked for a Claude reply after every human reply, so a
+thread's history filled with narration ("Noted, checking", "fanning out"),
+and a thread's last word was Claude's even while it was off working.
+Raised while defining zg-clv, which shows the threads waiting on the human
+and derives waiting from who spoke last (zg-ww9).
+
+#### Decision
+
+Claude records a reply on a node only when it gets back to the human with
+something to act on: findings, an answer that settles something, which the
+human still has to acknowledge, or a question. Narration of work under way
+is never recorded. Such a reply may come with no human reply before it. A
+question Claude asks when it opens a thread is recorded as the thread's
+first reply, in the same call.
+
+#### Rationale
+
+The human wants to know it is their turn only when there is something for
+them to do, not while Claude works in the background. With narration out
+of the log, who spoke last says exactly that, so waiting is derived from
+events that already exist, with no flag and no event change (zg-8ex), and
+a thread's history reads as the exchange zg-tjz keeps.
+
+#### Alternatives Considered
+
+- A flag on ThreadOpened and NodeReplied marking that Claude got back:
+  precise, but changes two events and grows two tool descriptions, and
+  keeps the narration.
+- A separate ThreadAwaitsHuman event from a node op: an extra call per
+  question, easier for Claude to forget.
+- Waiting as every open thread whose last word is Claude's, narration
+  included: marks threads Claude is still working on.
+
+#### How it was decided
+
+Agreed in chat on 2026-11-04 while defining zg-clv. The human: 'I don't want to know that it's my turn when it's off doing work in the background. I just want to know it's my turn when there's something for me to do. So it would have to be when it has gotten back to me about something. Whether it's the answer to a question that settles something (which I have to still acknowledge) or follow-up questions etc. I guess we'll have to rely on judgement but it's better than noise.' And: 'maybe there's a thing here about only recording node replies when an agent has gotten back with something useful, narration, fanning out, etc. isn't useful and just necessary to do the work. so are we maybe too lenient in creating replies and if we made that a bit stricter this problem goes away?'
+
+### zg-w93: An open thread waits on the human while its latest reply is Claude's
+
+Areas: core
+
+#### Context
+
+zg-ww9 left whether a thread waits on the human to be derived from the log
+"once defined". zg-clv shows the threads waiting on the human in the pane
+and marks them in the reply typeahead, and needed the definition. The reply
+decision (zg-3t0) makes every reply of Claude's one that gets back to the
+human with something to act on.
+
+#### Decision
+
+A thread waits on the human while it is open and its latest reply is
+Claude's. What Claude got back with need not be a question: an answer, or
+findings that bear on another node, wait too. Any reply of the human's ends
+the wait, of either kind: an answer (accept, reject or follow-up) or an
+acknowledgement that they read it. A thread with no reply does not wait.
+The fact is computed from the log, never stored (zg-ww9). Whether a reply
+resolves the thread is not part of this rule.
+
+#### Rationale
+
+The human misses what they have to respond to among all the output, and it
+is often why a thread hasn't finished. With the reply decision, who spoke
+last on a thread says whether there is something for them to do, from
+events that already exist, so no flag has to be set and cleared.
+
+#### Alternatives Considered
+
+- A thread's title counting as Claude's word, so a thread with no reply
+  waits: marks every thread Claude opened for its own research.
+- A flag Claude sets when it gets back: changes two events (zg-8ex) and
+  keeps the narration the reply decision drops.
+- ✦ as the waiting mark: ✦ clears once the human has written to a node, so
+  it misses Claude getting back on a thread the human already answered.
+
+#### How it was decided
+
+Agreed in chat on 2026-11-04 while defining zg-clv (T39). The human: 'I often miss all the things I have to respond to among all the output … it's often the reason that thread hasn't finished.' On what waits: 'I just want to know it's my turn when there's something for me to do. So it would have to be when it has gotten back to me about something.' And: 'as long as it doesn't mean everything is a question that we mark that there's something for me to, I might've asked a question and claude came back with the answer which influences something else, and I haven't ack'd that'. On what ends it: 'answer isn't necessarily the right verb, it needs my reply. an answer (accept/reject/follow-up) or acknowledgement/receipt of having read it being the two categories I see as replies right now'. Approved: "t39: ok, good to go!"
+
+### zg-8pl: Build only what use has shown is needed: an optimisation, too, waits for measured evidence
+
+Areas: core, mod, project
+
+#### Context
+
+Asked on 2026-11-04 which tenets the accepted decisions already imply. Until
+now this rule was a memory, structure-when-used, which zg-b8o calls flat: it
+has no rationale, isn't in script/context's index, and gives a reviewer
+nothing to cite. Many decisions apply it: terminal first (zg-5mi), no
+per-person config yet (zg-2f3), parsing in code later, as an optimisation
+(zg-7zf), hidden git refs later (zg-r1g), supersede machinery dropped
+(zg-64v), a new kind only for a new table row (zg-8ld), forks only if evals
+show misses (zg-5he), and eval bars set from a measured baseline (zg-egt).
+
+#### Decision
+
+A tenet: when you design anything new, check it against this first.
+
+Build a structure (a field, link, kind, setting, surface or pane interaction)
+only once real use or a measured case shows it is needed. Until then, name
+the other item by ID in free text, and list what was deferred in the story's
+out-of-scope. Optimise (code parsing, forks, caching, token savings) only when
+a measurement shows the plain way falls short, and say in the decision which
+evidence would reopen it. Replaces the structure-when-used memory.
+
+#### Rationale
+
+The human: 'that's a future problem'; 'if I feel the problem later when using
+the plugin I can design it better then'. Structure built ahead of use is a
+guess you have to keep up, and every event change it brings needs sign-off
+(zg-8ex). A measurement settles what an argument can't: the zg-5he spike
+dropped a fork that looked better on paper.
+
+#### Alternatives Considered
+
+- Keep it as a memory: it reaches every session, but isn't indexed, has no
+  rationale, and can't be cited in review (zg-b8o's reasoning).
+- Design for foreseen needs up front: the supersede and reopen machinery
+  (zg-f6d, replaced by zg-64v) shows what that costs.
+
+#### How it was decided
+
+Proposed by Claude on 2026-11-04 from the structure-when-used memory and the decisions above. The human: T41 "yes". On the tenets as a whole: "I also like the other suggested tenets. the way I want to use the tenets is that they should help guide decisions". The memory's own words, 2026-10-23: 'that's a future problem'; 'if I feel the problem later when using the plugin I can design it better then'. Approved 2026-11-04: "the tenets are good and so is the CLAUDE.md block".
+
+### zg-a0y: Claude proposes, the human decides: whatever decides or ends something says whose call it was, in their words
+
+Areas: core, mod
+
+#### Context
+
+Asked on 2026-11-04 which tenets the accepted decisions already imply. Many
+decisions apply this rule, each to one case: events keep both sides verbatim
+(zg-tjz), a decision or end keeps the human's words and source (zg-tjb),
+Claude closes a thread alone only on stated grounds (zg-86j), outcomes are
+proposed and never cascaded (zg-4h7), options are only ones a person named
+(zg-579), an inferred decision is proposed before it is recorded (zg-wn9),
+every event change needs sign-off (zg-8ex), and design decisions are made
+with the human (zg-pvk). No decision states the rule as a whole, and an
+agent facing a new case gets it wrong when it goes unstated: Claude invented
+options in 9 of 10 runs (zg-bam.5.11), and in 5 of 5 spike runs it closed
+threads on its own before anyone was asked (zg-5he).
+
+#### Decision
+
+A tenet: when you design anything new, check it against this first.
+
+Claude may notice, infer and propose anything. Only the human decides what
+is decided, ended or recorded as theirs. Whatever decides or ends something
+records whose call it was and, when it was the human's, their words. Where
+Claude acts on its own grounds, the record names those grounds and Claude
+reports what it did (zg-86j).
+
+The visibility side is zg-su8: nothing enters or changes the log that the
+human has not seen, and zg never acts behind their back. A refusal is how
+code keeps it.
+
+A one-sentence instruction from the human counts as confirming everything it
+covers (zg-4h7), so this rule never makes a loop tedious.
+
+#### Rationale
+
+zg exists so the human can trust the structure of their session. An item the
+human never saw, or a call that hides whose it was, breaks that trust in a way
+a later reader can't detect. Stated once, the rule gives a designer the
+answer to a new case without hunting for the precedent that fits it.
+
+#### Alternatives Considered
+
+- Leave it spread across the case decisions: each covers one situation, and a
+  new one (a pane action, a sink, an automation) has no precedent to find.
+- Let Claude decide where it is confident: the zg-bam.5.11 and zg-5he runs
+  show its confidence is not the human's agreement.
+
+#### How it was decided
+
+Proposed by Claude on 2026-11-04 when asked "are there other tenets that are lurking if we look at the decisions made? things that should influence design going forward?". The human: T40 "ok". On the tenets as a whole: "I also like the other suggested tenets. the way I want to use the tenets is that they should help guide decisions". Approved 2026-11-04: "the tenets are good and so is the CLAUDE.md block".
 
 ## Superseded or withdrawn
 

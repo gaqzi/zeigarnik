@@ -37,6 +37,18 @@ See [docs/design.md](docs/design.md) for how zg is built, and the
 [README](README.md) for what it does. The reasoning behind both is in the
 decision beads, rendered in [docs/decisions.md](docs/decisions.md).
 
+Tenets: check any new design against these first.
+
+- zg tracks a session and leaves how its results are used to the project
+  (zg-gue).
+- Claude proposes, the human decides: whatever decides or ends something says
+  whose call it was, in their words (zg-a0y).
+- Build only what use has shown is needed: an optimisation, too, waits for
+  measured evidence (zg-8pl).
+- Judgment lives in the main Claude's reply; zg's code holds no judgment,
+  calls no model, integrates nothing (zg-7zf).
+- Derive a fact from the log before storing it (zg-ww9).
+
 ## Rules for all work
 
 - When zg's behaviour or shape changes, update the README in the same change
@@ -64,3 +76,4 @@ over once the plugin can track them for us.
   (see `bd prime`).
 - End a discussion with what is decided, what is still open, and the next
   step.
+- Weigh each option you propose against the tenets above: say which it serves or strains, recommend the one that serves them best, and name any strain the recommendation accepts.
