@@ -235,3 +235,33 @@ describe('open decisions', () => {
     )
   })
 })
+
+describe('with a context meter', () => {
+  const meter = 'context 100k, past nudge_at 100k: suggest closing'
+
+  test('ends the index line, after the open actions', () => {
+    const state = fold([a.goalOpened(), a.threadOpened(), a.actionAdded()])
+
+    expect(turnIndex(state, meter)).toBe(
+      `zg open: T1 Places in Greece | A1 Check school dates · ${meter}`,
+    )
+  })
+
+  test('ends the index line when only threads are open', () => {
+    const state = fold([a.goalOpened(), a.threadOpened()])
+
+    expect(turnIndex(state, meter)).toBe(
+      `zg open: T1 Places in Greece · ${meter}`,
+    )
+  })
+
+  test('comes alone when the goal is open and nothing else is', () => {
+    const state = fold([
+      a.goalOpened(),
+      a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+      a.threadResolved({ thread: 'T2', outcome: 'Greece is out' }),
+    ])
+
+    expect(turnIndex(state, meter)).toBe(`zg: ${meter}`)
+  })
+})

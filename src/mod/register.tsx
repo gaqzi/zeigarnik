@@ -11,7 +11,15 @@ import { REPLY_TOKEN, replyRows } from '../core/reply-rows.ts'
 import { title } from '../core/title.ts'
 import { turnIndex } from '../core/turn-index.ts'
 import { load } from '../storage/log.ts'
-import { current, now, run, select, show, startReply } from './session.ts'
+import {
+  contextMeter,
+  current,
+  now,
+  run,
+  select,
+  show,
+  startReply,
+} from './session.ts'
 import { HANDOFF_TOOL, SHOW, specs, toCommand } from './tools.ts'
 
 // Hooks only: each turns its input into a core command or a view, and
@@ -113,7 +121,7 @@ export const register: Register = on => {
     // zg-n27: every prompt, slash commands included, brings the index of what
     // is open; a prompt that is only a node's ID adds that node's recap after it.
     const result = withContext(
-      withContext(await next(e), turnIndex(state)),
+      withContext(await next(e), turnIndex(state, await contextMeter($))),
       recap(events, e.prompt),
     )
     const opening = OPENING.exec(e.prompt.trim())

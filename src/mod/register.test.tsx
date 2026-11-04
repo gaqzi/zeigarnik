@@ -96,6 +96,75 @@ test('each prompt brings the index of what is open', async ($, on) => {
   })
 })
 
+test('a context past nudge_at adds the meter to the index', async ($, on) => {
+  const given = [
+    a.goalOpened({ text: 'Pick our end-of-May beach holiday' }),
+    a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+  ]
+  host(on, { [LOG]: log(given) }, undefined, undefined, 100_000)
+
+  const answer = await $.classic.UserPromptSubmit({ prompt: 'what next?' })
+
+  expect(answer).toEqual({
+    additionalContext: [
+      'zg open: T2 Places in Greece · context 100k, past nudge_at 100k: suggest closing',
+    ],
+  })
+})
+
+test('a context past push_at in the config presses the human to close', async ($, on) => {
+  const given = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+  ]
+  const files = {
+    [LOG]: log(given),
+    '.zg/config.json': '{"push_at":120000}',
+  }
+  host(on, files, undefined, undefined, 120_000)
+
+  const answer = await $.classic.UserPromptSubmit({ prompt: 'what next?' })
+
+  expect(answer).toEqual({
+    additionalContext: [
+      'zg open: T2 Places in Greece · context 120k, past push_at 120k: press the human to close',
+    ],
+  })
+})
+
+test('a context past nudge_at with nothing open gets the meter alone', async ($, on) => {
+  const given = [
+    a.goalOpened({ text: 'Pick our end-of-May beach holiday' }),
+    a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+    a.threadResolved({ thread: 'T2', outcome: 'Greece is out' }),
+  ]
+  host(on, { [LOG]: log(given) }, undefined, undefined, 100_000)
+
+  const answer = await $.classic.UserPromptSubmit({ prompt: 'what next?' })
+
+  expect(answer).toEqual({
+    additionalContext: [
+      'zg: context 100k, past nudge_at 100k: suggest closing',
+    ],
+  })
+})
+
+test('a config that exists but cannot be read gives the defaults', async ($, on) => {
+  const given = [
+    a.goalOpened(),
+    a.threadOpened({ thread: 'T2', title: 'Places in Greece' }),
+  ]
+  host(on, { [LOG]: log(given) }, undefined, 100_000, ['.zg/config.json'])
+
+  const answer = await $.classic.UserPromptSubmit({ prompt: 'what next?' })
+
+  expect(answer).toEqual({
+    additionalContext: [
+      'zg open: T2 Places in Greece · context 100k, past nudge_at 100k: suggest closing',
+    ],
+  })
+})
+
 test('a slash command other than /zg:open still gets the index', async ($, on) => {
   host(on, { [LOG]: log([a.goalOpened(), a.threadOpened()]) })
 

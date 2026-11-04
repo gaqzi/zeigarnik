@@ -539,6 +539,11 @@ adds an action owned by you; "next session" does the same, with the action's
 text starting "Next session:", so it is easy to find again. Nothing is left
 hanging.
 
+As the session's context grows, the index line Claude gets with every prompt
+carries a meter. Past `nudge_at` it tells Claude to suggest closing; past
+`push_at` it tells Claude to press you to close. `.zg/config.json` is read on
+every prompt, so a change applies at once, and a missing key keeps its default.
+
 ## Interactions
 
 | You want to | Do |

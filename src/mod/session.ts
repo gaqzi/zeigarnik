@@ -4,6 +4,7 @@ import type { Command } from '../core/commands.ts'
 import { decide, type Refusal } from '../core/decide.ts'
 import type { Event } from '../core/events.ts'
 import { fold, type State } from '../core/evolve.ts'
+import { meter } from '../core/meter.ts'
 import { overview } from '../core/overview.ts'
 import { replyStart } from '../core/reply-start.ts'
 import { load, save, trace } from '../storage/log.ts'
@@ -69,4 +70,23 @@ export async function run(
   await show($, state)
 
   return { events: decided.events, state }
+}
+
+// The config text, or undefined when the file is absent or unreadable.
+async function readConfig($: EngineInterface, path: string) {
+  try {
+    return (await $.fs.exists(path)) ? await $.fs.read(path) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+// The meter line for this prompt: the session's context tokens against the
+// thresholds in .zg/config.json, read afresh each time (zg-n27).
+export async function contextMeter($: EngineInterface) {
+  const path = '.zg/config.json'
+  const config = await readConfig($, path)
+  const { context } = await $.session.usage()
+
+  return meter(context.tokens, config)
 }

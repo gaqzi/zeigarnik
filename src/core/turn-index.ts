@@ -13,7 +13,7 @@ const cut = (text: string) => {
   return line.length <= MAX_TEXT ? line : `${line.slice(0, MAX_TEXT - 1)}…`
 }
 
-export const turnIndex = (state: State): string | undefined => {
+export const turnIndex = (state: State, meter?: string): string | undefined => {
   if (!state.goals.some(goal => goal.status === 'open')) return undefined
   const open = (kind: 'thread' | 'decision') =>
     state.nodes.filter(node => node.status === 'open' && node.kind === kind)
@@ -26,7 +26,8 @@ export const turnIndex = (state: State): string | undefined => {
   const sides = [threads, actions]
     .filter(side => side.length > 0)
     .map(side => side.join(' · '))
-  if (sides.length === 0) return undefined
+  const line = sides.length === 0 ? undefined : `zg open: ${sides.join(' | ')}`
+  if (meter === undefined) return line
 
-  return `zg open: ${sides.join(' | ')}`
+  return line === undefined ? `zg: ${meter}` : `${line} · ${meter}`
 }

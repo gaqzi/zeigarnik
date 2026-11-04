@@ -2,7 +2,7 @@ import type { On, RegisteredToolSpec, UiCopyResult } from 'claude-code'
 
 // For wiring tests: the engine beneath zg, as a test stands for it. Nothing
 // sits beneath a plugin in `claude plugin test`, so these hooks answer what
-// zg asks of the session: its ID, the time, files in memory, the clipboard,
+// zg asks of the session: its ID, the time, its context usage, files in memory, the clipboard,
 // and the classic events' own (empty) results.
 
 const SESSION = 's1'
@@ -30,6 +30,11 @@ export const host = (
   files: Record<string, string> = {},
   clipboard: UiCopyResult = { isCopied: true },
   draft = '',
+  // The tokens the session's context holds; absent until the engine has a
+  // reading, which is what a session that has not yet sent a message reports.
+  tokens?: number,
+  // Paths that exist but cannot be read: fs.exists says true, fs.read denies.
+  unreadable: string[] = [],
 ): Host => {
   const world: Host = {
     files: { ...files },
@@ -40,8 +45,12 @@ export const host = (
   }
   on('session.id', () => ({ value: SESSION }))
   on('clock.now', () => ({ value: NOW }))
-  on('fs.exists', (_, e) => ({ value: inside(e.path) in world.files }))
+  on('fs.exists', (_, e) => ({
+    value: inside(e.path) in world.files || unreadable.includes(inside(e.path)),
+  }))
   on('fs.read', (_, e) => {
+    if (unreadable.includes(inside(e.path)))
+      return { deny: `EACCES: ${e.path}` }
     const text = world.files[inside(e.path)]
     return text === undefined ? { deny: `ENOENT: ${e.path}` } : { value: text }
   })
@@ -49,6 +58,13 @@ export const host = (
     world.files[inside(e.path)] = e.text
     return { value: undefined }
   })
+  on('session.usage', () => ({
+    value: {
+      startedAt: NOW,
+      context: { window: 200_000, ...(tokens === undefined ? {} : { tokens }) },
+      rateLimits: [],
+    },
+  }))
   on('ui.copy', (_, e) => {
     world.copied.push(e.text)
     return { value: clipboard }
