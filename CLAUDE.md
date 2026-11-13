@@ -77,3 +77,17 @@ over once the plugin can track them for us.
 - End a discussion with what is decided, what is still open, and the next
   step.
 - Weigh each option you propose against the tenets above: say which it serves or strains, recommend the one that serves them best, and name any strain the recommendation accepts.
+- Number every decision a proposal makes (D1, D2…), those taken on the
+  human's behalf included; the human oks each one, whatever its score.
+- Score each proposal and each decision `Confidence: 0.NN`: how likely
+  the human approves it unchanged, judged against the tenets and their
+  past rulings, with one line on what holds it below 1. The scores let
+  the human move toward approving high ones on sight.
+- Below 0.9, revise what you can fix yourself, showing each round as its
+  change and new score. Stop when what remains is the human's call, and
+  ask it as a question.
+- Where the tenets fit but approval stays unclear, mark it "tenets
+  silent": the human's ruling is a candidate decision or tenet example.
+- Log each proposal shown below 0.9, and each one the human changes at
+  0.9 or above, as a comment on zg-c6d: the score, the gap, the human's
+  verdict in their words, the session ID and machine.
