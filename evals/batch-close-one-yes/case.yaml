@@ -1,0 +1,43 @@
+schema_version: "1.1"
+name: batch-close-one-yes
+description: Claude's last message in the recorded session proposes dropping D1.1 "Greek village" and closing T4 "Boat tour on day 3?", and the human answers with one sentence, "yes, drop both". Claude cancels both nodes, each with source chat and the human's sentence as the reason. The guardrail is that no cancel or resolve reason is outside the human's message, so nothing is invented. Its behaviour is the two cancellations from chat with that sentence. The case has no no-plugin arm, because the runner yields only the with arm for a resumed case, so its baseline is the with arm. Not exercised - the setup turns (recorded, steered by setup prompts, not live), and Claude's own proposal to drop D1.1 and close T4 (it is in the recorded history, which ends on it, so how Claude comes to propose the batch is covered by zg-bam.6.3, zg-bam.6.4 and zg-bam.6.5).
+tags: [guardrail, slice-4, propagation]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "yes, drop both"
+  max_turns: 10
+  allowed_tools:
+    [
+      mcp__zg__decision,
+      mcp__zg__criterion,
+      mcp__zg__node,
+      mcp__zg__thread,
+      mcp__zg__show,
+    ]
+graders:
+  # Behaviour, baseline then ratchet. Both nodes are cancelled from chat, each
+  # with the human's sentence as the reason. Each line is picked by per-line
+  # lookaheads on its fields ((?<![^\n]) is the line start), so the order of
+  # fields does not matter. The closing quote keeps D1.1 from matching D1.10.
+  - name: D1.1-cancelled-from-chat-with-the-humans-sentence
+    type: regex
+    target: {source: file, path: .zg/sessions/f11a1e79-1e8a-4eab-9f70-9a9bcb268e99.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"NodeCancelled")(?=[^\n]*"node":"D1\.1")(?=[^\n]*"source":"chat")(?=[^\n]*"reason":"yes, drop both")'
+    match: contains
+  - name: T4-cancelled-from-chat-with-the-humans-sentence
+    type: regex
+    target: {source: file, path: .zg/sessions/f11a1e79-1e8a-4eab-9f70-9a9bcb268e99.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"NodeCancelled")(?=[^\n]*"node":"T4")(?=[^\n]*"source":"chat")(?=[^\n]*"reason":"yes, drop both")'
+    match: contains
+  # Guardrail. Fails on any ThreadResolved or NodeCancelled whose reason is
+  # not a contiguous substring of the prompt. Generated, not written: run
+  # evals/decide-from-reply/graders.sh "<prompt>" "ThreadResolved|NodeCancelled"
+  # and paste its output here (see that script for how the pattern is built).
+  - name: no-resolve-reason-outside-the-message
+    type: regex
+    target: {source: file, path: .zg/sessions/f11a1e79-1e8a-4eab-9f70-9a9bcb268e99.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"(?:ThreadResolved|NodeCancelled)")(?=[^\n]*"reason":"(?!(?:y(?:e(?:s(?:,(?: (?:d(?:r(?:o(?:p(?: (?:b(?:o(?:t(?:h)?)?)?)?)?)?)?)?)?)?)?)?)?|e(?:s(?:,(?: (?:d(?:r(?:o(?:p(?: (?:b(?:o(?:t(?:h)?)?)?)?)?)?)?)?)?)?)?)?|s(?:,(?: (?:d(?:r(?:o(?:p(?: (?:b(?:o(?:t(?:h)?)?)?)?)?)?)?)?)?)?)?|,(?: (?:d(?:r(?:o(?:p(?: (?:b(?:o(?:t(?:h)?)?)?)?)?)?)?)?)?)?| (?:d(?:r(?:o(?:p(?: (?:b(?:o(?:t(?:h)?)?)?)?)?)?)?)?)?|d(?:r(?:o(?:p(?: (?:b(?:o(?:t(?:h)?)?)?)?)?)?)?)?|r(?:o(?:p(?: (?:b(?:o(?:t(?:h)?)?)?)?)?)?)?|o(?:p(?: (?:b(?:o(?:t(?:h)?)?)?)?)?)?|p(?: (?:b(?:o(?:t(?:h)?)?)?)?)?| (?:b(?:o(?:t(?:h)?)?)?)?|b(?:o(?:t(?:h)?)?)?|o(?:t(?:h)?)?|t(?:h)?|h)"))'
+    match: not_contains

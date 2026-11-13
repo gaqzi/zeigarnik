@@ -1,0 +1,10 @@
+{"type":"GoalOpened","at":"2026-11-13T21:40:14.448Z","goal":"G","text":"Pick our end-of-May beach holiday"}
+{"type":"ThreadOpened","at":"2026-11-13T21:40:18.453Z","thread":"T1","parent":"G","title":"Trip basics: who, from where, dates, length"}
+{"type":"NodeReplied","at":"2026-11-13T21:40:18.453Z","node":"T1","author":"claude","text":"Who's going (any kids?), where are you flying or driving from, which dates at the end of May, and for how many nights?"}
+{"type":"ThreadOpened","at":"2026-11-13T21:40:20.160Z","thread":"T2","parent":"G","title":"What kind of beach holiday"}
+{"type":"NodeReplied","at":"2026-11-13T21:40:20.160Z","node":"T2","author":"claude","text":"What's the holiday for? For example lazy resort time, swimming and snorkelling, a beach town with food and walking, or surf. Any places you already have in mind or want to avoid?"}
+{"type":"ThreadOpened","at":"2026-11-13T21:40:21.142Z","thread":"T3","parent":"G","title":"Budget and travel limits"}
+{"type":"NodeReplied","at":"2026-11-13T21:40:21.142Z","node":"T3","author":"claude","text":"What's the rough budget, and what's the most travel time you'd accept each way?"}
+{"type":"DecisionOpened","at":"2026-11-13T21:40:43.613Z","decision":"D1","parent":"G","title":"Which holiday do we book?"}
+{"type":"ThreadOpened","at":"2026-11-13T21:40:43.746Z","thread":"T4","parent":"G","title":"Boat tour on day 3?"}
+{"type":"OptionAdded","at":"2026-11-13T21:40:45.561Z","option":"D1.1","decision":"D1","title":"Greek village"}
