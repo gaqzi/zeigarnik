@@ -139,7 +139,7 @@ The repo follows
 
 | Script | Does |
 |---|---|
-| `script/bootstrap` | Install the toolchain (asdf), bd and jq (Homebrew), and dependencies |
+| `script/bootstrap` | Install the toolchain (asdf), bd and jq (Homebrew; without it, jq with apt and asdf from its release binary), and dependencies |
 | `script/fmt` | Format the code |
 | `script/test` | The free tests: typecheck, lint, the README's decision overview held to `src/core/readme-decision-overview.ts`, domain core and mod wiring. Runs `script/fmt` first unless `CI` is set; on CI it checks formatting instead |
 | `script/test unit` / `wiring` / `eval` | One layer. `eval` costs tokens and takes minutes, so it's run on big changes and before closing a slice. It grants zg's own tools (`--allow-tools 'mcp__zg__*'`), judges with sonnet (haiku failed correct answers) and keeps the report local |

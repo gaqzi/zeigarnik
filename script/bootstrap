@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 # Usage: script/bootstrap
 #
-# Installs what zg's scripts and tests need: bd and jq (Homebrew), Node
-# (asdf, from .tool-versions) and the npm dependencies (zg-4nn).
+# Installs what zg's scripts and tests need: bd and jq (Homebrew, or jq
+# with apt where there's no Homebrew), asdf (Homebrew, or its release
+# binary in ~/.local/bin), Node (asdf, from .tool-versions) and the npm
+# dependencies (zg-4nn).
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BD_MIN=1.3.1
 JQ_MIN=1.7
+ASDF_VERSION=0.20.2
 
 fail() {
   echo "bootstrap: $*" >&2
@@ -23,10 +26,15 @@ at_least() {
 need() {
   local tool=$1 min=$2 version
   if ! command -v "$tool" >/dev/null; then
-    command -v brew >/dev/null ||
+    if command -v brew >/dev/null; then
+      echo "Installing $tool with Homebrew"
+      brew install "$tool"
+    elif [ "$tool" = jq ] && command -v apt-get >/dev/null; then
+      echo "Installing jq with apt"
+      sudo apt-get install -y jq
+    else
       fail "$tool is missing and Homebrew isn't available to install it: see https://brew.sh"
-    echo "Installing $tool with Homebrew"
-    brew install "$tool"
+    fi
   fi
   version=$("$tool" --version | grep -Eo '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n 1)
   at_least "$version" "$min" ||
@@ -36,8 +44,40 @@ need() {
 need bd "$BD_MIN"
 need jq "$JQ_MIN"
 
-command -v asdf >/dev/null ||
-  fail "asdf is missing; zg installs Node with it: see https://asdf-vm.com"
+# Without Homebrew, asdf comes from its release binary.
+install_asdf() {
+  local os arch
+  os=$(uname -s | tr '[:upper:]' '[:lower:]')
+  case $(uname -m) in
+    x86_64) arch=amd64 ;;
+    aarch64 | arm64) arch=arm64 ;;
+    *) fail "asdf is missing, and there's no release binary for $(uname -m): see https://asdf-vm.com" ;;
+  esac
+  echo "Installing asdf $ASDF_VERSION into ~/.local/bin"
+  mkdir -p ~/.local/bin
+  curl -fsSL "https://github.com/asdf-vm/asdf/releases/download/v$ASDF_VERSION/asdf-v$ASDF_VERSION-$os-$arch.tar.gz" |
+    tar -xz -C ~/.local/bin asdf
+  export PATH="$HOME/.local/bin:$PATH"
+}
+
+if ! command -v asdf >/dev/null; then
+  if command -v brew >/dev/null; then
+    echo "Installing asdf with Homebrew"
+    brew install asdf
+  else
+    install_asdf
+  fi
+fi
+
+# asdf runs Node through its shims; a fresh install doesn't have them on PATH.
+shims="${ASDF_DATA_DIR:-$HOME/.asdf}/shims"
+case ":$PATH:" in
+  *":$shims:"*) ;;
+  *)
+    export PATH="$shims:$PATH"
+    echo "bootstrap: add $shims to your PATH to use zg's Node outside this script" >&2
+    ;;
+esac
 command -v claude >/dev/null ||
   fail "claude is missing; tests run with claude plugin test: see https://code.claude.com"
 
