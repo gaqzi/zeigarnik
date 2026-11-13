@@ -1,0 +1,87 @@
+schema_version: "1.1"
+name: limit-decision-decided
+description: >-
+  Claude resumes a history that holds the goal G (plan the summer holiday with
+  the kids) and its decision D1, decided with the lake house inland the
+  human named and then picked with a reason: no decision is open. The setup
+  turns are recorded: the bare /zg:open (cut after the goal is opened, so the
+  opening reply's own threads are not in the fixture), then the human naming
+  the lake house, then picking it, cut after the DecisionMade. The human states a limit, no more than three hours in the car with
+  the kids, with no decision open to serve. Claude opens a thread for it
+  under G with the message verbatim as its first human reply, and records no
+  criterion, decision or option: a limit is a criterion only on a decision
+  that is open (zg-wn9), and nothing is opened from a limit alone (zg-579);
+  the fixture's decisions refuse a reply (D1 is already decided), so the
+  thread is where the words are recorded. This is the case the three evals of
+  zg-12x never set up: a session whose only decision is already decided,
+  which the old wording "no decision in the log" would not have covered.
+  Guardrails are no CriterionAdded, no DecisionOpened beyond D1 and no
+  OptionAdded beyond D1.1 in the log (the fixture holds no criterion and only
+  D1 and D1.1, so any such event was appended in this run), and every human
+  reply recorded being the message verbatim, with the message recorded once,
+  so nothing is invented. The
+  behaviour is the thread under G whose human reply is the message (whether
+  Claude opens one is its choice to improve, not a rule it breaks). The case
+  has no no-plugin arm, because the runner yields only the with arm for a
+  resumed case, so its baseline is the with arm. Not exercised - the turn
+  after the limit, the human naming a decision, and the setup turns (recorded,
+  not live).
+tags: [guardrail, slice-4, decisions]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Whatever we end up doing, I don't want more than three hours in the car with the kids."
+  max_turns: 10
+  allowed_tools:
+    [
+      mcp__zg__decision,
+      mcp__zg__criterion,
+      mcp__zg__node,
+      mcp__zg__thread,
+      mcp__zg__show,
+    ]
+graders:
+  # Guardrail. The fixture holds no criterion, so any CriterionAdded was appended in the run.
+  - name: no-criterion-added
+    type: regex
+    target: {source: file, path: .zg/sessions/03b3f115-dadc-44c8-b310-ff5c5307f49d.jsonl}
+    pattern: '"type":"CriterionAdded"'
+    match: not_contains
+  # Guardrail. The fixture holds only D1, so a DecisionOpened for any other decision was appended in the run.
+  - name: no-decision-opened
+    type: regex
+    target: {source: file, path: .zg/sessions/03b3f115-dadc-44c8-b310-ff5c5307f49d.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"DecisionOpened")(?![^\n]*"decision":"D1")'
+    match: not_contains
+  # Guardrail. The fixture holds only D1.1, so an OptionAdded for any other option was appended in the run.
+  - name: no-option-added
+    type: regex
+    target: {source: file, path: .zg/sessions/03b3f115-dadc-44c8-b310-ff5c5307f49d.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"OptionAdded")(?![^\n]*"option":"D1\.1")'
+    match: not_contains
+  # Guardrail. Any human reply whose text is not the message exactly; the fixture
+  # holds none, so nothing is invented. Every graded line is picked by per-line lookaheads on its
+  # fields ((?<![^\n]) is the line start), so the order of fields does not matter.
+  - name: no-human-reply-but-the-message-verbatim
+    type: regex
+    target: {source: file, path: .zg/sessions/03b3f115-dadc-44c8-b310-ff5c5307f49d.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"NodeReplied")(?=[^\n]*"author":"human")(?![^\n]*"text":"Whatever we end up doing, I don''t want more than three hours in the car with the kids\."[,}])'
+    match: not_contains
+  # Guardrail. Two human replies holding the message, on the same node or on
+  # two, is the message recorded twice: the thread's only human reply is the
+  # message once.
+  - name: the-message-is-recorded-as-a-human-reply-once
+    type: regex
+    target: {source: file, path: .zg/sessions/03b3f115-dadc-44c8-b310-ff5c5307f49d.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"NodeReplied")(?=[^\n]*"author":"human")(?=[^\n]*"text":"Whatever we end up doing, I don''t want more than three hours in the car with the kids\."[,}])[^\n]*\n(?:[^\n]*\n)*?(?<![^\n])(?=[^\n]*"type":"NodeReplied")(?=[^\n]*"author":"human")(?=[^\n]*"text":"Whatever we end up doing, I don''t want more than three hours in the car with the kids\."[,}])'
+    match: not_contains
+  # Behaviour, baseline then ratchet. A thread opened under G, and a later
+  # human NodeReplied on that same thread (the backreference) holding the
+  # message verbatim.
+  - name: thread-under-G-with-the-message-as-human-reply
+    type: regex
+    target: {source: file, path: .zg/sessions/03b3f115-dadc-44c8-b310-ff5c5307f49d.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"ThreadOpened")(?=[^\n]*"parent":"G")[^\n]*"thread":"(T\d+)"[^\n]*\n(?:[^\n]*\n)*?(?<![^\n])(?=[^\n]*"type":"NodeReplied")(?=[^\n]*"node":"\1")(?=[^\n]*"author":"human")(?=[^\n]*"text":"Whatever we end up doing, I don''t want more than three hours in the car with the kids\."[,}])'
+    match: contains

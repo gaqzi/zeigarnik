@@ -1,0 +1,4 @@
+{"type":"GoalOpened","at":"2026-11-13T13:24:17.018Z","goal":"G","text":"Plan our summer holiday with the kids"}
+{"type":"DecisionOpened","at":"2026-11-13T13:25:49.887Z","decision":"D1","parent":"G","title":"What kind of summer holiday to take"}
+{"type":"OptionAdded","at":"2026-11-13T13:25:51.925Z","option":"D1.1","decision":"D1","title":"Rent a lake house somewhere inland (partner's idea)"}
+{"type":"DecisionMade","at":"2026-11-13T13:26:04.766Z","decision":"D1","option":"D1.1","source":"chat","reason":"It's what we all want, the kids can swim and we can stay put."}
