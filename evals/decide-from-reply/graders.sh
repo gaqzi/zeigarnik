@@ -3,9 +3,11 @@
 # case.yaml, built for a prompt. Other cases reuse it with their own prompt
 # (slice 4's propagation cases).
 #
-#   evals/decide-from-reply/graders.sh ["<prompt>"]
+#   evals/decide-from-reply/graders.sh ["<prompt>" ["<event types>"]]
 #
-# The default is this case's prompt, exactly as in execution.prompt. Pass the
+# The default is this case's prompt, exactly as in execution.prompt. The event
+# types are a |-separated list of the events whose reason is checked, by
+# default ThreadResolved ("ThreadResolved|NodeCancelled" covers both). Pass the
 # prompt with its real newlines (in bash,
 # $'a\n\nb'): the log holds the field JSON-encoded, so the script encodes the
 # prompt the same way before it builds the pattern. The output is the YAML
@@ -13,7 +15,7 @@
 # holds). To regenerate the grader, run the script and paste its output over
 # the grader's pattern.
 #
-# The pattern fails on any ThreadResolved whose reason is not a contiguous
+# The pattern fails on any event of those types whose reason is not a contiguous
 # substring of the (JSON-encoded) prompt. The alternation lists every
 # substring of the prompt as a prefix of one of its suffixes, each prefix
 # chain nested right (a(?:b(?:c)?)?), regex metacharacters escaped. The line
@@ -22,8 +24,9 @@
 set -euo pipefail
 
 prompt=${1-'T5: no, two hours with the kids is a no. Keep transfers under 30 min.'}
+types=${2-ThreadResolved}
 
-PROMPT=$prompt node -e '
+PROMPT=$prompt TYPES=$types node -e '
 const prompt = JSON.stringify(process.env.PROMPT).slice(1, -1);
 const esc = (c) => (/[.*+?^${}()|[\]\\\/]/.test(c) ? "\\" + c : c);
 const nest = (s) => {
@@ -34,9 +37,11 @@ const nest = (s) => {
   }
   return out + close;
 };
+const types = process.env.TYPES.split("|");
+const typeAlt = types.length > 1 ? "(?:" + types.join("|") + ")" : types[0];
 const suffixes = Array.from({ length: prompt.length }, (_, i) => nest(prompt.slice(i)));
 process.stdout.write(
-  "(?<![^\\n])(?=[^\\n]*\"type\":\"ThreadResolved\")(?=[^\\n]*\"reason\":\"(?!(?:" +
+  "(?<![^\\n])(?=[^\\n]*\"type\":\"" + typeAlt + "\")(?=[^\\n]*\"reason\":\"(?!(?:" +
     suffixes.join("|") + ")\"))\n"
 );
 '
