@@ -1,0 +1,36 @@
+schema_version: "1.1"
+name: clv1-question-logged
+description: The human asks which beach is best, after saying they fly into Athens, on T2 "Places in Greece" (open under the goal "Pick a holiday"; T1 is Claude's own opening thread). Claude opens a thread under T2, or under a decision or option it opened under T2, to ask a question the human has to answer (zg-clv.1 scenario 3), and the thread's first reply is Claude's, holding the question, so the pane shows who asked it. Its only assertion is that, a behaviour from its first baseline, since opening the thread is Claude's own step, not set up; a low baseline is expected (zg-clv.1 T1.2). The case has no no-plugin arm, because the runner yields only the with arm for a resumed case, so its baseline is the with arm. Not exercised - the setup turns (recorded, steered by setup prompts, not live), the human's answer to the question (not in scope), and Claude's chat message (not asserted).
+tags: [behaviour, slice-4, replies]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "T2: which beach is best? We fly into Athens."
+  max_turns: 10
+  allowed_tools:
+    [
+      mcp__zg__decision,
+      mcp__zg__criterion,
+      mcp__zg__node,
+      mcp__zg__thread,
+      mcp__zg__show,
+    ]
+graders:
+  # Behaviour, baseline then ratchet. A thread opened under T2, or under a
+  # node beneath it, whose first NodeReplied is Claude's and holds a "?".
+  # Claude may put the question where it arises: a decision it opened under
+  # T2 (D1), or one of that decision's options (D1.1), counts as the node
+  # concerned. The first branch is a thread directly under T2 (\1 its ID);
+  # the second a DecisionOpened under T2 (\2 its ID) and a later thread
+  # under it or its options (\3 its ID; the closing quote keeps D1 from
+  # matching D10). The tempered loop skips every line that is not a
+  # NodeReplied on that thread, so the first reply on it is the one checked.
+  # A key such as "text":" cannot match inside another string, where its
+  # quotes are escaped. A thread under a thread under T2 is not followed.
+  - name: thread-under-T2-first-reply-is-claudes-question
+    type: regex
+    target: {source: file, path: .zg/sessions/38c7f306-7b31-4fd9-a55d-dc05abb33fb4.jsonl}
+    pattern: '"type":"ThreadOpened"[^\n]*"thread":"(T\d+)"[^\n]*"parent":"T2"[^\n]*\n(?:(?!\{"type":"NodeReplied"[^\n]*"node":"\1")[^\n]*\n)*\{"type":"NodeReplied"[^\n]*"node":"\1"[^\n]*"author":"claude"[^\n]*"text":"(?:[^"\\]|\\.)*\?|"type":"DecisionOpened"[^\n]*"decision":"(D\d+)"[^\n]*"parent":"T2"[^\n]*\n(?:[^\n]*\n)*?[^\n]*"type":"ThreadOpened"[^\n]*"thread":"(T\d+)"[^\n]*"parent":"\2(?:\.\d+)?"[^\n]*\n(?:(?!\{"type":"NodeReplied"[^\n]*"node":"\3")[^\n]*\n)*\{"type":"NodeReplied"[^\n]*"node":"\3"[^\n]*"author":"claude"[^\n]*"text":"(?:[^"\\]|\\.)*\?'
+    match: contains

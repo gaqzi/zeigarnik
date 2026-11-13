@@ -1,0 +1,4 @@
+{"type":"GoalOpened","at":"2026-11-13T21:29:21.493Z","goal":"G","text":"Pick a holiday"}
+{"type":"ThreadOpened","at":"2026-11-13T21:29:25.015Z","thread":"T1","parent":"G","title":"Holiday constraints: when, who, budget, kind of trip"}
+{"type":"NodeReplied","at":"2026-11-13T21:29:25.015Z","node":"T1","author":"claude","text":"When and for how long, who's going, roughly what budget, where you're leaving from, and what kind of holiday you want (sun, city, outdoors, culture, rest)?"}
+{"type":"ThreadOpened","at":"2026-11-13T21:29:35.998Z","thread":"T2","parent":"G","title":"Places in Greece"}

@@ -1,0 +1,36 @@
+schema_version: "1.1"
+name: clv1-narration-not-logged
+description: The human tells Claude on T3 "Places in Spain" (open under the goal "Pick a holiday") to skip anything that is not on the coast road, to go check what is left and come back (zg-clv.1 scenario 5). T3 already holds the human's reply listing places, some on the coast and some inland. The human's words are logged on T3 verbatim, and Claude's narration of the work it does is not logged as a reply on T3. The guardrail is that no NodeReplied{node T3, author claude} is appended in the turn, word for word, even though Claude reporting back in the same turn would fail it (zg-clv.1 T1.1). The recorded words are a behaviour from the first baseline. The case has no no-plugin arm, because the runner yields only the with arm for a resumed case, so its baseline is the with arm. Not exercised - the setup turns (recorded, steered by setup prompts, not live), the later turn in which Claude comes back to the human (the log, not the chat, is asserted), and the content of Claude's chat message (not asserted).
+tags: [guardrail, slice-4, replies]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "T3: skip anything that's not on the coast road. Go check what's left and come back to me."
+  max_turns: 10
+  allowed_tools:
+    [
+      mcp__zg__decision,
+      mcp__zg__criterion,
+      mcp__zg__node,
+      mcp__zg__thread,
+      mcp__zg__show,
+    ]
+graders:
+  # Guardrail. Claude's narration is not logged: no reply by Claude on T3. The
+  # line is picked by per-line lookaheads on its fields ((?<![^\n]) is the
+  # line start), so the order of fields does not matter. The closing quote
+  # keeps T3 from matching T30.
+  - name: no-claude-reply-on-T3
+    type: regex
+    target: {source: file, path: .zg/sessions/8faa15e3-73a5-42e1-bb70-11908da45f8a.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"NodeReplied")(?=[^\n]*"node":"T3")(?=[^\n]*"author":"claude")'
+    match: not_contains
+  # Behaviour, baseline then ratchet. The human's words on T3, verbatim and
+  # without the "T3: " prefix.
+  - name: T3-human-reply-is-the-message-verbatim
+    type: regex
+    target: {source: file, path: .zg/sessions/8faa15e3-73a5-42e1-bb70-11908da45f8a.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"NodeReplied")(?=[^\n]*"node":"T3")(?=[^\n]*"author":"human")(?=[^\n]*"text":"skip anything that''s not on the coast road\. Go check what''s left and come back to me\."[,}])'
+    match: contains

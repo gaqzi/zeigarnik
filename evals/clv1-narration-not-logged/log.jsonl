@@ -1,0 +1,5 @@
+{"type":"GoalOpened","at":"2026-11-13T22:44:55.662Z","goal":"G","text":"Pick a holiday"}
+{"type":"ThreadOpened","at":"2026-11-13T22:45:10.791Z","thread":"T1","parent":"G","title":"When and who"}
+{"type":"ThreadOpened","at":"2026-11-13T22:45:12.719Z","thread":"T2","parent":"G","title":"Where to stay"}
+{"type":"ThreadOpened","at":"2026-11-13T22:45:14.588Z","thread":"T3","parent":"G","title":"Places in Spain"}
+{"type":"NodeReplied","at":"2026-11-13T22:45:31.283Z","node":"T3","author":"human","text":"Nerja, Almuñécar and Salobreña along the coast, and Ronda and Granada inland."}
