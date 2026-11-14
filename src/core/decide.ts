@@ -9,7 +9,7 @@ import {
 } from './evolve.ts'
 import { type Holder, holds } from './containment.ts'
 import { nextId, nextOptionId } from './ids.ts'
-import { currentText } from './in-force.ts'
+import { currentText, hasOpenDecisionBelow } from './in-force.ts'
 import { joinList } from './join-list.ts'
 import { bySiblingOrder } from './overview.ts'
 import { repliesOn } from './replies-on.ts'
@@ -569,6 +569,15 @@ const decideAddCriterion = (
     ['open', 'decided'],
   )
   if ('refusal' in found) return found
+  if (found.node.status === 'decided' && !hasOpenDecisionBelow(state, on)) {
+    const goal = openGoal(state)
+    return refuse(
+      `${on} is already decided, and no open decision under its options would be judged on it.`,
+      goal === undefined
+        ? 'Record it as a reply on the thread it came up in. Open a goal first: the human starts one with /zg:open.'
+        : `Record it as a reply on the thread it came up in, or open a thread under ${goal.id} for it.`,
+    )
+  }
   if (origin !== undefined && !knowsOrigin(state, origin)) {
     return refuse(
       `There is no node ${origin}.`,
