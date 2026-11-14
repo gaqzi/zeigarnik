@@ -1,8 +1,8 @@
-{"type":"GoalOpened","at":"2026-11-13T13:24:46.781Z","goal":"G","text":"Pick our end-of-May beach holiday"}
-{"type":"ThreadOpened","at":"2026-11-13T13:25:05.807Z","thread":"T1","parent":"G","title":"Flights from Stockholm"}
-{"type":"ThreadOpened","at":"2026-11-13T13:25:08.013Z","thread":"T2","parent":"G","title":"Places in Greece"}
-{"type":"ThreadOpened","at":"2026-11-13T13:25:09.880Z","thread":"T3","parent":"G","title":"Where to stay"}
-{"type":"ThreadOpened","at":"2026-11-13T13:25:11.558Z","thread":"T4","parent":"G","title":"Renting a car"}
-{"type":"ThreadOpened","at":"2026-11-13T13:25:13.030Z","thread":"T5","parent":"G","title":"Travel insurance"}
-{"type":"ThreadOpened","at":"2026-11-13T13:25:15.389Z","thread":"T6","parent":"T2","title":"Bus or taxi from the airport?"}
-{"type":"NodeReplied","at":"2026-11-13T13:25:15.389Z","node":"T6","author":"claude","text":"Bus or taxi from the airport?"}
+{"type":"GoalOpened","at":"2026-11-14T10:08:08.926Z","goal":"G","text":"Pick our end-of-May beach holiday"}
+{"type":"ThreadOpened","at":"2026-11-14T10:08:33.985Z","thread":"T1","parent":"G","title":"Flights from Stockholm"}
+{"type":"ThreadOpened","at":"2026-11-14T10:08:35.599Z","thread":"T2","parent":"G","title":"Places in Greece"}
+{"type":"ThreadOpened","at":"2026-11-14T10:08:37.135Z","thread":"T3","parent":"G","title":"Where to stay"}
+{"type":"ThreadOpened","at":"2026-11-14T10:08:38.640Z","thread":"T4","parent":"G","title":"Renting a car"}
+{"type":"ThreadOpened","at":"2026-11-14T10:08:40.503Z","thread":"T5","parent":"G","title":"Travel insurance"}
+{"type":"ThreadOpened","at":"2026-11-14T10:08:43.170Z","thread":"T6","parent":"T2","title":"40-min bus from the airport OK?"}
+{"type":"NodeReplied","at":"2026-11-14T10:08:43.170Z","node":"T6","author":"claude","text":"Is the 40-min bus from the airport OK?"}

@@ -4,4 +4,4 @@
 # Run with the workspace as the working directory.
 set -euo pipefail
 mkdir -p .zg/sessions
-cp "$(dirname "$0")/log.jsonl" .zg/sessions/06ecd14d-ec76-4f54-90ae-a88aaf6f0e07.jsonl
+cp "$(dirname "$0")/log.jsonl" .zg/sessions/70e26c5c-9906-4819-a6fc-76ad4bc909f8.jsonl
