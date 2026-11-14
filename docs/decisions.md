@@ -46,6 +46,8 @@ zg-pvk.
 | zg-w93 | An open thread waits on the human while its latest reply is Claude's | core |
 | zg-8pl | Build only what use has shown is needed: an optimisation, too, waits for measured evidence | core, mod, project |
 | zg-a0y | Claude proposes, the human decides: whatever decides or ends something says whose call it was, in their words | core, mod |
+| zg-w6f | A decided decision gains a criterion only while an open decision under its options inherits it | core |
+| zg-x3g | A decided pick that fails a limit the human sets later is proposed for deciding again | mod |
 
 ## Accepted
 
@@ -1348,6 +1350,91 @@ answer to a new case without hunting for the precedent that fits it.
 #### How it was decided
 
 Proposed by Claude on 2026-11-04 when asked "are there other tenets that are lurking if we look at the decisions made? things that should influence design going forward?". The human: T40 "ok". On the tenets as a whole: "I also like the other suggested tenets. the way I want to use the tenets is that they should help guide decisions". Approved 2026-11-04: "the tenets are good and so is the CLAUDE.md block".
+
+### zg-w6f: A decided decision gains a criterion only while an open decision under its options inherits it
+
+Areas: core
+
+#### Context
+
+zg-bam.5.4 allowed a criterion on a decided decision ("allowed: a decided
+decision may gain a criterion that its sub-decisions inherit"), with no
+condition. The eval limit-decision-decided (zg-onj) showed the gap: with D1
+decided and nothing open under its options, Claude added "No more than three
+hours in the car with the kids" as a criterion on D1 in 3 of 3 runs, where
+nothing would ever be judged on it, instead of keeping the human's words on
+a thread under G.
+
+#### Decision
+
+A criterion may be added to an open decision, or to a decided one while an
+open decision sits anywhere under its options to inherit it. On a decided
+decision with nothing open below, the add is refused, and the fix says to
+record the limit as a reply on the thread it came up in or on a new thread.
+Revising an existing criterion is unchanged.
+
+#### Rationale
+
+A criterion exists to judge a choice still to be made; on a decided decision
+with nothing open below it judges nothing, and the human's words are better
+kept verbatim on a thread (zg-tjb), where they wait for the next decision.
+The allowance zg-bam.5.4 gave is kept for its reason, sub-decisions that
+inherit. Which decisions are open below is derived from the log (zg-ww9), so
+code checks it without judgment (zg-7zf), and the refusal carries a fix
+(zg-su8).
+
+#### Alternatives Considered
+
+- Refuse every criterion on a decided decision: simplest, mirrors the reply
+  refusal, but loses the inheritance zg-bam.5.4 accepted.
+- Only reword the criterion tool to "the open decision it serves": no code,
+  but the thread tool already said so and Claude went 0 of 3.
+
+
+#### How it was decided
+
+The human, 2026-11-14: "that narrowing is good, and yes, it should cause re-evaluation of existing options since some might fall off because of this narrowing. that's normal for making decisions. does it deserve a decision bead because it's a way of working that needs to be called out?" then "sounds good, go".
+
+### zg-x3g: A decided pick that fails a limit the human sets later is proposed for deciding again
+
+Areas: mod
+
+#### Context
+
+zg-bam.6.3 has Claude name the open options and threads a new or revised
+criterion rules out (src/mod/tools.ts:110, README Down row). Nothing checks a
+decision already made: the README says "Changing a criterion means
+re-checking decisions already made under the old version", but no tool
+description or story carries it. Raised while defining F2 (zg-onj), where a
+limit stated after D1 was decided is kept as a criterion or, with nothing
+open below, as a reply on a thread.
+
+#### Decision
+
+When the human sets a limit, as a criterion added or revised or as a reply
+kept on a thread, Claude checks the decided picks it applies to as well as
+the open options and threads. A pick that fails it is proposed for deciding
+again, with its grounds, in the same batch as the other proposals. Nothing
+is decided or dropped until the human confirms.
+
+#### Rationale
+
+The human: re-evaluating existing options when a limit narrows them is
+"normal for making decisions". A decision changes by being decided again
+(zg-64v), so the proposal is to decide again, never to reopen. The check is
+Claude's, in its own reply (zg-5he), and only proposed (zg-a0y, zg-4h7).
+
+#### Alternatives Considered
+
+- Open options only (zg-bam.6.3 as it stands): a pick the human's own limit
+  rules out stands unnoticed.
+- Code flags picks that fail a criterion: zg cannot judge whether a pick
+  meets a limit (zg-7zf).
+
+
+#### How it was decided
+
+The human, 2026-11-14: "that narrowing is good, and yes, it should cause re-evaluation of existing options since some might fall off because of this narrowing. that's normal for making decisions. does it deserve a decision bead because it's a way of working that needs to be called out?" then "sounds good, go".
 
 ## Superseded or withdrawn
 
