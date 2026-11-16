@@ -49,6 +49,7 @@ zg-pvk.
 | zg-w6f | A decided decision gains a criterion only while an open decision under its options inherits it | core |
 | zg-x3g | A decided pick that fails a limit the human sets later is proposed for deciding again | mod |
 | zg-de1 | Claude records a reply on a node only to get back to the human with something that settles that node | core, mod |
+| zg-zmk | A criterion is added only to an open decision | core |
 
 ## Accepted
 
@@ -1489,6 +1490,44 @@ Claude judges what is new (zg-7zf).
 #### How it was decided
 
 The human, 2026-11-16: "ok" (to filing this replacement; earlier on the eval failures: "fix the failures").
+
+### zg-zmk: A criterion is added only to an open decision
+
+Areas: core
+
+#### Context
+
+zg-w6f allowed a criterion on a decided decision while an open decision
+sits under its options to inherit it. zg cannot reach that state:
+deciding D1 is refused while anything is open under its options
+(src/core/decide.ts:255-272), and nothing opens under a chosen or
+not-chosen option. The allowance was dead code, describing a case that
+cannot occur.
+
+#### Decision
+
+A criterion may be added only to an open decision. A new criterion on a
+decided decision is refused, with the fix zg-w6f's refusal already
+gives: record the limit as a reply on the thread it came up in or on a
+new thread. Revising an existing criterion is unchanged.
+
+#### Rationale
+
+A criterion exists to judge a choice still to be made, and a decided
+decision has none left, so the human's words are better kept verbatim
+on a thread (zg-tjb). Building only what use has shown is needed means
+no code for a case zg cannot reach (zg-8pl). The check stays free of
+judgment, since whether a decision is decided is read from the log
+(zg-7zf), and the refusal carries a fix (zg-su8).
+
+#### Alternatives Considered
+
+- Keep zg-w6f as worded: describes an unreachable case, and a reader
+  would look for the inheritance path that does not exist.
+
+#### How it was decided
+
+The human, 2026-11-16: "D15: ok", then on this text "D18: yes".
 
 ## Superseded or withdrawn
 
