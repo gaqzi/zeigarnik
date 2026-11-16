@@ -52,14 +52,3 @@ export const inForce = (state: State, id: string): Criterion[] => {
 
   return [...own, ...inherited]
 }
-
-// Whether an open decision sits anywhere under the node, so would inherit a
-// criterion put on it.
-export const hasOpenDecisionBelow = (state: State, id: string): boolean =>
-  state.nodes.some(
-    node =>
-      node.id !== id &&
-      node.kind === 'decision' &&
-      node.status === 'open' &&
-      withAncestors(state, node.id).includes(id),
-  )

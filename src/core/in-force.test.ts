@@ -3,7 +3,7 @@ import { describe, expect, test } from 'claude-code/testing'
 import { AT, a } from './a.ts'
 import type { Event } from './events.ts'
 import { fold } from './evolve.ts'
-import { hasOpenDecisionBelow, inForce } from './in-force.ts'
+import { inForce } from './in-force.ts'
 
 // Criteria flow down: in force for a node are the criteria on its ancestor
 // decisions, itself included when it is a decision, that are open or
@@ -140,82 +140,4 @@ describe('a cancelled decision’s criteria are not in force', () => {
 
     expect(ids(given, 'D1')).toEqual([])
   })
-})
-
-describe('an open decision below a node, through the options and decisions under it', () => {
-  const below = [
-    a.goalOpened(),
-    a.decisionOpened(),
-    a.optionAdded({ option: 'D1.1' }),
-    a.decisionOpened({ decision: 'D2', parent: 'D1.1', title: 'Which lake?' }),
-    a.optionAdded({ option: 'D2.1', decision: 'D2', title: 'Blue' }),
-    a.decisionOpened({ decision: 'D3', parent: 'D2.1', title: 'Which cabin?' }),
-    a.decisionOpened({ decision: 'D4', title: 'Which hotel?' }),
-  ]
-  const cases: { name: string; events: Event[]; on: string; open: boolean }[] =
-    [
-      { name: 'an open child decision', events: below, on: 'D1', open: true },
-      {
-        name: 'an open decision two levels down',
-        events: [
-          ...below,
-          a.optionAdded({ option: 'D2.2', decision: 'D2', title: 'Red' }),
-          a.decisionMade({ decision: 'D2', option: 'D2.2' }),
-        ],
-        on: 'D1',
-        open: true,
-      },
-      {
-        name: 'an open decision under a thread under an option',
-        events: [
-          a.goalOpened(),
-          a.decisionOpened(),
-          a.optionAdded({ option: 'D1.1' }),
-          a.threadOpened({ thread: 'T2', parent: 'D1.1' }),
-          a.decisionOpened({
-            decision: 'D2',
-            parent: 'T2',
-            title: 'Which lake?',
-          }),
-        ],
-        on: 'D1',
-        open: true,
-      },
-      {
-        name: 'a node with nothing under it',
-        events: below,
-        on: 'D3',
-        open: false,
-      },
-      {
-        name: 'only a sibling decision open',
-        events: below,
-        on: 'D4',
-        open: false,
-      },
-      {
-        name: 'only decided decisions below',
-        events: [
-          ...below,
-          a.optionAdded({ option: 'D3.1', decision: 'D3', title: 'Pine' }),
-          a.decisionMade({ decision: 'D3', option: 'D3.1' }),
-          a.nodeCancelled({ node: 'D4' }),
-          a.optionAdded({ option: 'D2.2', decision: 'D2', title: 'Red' }),
-          a.decisionMade({ decision: 'D2', option: 'D2.2' }),
-        ],
-        on: 'D1',
-        open: false,
-      },
-      {
-        name: 'only a cancelled decision below',
-        events: [...below.slice(0, 5), a.nodeCancelled({ node: 'D2' })],
-        on: 'D1',
-        open: false,
-      },
-    ]
-  for (const { name, events, on, open } of cases) {
-    test(`${name} is ${open ? '' : 'not '}an open decision below`, () => {
-      expect(hasOpenDecisionBelow(fold(events), on)).toBe(open)
-    })
-  }
 })

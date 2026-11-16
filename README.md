@@ -369,9 +369,8 @@ found and revised while exploring the options. That is a normal part of
 exploring, not a failure.
 
 - Attached to a decision. They apply to it and to every decision under its
-  options, so a criterion set high up is judged on all the way down. A decided
-  decision gains a criterion only while an open decision under its options
-  inherits it.
+  options, so a criterion set high up is judged on all the way down. A criterion
+  is added only to an open decision.
 - Revisions are kept, not overwritten, with the node that caused them.
 - Changing a criterion means re-checking decisions already made under the old
   version (see [How Claude behaves](#how-claude-behaves)).

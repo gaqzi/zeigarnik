@@ -2242,26 +2242,11 @@ describe('a criterion attaches to a decision', () => {
     })
   })
 
-  test('a decided decision gains the criterion that its open sub-decisions inherit', () => {
-    const given = [
-      ...outline,
-      a.decisionOpened({
-        decision: 'D6',
-        parent: 'D2.1',
-        title: 'Which airline?',
-      }),
-    ]
-
-    expect(when(given, a.addCriterion({ on: 'D2' }))).toEqual({
-      events: [a.criterionAdded({ on: 'D2' })],
-    })
-  })
-
-  test('a decided decision with no open decision under its options keeps its words out of a criterion', () => {
+  test('a criterion on a decided decision is refused, with a thread under the open goal as the fix', () => {
     expect(when(outline, a.addCriterion({ on: 'D2' }))).toEqual({
       refusal: {
         reason:
-          'D2 is already decided, and no open decision under its options would be judged on it.',
+          'D2 is already decided; a criterion is added only to an open decision.',
         fix: 'Record it as a reply on the thread it came up in, or open a thread under G for it.',
       },
     })
@@ -2277,7 +2262,7 @@ describe('a criterion attaches to a decision', () => {
     expect(when(given, a.addCriterion({ on: 'D2' }))).toEqual({
       refusal: {
         reason:
-          'D2 is already decided, and no open decision under its options would be judged on it.',
+          'D2 is already decided; a criterion is added only to an open decision.',
         fix: 'Record it as a reply on the thread it came up in, or open a thread under G2 for it.',
       },
     })
@@ -2289,28 +2274,8 @@ describe('a criterion attaches to a decision', () => {
     expect(when(given, a.addCriterion({ on: 'D2' }))).toEqual({
       refusal: {
         reason:
-          'D2 is already decided, and no open decision under its options would be judged on it.',
+          'D2 is already decided; a criterion is added only to an open decision.',
         fix: 'Record it as a reply on the thread it came up in. Open a goal first: the human starts one with /zg:open.',
-      },
-    })
-  })
-
-  test('a decision cancelled under the decided one does not count as open below', () => {
-    const given = [
-      ...outline,
-      a.decisionOpened({
-        decision: 'D6',
-        parent: 'D2.1',
-        title: 'Which airline?',
-      }),
-      a.nodeCancelled({ node: 'D6' }),
-    ]
-
-    expect(when(given, a.addCriterion({ on: 'D2' }))).toEqual({
-      refusal: {
-        reason:
-          'D2 is already decided, and no open decision under its options would be judged on it.',
-        fix: 'Record it as a reply on the thread it came up in, or open a thread under G for it.',
       },
     })
   })
