@@ -328,8 +328,9 @@ question, a long exploration, or a sub-topic of one.
   where it rolled up.
 - Has a **history**: what you and Claude said about it, word for word, so you
   can reread later how it was settled. Claude's side is what it gets back to you
-  with on the thread (a question, or an answer to what you asked), never
-  narration.
+  with on the thread (an answer, or a question that settles the thread
+  itself), never narration; a question about something new opens its own
+  thread.
 - Closes with an **outcome**: a short summary of what was learned or settled,
   which rolls up into the parent.
 - States:
