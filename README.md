@@ -330,7 +330,10 @@ question, a long exploration, or a sub-topic of one.
   can reread later how it was settled. Claude's side is what it gets back to you
   with on the thread (an answer, or a question that settles the thread
   itself), never narration; a question about something new opens its own
-  thread.
+  thread. An answer to a question carrying a condition applies a clear
+  condition (the value, and in or out by the human's rule) and reads back a
+  vague one (the value, what Claude takes it to mean, and a question to
+  confirm, asked as its reply on the thread, since it settles it).
 - Closes with an **outcome**: a short summary of what was learned or settled,
   which rolls up into the parent.
 - States:

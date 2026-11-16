@@ -1,0 +1,8 @@
+{"type":"GoalOpened","at":"2026-11-13T21:29:52.619Z","goal":"G","text":"Pick a holiday"}
+{"type":"ThreadOpened","at":"2026-11-13T21:29:56.283Z","thread":"T1","parent":"G","title":"What the holiday needs to be"}
+{"type":"NodeReplied","at":"2026-11-13T21:29:56.283Z","node":"T1","author":"claude","text":"When, for how long, who's going, rough budget, and what kind of trip (beach, city, outdoors, ski, etc.)? Any places already on your shortlist?"}
+{"type":"ThreadOpened","at":"2026-11-13T21:30:04.123Z","thread":"T2","parent":"G","title":"Places in Greece"}
+{"type":"ThreadOpened","at":"2026-11-13T21:30:05.783Z","thread":"T3","parent":"G","title":"Where to stay"}
+{"type":"ThreadOpened","at":"2026-11-13T21:30:07.658Z","thread":"T4","parent":"G","title":"Renting a car"}
+{"type":"ThreadOpened","at":"2026-11-13T21:30:09.315Z","thread":"T5","parent":"G","title":"Travel insurance"}
+{"type":"ThreadOpened","at":"2026-11-13T21:30:11.153Z","thread":"T6","parent":"T2","title":"Ferry time to the islands"}

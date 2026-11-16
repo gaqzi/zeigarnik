@@ -1,0 +1,54 @@
+schema_version: "1.1"
+name: clv1-answer-vague-condition
+description: The human asks T6 "Ferry time to the islands", open under T2 "Places in Greece", how long the ferry from Piraeus to Naxos is, and says that if it is long the islands are out for T2, a vague condition (zg-bam.6.19). Claude answers on T6 and, since "long" has no length, names one it would take it to mean and asks the human whether that is what they mean, so a "?" in its reply is right and the case has no no-"?" grader. The question settles T6, so it is asked as Claude's reply on T6 (zg-de1), which a log regex checks. That Claude names a length for "long" and asks is judged by an llm grader on Claude's last message, since no log assertion can show it; the first assertion, that Claude replied on T6, is a log regex. This is the vague-condition branch; the clear one is evals/clv1-answer-logged. The target is 80% or better from the baseline (slice 4, zg-egt). The case has no no-plugin arm, because the runner yields only the with arm for a resumed case, so its baseline is the with arm. Not exercised - the setup turns (recorded, steered by setup prompts, not live), the human's answer to the question (not in scope), and whether Claude resolves T6 or touches T2 (not asserted).
+tags: [behaviour, slice-4, replies]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "T6: how long is the ferry from Piraeus to Naxos? If it's long, the islands are out for T2."
+  max_turns: 10
+  allowed_tools:
+    [
+      mcp__zg__decision,
+      mcp__zg__criterion,
+      mcp__zg__node,
+      mcp__zg__thread,
+      mcp__zg__show,
+    ]
+graders:
+  # Behaviour, baselined from the start (80%+). The line is picked by per-line
+  # lookaheads on its fields ((?<![^\n]) is the line start), so the order of
+  # fields does not matter. The closing quote keeps T6 from matching T60.
+  - name: T6-replied-by-claude
+    type: regex
+    target: {source: file, path: .zg/sessions/9fdca2f0-4277-4d90-8847-b53bf47b90ac.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"NodeReplied")(?=[^\n]*"node":"T6")(?=[^\n]*"author":"claude")'
+    match: contains
+  # Behaviour, baselined from the start (80%+). The read-back question
+  # settles T6, so it is Claude's reply on T6 and holds a "?". The line is
+  # picked by per-line lookaheads; the closing quote keeps T6 from matching T60.
+  - name: T6-claude-reply-holds-the-question
+    type: regex
+    target: {source: file, path: .zg/sessions/9fdca2f0-4277-4d90-8847-b53bf47b90ac.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"NodeReplied")(?=[^\n]*"node":"T6")(?=[^\n]*"author":"claude")(?=[^\n]*"text":"(?:[^"\\]|\\.)*\?)'
+    match: contains
+  # Behaviour, baselined from the start (80%+). The vague condition is not
+  # guessed at: Claude names a length it takes "long" to mean and asks the
+  # human, so a "?" is right and there is no no-"?" grader. An llm grader on
+  # Claude's last message alone, since no log assertion can show it.
+  - name: answer-names-a-length-for-long-and-asks-if-that-is-meant
+    type: llm
+    criteria: |
+      Behaviour, baselined from the start (80%+). Grade only Claude's last message. The
+      session's goal is "Pick a holiday". Thread T2 "Places in Greece" was
+      open under it with T6 "Ferry time to the islands" open under T2, and
+      the human has just asked, verbatim: "T6: how long is the ferry from
+      Piraeus to Naxos? If it's long, the islands are out for T2." Pass when
+      the message gives the ferry time (roughly, as a number of hours or a
+      range), names a length it would take "long" to mean (for example
+      "over 3 hours"), and asks the human whether that is what they mean.
+      Fail when it gives no ferry time, leaves "long" unnamed, or does not
+      ask. Not a fail: noting that the time depends on the ship, or saying
+      where the answer was recorded.

@@ -1,13 +1,13 @@
 schema_version: "1.1"
 name: clv1-answer-logged
-description: The human asks T6 "Ferry time to the islands", open under T2 "Places in Greece", how long the ferry from Piraeus to Naxos is, and says that if it is long the islands are out for T2 (zg-clv.1 scenario 4). Claude answers on T6, so a NodeReplied{node T6, author claude} is appended in that turn (a behaviour from its first baseline), and its text asks nothing (a regex on the log, no "?"). That it gives the ferry time and what it means for T2's islands is judged by an llm grader, since no log assertion can show it; the grader reads Claude's last message, because the case could not confirm that an llm grader accepts a file target for the logged reply. The case has no no-plugin arm, because the runner yields only the with arm for a resumed case, so its baseline is the with arm. Not exercised - the setup turns (recorded, steered by setup prompts, not live), the human's message being logged (zg-clv.1's other scenarios), and whether Claude resolves T6 or touches T2 (not asserted).
+description: The human asks T6 "Ferry time to the islands", open under T2 "Places in Greece", how long the ferry from Piraeus to Naxos is, and says that if it is over 3 hours the islands are out for T2 (zg-clv.1 scenario 4, a clear condition applied, zg-bam.6.19). Claude answers on T6, so a NodeReplied{node T6, author claude} is appended in that turn (a behaviour from its first baseline), and its text asks nothing (a regex on the log, no "?"). That it gives the ferry time and says the islands are out by the human's rule, or in, as the time is over or under 3 hours, is judged by an llm grader, since no log assertion can show it; the grader reads Claude's last message, because the case could not confirm that an llm grader accepts a file target for the logged reply. The target is 80% or better from the baseline (slice 4, zg-egt). This is the clear-condition branch; the vague one is evals/clv1-answer-vague-condition. The case has no no-plugin arm, because the runner yields only the with arm for a resumed case, so its baseline is the with arm. Not exercised - the setup turns (recorded, steered by setup prompts, not live), the human's message being logged (zg-clv.1's other scenarios), and whether Claude resolves T6 or touches T2 (not asserted).
 tags: [behaviour, slice-4, replies]
 runs: 5
 context:
   history_file: history.jsonl
   scaffold_script: scaffold.sh
 execution:
-  prompt: "T6: how long is the ferry from Piraeus to Naxos? If it's long, the islands are out for T2."
+  prompt: "T6: how long is the ferry from Piraeus to Naxos? If it's over 3 hours, the islands are out for T2."
   max_turns: 10
   allowed_tools:
     [
@@ -18,7 +18,7 @@ execution:
       mcp__zg__show,
     ]
 graders:
-  # Behaviour, baseline then ratchet. The line is picked by per-line
+  # Behaviour, baselined from the start (80%+). The line is picked by per-line
   # lookaheads on its fields ((?<![^\n]) is the line start), so the order of
   # fields does not matter. The closing quote keeps T6 from matching T60.
   - name: T6-replied-by-claude
@@ -26,26 +26,28 @@ graders:
     target: {source: file, path: .zg/sessions/9fdca2f0-4277-4d90-8847-b53bf47b90ac.jsonl}
     pattern: '(?<![^\n])(?=[^\n]*"type":"NodeReplied")(?=[^\n]*"node":"T6")(?=[^\n]*"author":"claude")'
     match: contains
-  # Behaviour, baseline then ratchet. "Without asking anything", on the log
+  # Behaviour, baselined from the start (80%+). "Without asking anything", on the log
   # itself: no Claude reply on T6 whose text holds a "?".
   - name: T6-no-claude-reply-asks
     type: regex
     target: {source: file, path: .zg/sessions/9fdca2f0-4277-4d90-8847-b53bf47b90ac.jsonl}
     pattern: '(?<![^\n])(?=[^\n]*"type":"NodeReplied")(?=[^\n]*"node":"T6")(?=[^\n]*"author":"claude")(?=[^\n]*"text":"(?:[^"\\]|\\.)*\?)'
     match: not_contains
-  # Behaviour, baseline then ratchet. The last Then, what the reply gives; an
+  # Behaviour, baselined from the start (80%+). The last Then, what the reply gives; an
   # llm grader on Claude's last message alone, since no log assertion can
-  # show it.
-  - name: answer-gives-the-ferry-time-and-what-it-means-for-the-islands
+  # show it. The eval runs allow only zg's tools, so no source is asked for.
+  - name: answer-gives-the-ferry-time-and-applies-the-humans-rule
     type: llm
     criteria: |
-      Behaviour, baseline then ratchet. Grade only Claude's last message. The
+      Behaviour, baselined from the start (80%+). Grade only Claude's last message. The
       session's goal is "Pick a holiday". Thread T2 "Places in Greece" was
       open under it with T6 "Ferry time to the islands" open under T2, and
       the human has just asked, verbatim: "T6: how long is the ferry from
-      Piraeus to Naxos? If it's long, the islands are out for T2." Pass when
-      the message gives the ferry time (roughly, as a number of hours or a
-      range) and says what it means for T2's islands (they stay in or are
-      out, or what follows from the time). Fail when it gives no ferry time
-      or says nothing about what it means for the islands. Not a fail: noting that the time
-      depends on the ship, or saying where the answer was recorded.
+      Piraeus to Naxos? If it's over 3 hours, the islands are out for T2."
+      Pass when the message gives the ferry time (roughly, as a number of
+      hours or a range) and says the islands are out for T2 by the human's
+      rule, or in, as the time is over or under 3 hours. The time is over 3
+      hours on every ship, so "out by your rule" is expected. Fail when it
+      gives no ferry time or does not say what the human's rule means for
+      the islands. Not a fail: noting that the time depends on the ship,
+      or saying where the answer was recorded.
