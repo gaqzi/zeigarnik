@@ -1,0 +1,97 @@
+schema_version: "1.1"
+name: limit-pick-recheck-criterion
+description: >-
+  Claude resumes a history that holds the goal G (plan the summer holiday with
+  the kids), its decision D1 (what kind of summer holiday to take) still open
+  with option D1.1 (rent a lake house somewhere inland), and under D1.1 the
+  sub-decision D2 "Which lake", decided with Siljan (D2.1) after Claude
+  replied on D2.1 with the drive from home to Siljan. The setup is one
+  recorded session, cut in two places, as limit-decision-decided cuts its
+  open turn: the /zg:open command is cut after the goal is opened, so the
+  opening reply's own threads are not in the fixture, and the human naming
+  the lake house is cut after the option D1.1 is added, so the rest of Claude's
+  reply is not in the fixture. The later turns are whole: the human asking for
+  the lake decision under D1.1 with Siljan as its option (Claude's reply to it
+  lists "how long the drive is" among what the choice might be judged on, and
+  asks no limit), the human saying they live in Gothenburg and asking how
+  long Siljan is by car, and for Claude's answer as its own reply on D2.1 (the
+  human gives no figure: Claude's reply holds its own, 5.5 to 6 hours of
+  driving and 6.5 to 7 with stops, over 3 hours at the shores it names,
+  Leksand, Rättvik and Mora; the reply comes before the pick, since a decided
+  node refuses replies), then the human picking Siljan with a reason, cut
+  after the pick's DecisionMade. zg lets D2 be decided while D1 is open. The
+  human then states a limit that the pick fails, max 3h in the car with the
+  kids (zg-x3g). D1 is open, so Claude adds it as a criterion on D1, which D2
+  inherits, and tells the human that D2's pick fails it: its last message
+  proposes deciding D2 again, with Claude's own drive time as its grounds, and
+  leaves it to the human. Nothing is decided or dropped without the human
+  (zg-a0y, zg-4h7). Guardrails are no DecisionMade beyond the fixture's D2 one
+  (matched by its timestamp, since deciding D2 again would be another line for
+  D2) and no NodeCancelled in the log, so any such event was appended in this
+  run. Behaviours are the CriterionAdded on D1 with a text holding "3", and
+  one llm grader on Claude's last message for the proposal, an 80% bar for
+  slice 4 (zg-egt). The case has no no-plugin arm, because the runner yields
+  only the with arm for a resumed case, so its baseline is the with arm. Not
+  exercised - the thread path, where no open decision takes the limit
+  (evals/limit-pick-recheck-reply), the turn after the proposal, and the setup
+  turns (recorded, not live).
+tags: [guardrail, behaviour, slice-4, decisions]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "max 3h in the car with the kids"
+  max_turns: 10
+  allowed_tools:
+    [
+      mcp__zg__decision,
+      mcp__zg__criterion,
+      mcp__zg__node,
+      mcp__zg__thread,
+      mcp__zg__show,
+    ]
+graders:
+  # Guardrail. The fixture's DecisionMade is the one stamped 13:03:21.401Z, so
+  # any other DecisionMade line, deciding again included, was appended in the run.
+  - name: no-decision-made-in-the-run
+    type: regex
+    target: {source: file, path: .zg/sessions/2c0aa468-afb5-435a-a540-a560e2b422e4.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"DecisionMade")(?![^\n]*"at":"2026-11-16T13:03:21\.401Z")'
+    match: not_contains
+  # Guardrail. The fixture cancels nothing, so any NodeCancelled was appended in the run.
+  - name: no-node-cancelled
+    type: regex
+    target: {source: file, path: .zg/sessions/2c0aa468-afb5-435a-a540-a560e2b422e4.jsonl}
+    pattern: '"type":"NodeCancelled"'
+    match: not_contains
+  # Behaviour, baseline then ratchet. The fixture holds no criterion, so a
+  # CriterionAdded on D1 was appended in the run.
+  - name: criterion-added-on-D1-holding-3
+    type: regex
+    target: {source: file, path: .zg/sessions/2c0aa468-afb5-435a-a540-a560e2b422e4.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"CriterionAdded")(?=[^\n]*"on":"D1")(?=[^\n]*"text":"[^"]*3)'
+    match: contains
+  # Behaviour, baseline then ratchet (80% for slice 4, zg-egt). An llm grader
+  # on Claude's last message alone, since no log assertion can show a proposal.
+  - name: proposes-deciding-D2-again-on-the-drive-and-leaves-it-to-the-human
+    type: llm
+    criteria: |
+      Behaviour, baseline then ratchet. Grade only Claude's last message. The
+      session's goal is "Plan our summer holiday with the kids". Decision D1,
+      what kind of summer holiday to take, is still open, with option D1.1
+      "Rent a lake house somewhere inland". Under D1.1 the
+      sub-decision D2 "Which lake" is decided with Siljan. The human lives in
+      Gothenburg, and Claude had replied that the drive to Siljan is about 5.5
+      to 6 hours (Leksand, at the southern end, the closest, Rättvik and Mora
+      a bit further; 6.5 to 7 with the kids and breaks). The human
+      has just written, verbatim: "max 3h in the car with the kids". Pass when
+      the message says the chosen lake, Siljan, fails that limit, because of
+      the drive (about five and a half to six hours from Gothenburg, well over
+      the three allowed), and proposes deciding D2 again, by asking whether
+      they want to, offering it, or putting it as a question for them. Fail
+      when it says nothing about the pick failing the limit, never connects the
+      limit to the drive time, says D2 or Siljan is now changed, dropped,
+      cancelled or decided again as if it had already been done, or tells the
+      human that is how it will be without leaving it to them. Not a fail:
+      saying where the limit was recorded, or offering other lakes to compare.

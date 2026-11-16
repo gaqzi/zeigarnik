@@ -1,0 +1,7 @@
+{"type":"GoalOpened","at":"2026-11-16T13:02:21.957Z","goal":"G","text":"Plan our summer holiday with the kids"}
+{"type":"DecisionOpened","at":"2026-11-16T13:02:39.486Z","decision":"D1","parent":"G","title":"What kind of summer holiday to take"}
+{"type":"OptionAdded","at":"2026-11-16T13:02:40.086Z","option":"D1.1","decision":"D1","title":"Rent a lake house somewhere inland (partner's idea)"}
+{"type":"DecisionOpened","at":"2026-11-16T13:02:53.241Z","decision":"D2","parent":"D1.1","title":"Which lake"}
+{"type":"OptionAdded","at":"2026-11-16T13:02:55.113Z","option":"D2.1","decision":"D2","title":"Siljan"}
+{"type":"NodeReplied","at":"2026-11-16T13:03:08.367Z","node":"D2.1","author":"claude","text":"From Gothenburg, Siljan is about 450–500 km by car, roughly 5.5–6 hours of driving without stops. Leksand, at the southern end, is the closest; Rättvik and Mora are a bit further. With the kids and breaks, plan for 6.5–7 hours door to door. This is my own estimate and I haven't checked it against a route planner."}
+{"type":"DecisionMade","at":"2026-11-16T13:03:21.401Z","decision":"D2","option":"D2.1","source":"chat","reason":"It has the best beach for the kids."}

@@ -1,0 +1,99 @@
+schema_version: "1.1"
+name: limit-pick-recheck-reply
+description: >-
+  Claude resumes a history that holds the goal G (plan the summer holiday with
+  the kids) and its decision D1 (where to spend the summer holiday), decided with the lake house at
+  Siljan the human named (D1.1, "Rent a lake house at Siljan, Dalarna"; the
+  option itself names the far lake, so the limit fails the option as a whole,
+  not only some of its places), after Claude replied on D1.1 with the drive
+  from Gothenburg: no decision is open. The setup is one recorded session, cut
+  in two places, as limit-decision-decided cuts its open turn: the /zg:open
+  command is cut after the goal is opened, so the opening reply's own threads
+  are not in the fixture, and the human naming the lake house is cut after the
+  option D1.1 is added, so the rest of Claude's reply is not in the fixture.
+  The later turns are whole: the human saying they live in Gothenburg and
+  asking how long that is by car, with Claude's answer as its own reply on
+  D1.1 (the human gives no figure: Claude's reply holds its own, 470 to 520 km,
+  5.5 to 6 hours of driving and 6.5 to 7.5 with kids and stops; its chat message
+  asks whether there is a limit on the drive, but ties the drive to none),
+  then the human picking the lake house, cut
+  after the pick's DecisionMade. The human then states a limit that the pick
+  fails, no more than three hours in the car with the kids, with no decision
+  open to serve (zg-x3g). Claude keeps it in the human's words as a thread
+  under G (the limit is only a reply when no decision is open to take it,
+  zg-wn9) and tells the human the pick fails it: its last message proposes
+  deciding D1 again, with Claude's own drive time as its grounds, and leaves
+  it to the human. Offering nearer lakes as new options is fine, as long as
+  the lake house at Siljan is not kept as a choice. Nothing is decided or
+  dropped without the human (zg-a0y, zg-4h7). Guardrails are no DecisionMade
+  beyond the fixture's D1 one (matched by its timestamp, since deciding D1
+  again would be another line for D1) and no NodeCancelled in the log, so any
+  such event was appended in this run. Behaviours are a thread opened under G
+  (the fixture holds none, so any ThreadOpened under G was appended in this
+  run), and one llm grader on Claude's last message for the proposal, an 80%
+  bar for slice 4 (zg-egt). The case has no no-plugin arm, because the runner
+  yields only the with arm for a resumed case, so its baseline is the with
+  arm. Not exercised - the criterion path, where a decision open under D1.1
+  takes the limit as a criterion (not reachable: the core refuses to decide D1
+  while a decision is open under one of its options), the turn after the
+  proposal, and the setup turns (recorded, not live).
+tags: [guardrail, behaviour, slice-4, decisions]
+runs: 5
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "I don't want more than three hours in the car with the kids."
+  max_turns: 10
+  allowed_tools:
+    [
+      mcp__zg__decision,
+      mcp__zg__criterion,
+      mcp__zg__node,
+      mcp__zg__thread,
+      mcp__zg__show,
+    ]
+graders:
+  # Guardrail. The fixture's DecisionMade is the one stamped 15:56:56.388Z, so
+  # any other DecisionMade line, deciding again included, was appended in the run.
+  - name: no-decision-made-in-the-run
+    type: regex
+    target: {source: file, path: .zg/sessions/5347c50f-de2f-4b54-a2c7-f8410f9dabcf.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"DecisionMade")(?![^\n]*"at":"2026-11-16T15:56:56\.388Z")'
+    match: not_contains
+  # Guardrail. The fixture cancels nothing, so any NodeCancelled was appended in the run.
+  - name: no-node-cancelled
+    type: regex
+    target: {source: file, path: .zg/sessions/5347c50f-de2f-4b54-a2c7-f8410f9dabcf.jsonl}
+    pattern: '"type":"NodeCancelled"'
+    match: not_contains
+  # Behaviour, baseline then ratchet. The fixture holds no thread, so any
+  # ThreadOpened under G was appended in the run.
+  - name: thread-opened-under-G
+    type: regex
+    target: {source: file, path: .zg/sessions/5347c50f-de2f-4b54-a2c7-f8410f9dabcf.jsonl}
+    pattern: '(?<![^\n])(?=[^\n]*"type":"ThreadOpened")(?=[^\n]*"parent":"G")'
+    match: contains
+  # Behaviour, baseline then ratchet (80% for slice 4, zg-egt). An llm grader
+  # on Claude's last message alone, since no log assertion can show a proposal.
+  - name: proposes-deciding-D1-again-on-the-drive-and-leaves-it-to-the-human
+    type: llm
+    criteria: |
+      Behaviour, baseline then ratchet. Grade only Claude's last message. The
+      session's goal is "Plan our summer holiday with the kids". Decision D1
+      ("Where to spend the summer holiday") is decided with option D1.1 "Rent a lake house at
+      Siljan, Dalarna". The human lives in Gothenburg, and Claude had replied
+      on D1.1 that the drive from Gothenburg is about 5.5 to 6 hours (6.5 to 7.5
+      with kids and stops). The human has just written, verbatim: "I don't
+      want more than three hours in the car with the kids." Pass when the
+      message says the chosen option, the lake house at Siljan, fails that
+      limit, because of the drive (about five and a half to six hours from Gothenburg,
+      well over the three allowed), and proposes deciding D1 again, by asking
+      whether they want to, offering it, or putting it as a question for them,
+      leaving the choice to the human. Fail when it says nothing about the pick
+      failing the limit, never connects the limit to the drive time, keeps the
+      lake house at Siljan as the plan or as a still-fine choice, says D1 or the
+      lake house is now changed, dropped, cancelled or decided again as if it
+      had already been done, or tells the human that is how it will be without
+      leaving it to them. Not a fail: saying where the limit was recorded, or
+      offering nearer lakes or other alternatives as new options to compare.

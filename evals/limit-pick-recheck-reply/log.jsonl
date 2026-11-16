@@ -1,0 +1,5 @@
+{"type":"GoalOpened","at":"2026-11-16T15:56:07.536Z","goal":"G","text":"Plan our summer holiday with the kids"}
+{"type":"DecisionOpened","at":"2026-11-16T15:56:27.517Z","decision":"D1","parent":"G","title":"Where to spend the summer holiday"}
+{"type":"OptionAdded","at":"2026-11-16T15:56:28.051Z","option":"D1.1","decision":"D1","title":"Rent a lake house at Siljan, Dalarna"}
+{"type":"NodeReplied","at":"2026-11-16T15:56:46.618Z","node":"D1.1","author":"claude","text":"Gothenburg to Siljan is about 470–520 km by car: roughly 5.5 hours to Rättvik (E20 via Örebro, then Rv 50/70) and closer to 6 hours to Mora on the west side of the lake. That's without stops; with kids, plan for 6.5–7.5 hours door to door. It's a long day but doable in one go, or it can be split with an overnight around Örebro or Karlstad. These are estimates from general knowledge, not a live route check."}
+{"type":"DecisionMade","at":"2026-11-16T15:56:56.388Z","decision":"D1","option":"D1.1","source":"chat","reason":"It's what we all want, the kids can swim and we can stay put."}

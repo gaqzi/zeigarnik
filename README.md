@@ -377,7 +377,9 @@ exploring, not a failure.
   is added only to an open decision.
 - Revisions are kept, not overwritten, with the node that caused them.
 - Changing a criterion means re-checking decisions already made under the old
-  version (see [How Claude behaves](#how-claude-behaves)).
+  version: a decided pick it fails is proposed for deciding again, with the
+  grounds (see [How Claude behaves](#how-claude-behaves)). A limit kept as a
+  reply, with no decision open to take it, gets the same check.
 
 ### Decision
 
@@ -513,7 +515,7 @@ directions, and each one is tested on its own:
 | Direction | What happens | Who reacts |
 |---|---|---|
 | **Up** | A thread closes. zg tells Claude when that leaves its parent with nothing open, and Claude asks you: "T6 is in and nothing else is open under D1's options, so D1 can be decided." | the parent |
-| **Down** | A criterion is added or revised. Claude names the open options and threads it rules out, with its grounds, and proposes dropping them as one batch: "C5 rules out D1.1 Greek village (2h by bus); drop it?" Nothing closes until you confirm. | each option or thread it rules out |
+| **Down** | A criterion is added or revised. Claude names the open options and threads it rules out, with its grounds, and proposes dropping them as one batch: "C5 rules out D1.1 Greek village (2h by bus); drop it?" A decided pick the criterion fails, or a limit kept as a reply fails, is named too, proposed for deciding again. Nothing closes or is decided until you confirm. | each option or thread it rules out, each decided pick it fails |
 | **Across** | Your reply to one thread also settles others that aren't parent and child, because you saw the common thread between them. Claude names them with the words of yours that settle them, and proposes resolving them as one batch, with outcomes. Or you make a decision that leaves other open threads pointless: Claude names them, with your pick as the grounds, and proposes cancelling them as one batch. Nothing closes until you confirm. | each affected thread; a reply belongs to no thread |
 
 Changes often travel up, then down or across. In the holiday example, C5 is
