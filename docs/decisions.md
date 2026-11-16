@@ -48,6 +48,7 @@ zg-pvk.
 | zg-a0y | Claude proposes, the human decides: whatever decides or ends something says whose call it was, in their words | core, mod |
 | zg-w6f | A decided decision gains a criterion only while an open decision under its options inherits it | core |
 | zg-x3g | A decided pick that fails a limit the human sets later is proposed for deciding again | mod |
+| zg-de1 | Claude records a reply on a node only to get back to the human with something that settles that node | core, mod |
 
 ## Accepted
 
@@ -1435,6 +1436,59 @@ Claude's, in its own reply (zg-5he), and only proposed (zg-a0y, zg-4h7).
 #### How it was decided
 
 The human, 2026-11-14: "that narrowing is good, and yes, it should cause re-evaluation of existing options since some might fall off because of this narrowing. that's normal for making decisions. does it deserve a decision bead because it's a way of working that needs to be called out?" then "sounds good, go".
+
+### zg-de1: Claude records a reply on a node only to get back to the human with something that settles that node
+
+Areas: core, mod
+
+#### Context
+
+The node tool asked for a Claude reply after every human reply, so a
+thread's history filled with narration ("Noted, checking", "fanning out"),
+and a thread's last word was Claude's even while it was off working.
+Raised while defining zg-clv, which shows the threads waiting on the human
+and derives waiting from who spoke last (zg-ww9). zg-3t0 fixed that, but
+listed "a question" as a valid reply, and the eval clv1-question-logged
+(zg-bam.6.18) showed Claude logging on T2 an answer ending in three new
+questions, where each wants its own ID to be seen and answered.
+
+#### Decision
+
+Claude records a reply on a node only when it gets back to the human with
+something to act on that settles that node: findings, an answer that settles
+something, which the human still has to acknowledge, or a question that
+settles the node itself, such as a proposal to close it. A question that
+raises something new to settle opens a thread under the node, with the
+question recorded as the thread's first reply in the same call. Narration of
+work under way is never recorded. Such a reply may come with no human reply
+before it.
+
+#### Rationale
+
+The human wants to know it is their turn only when there is something for
+them to do, not while Claude works in the background. With narration out of
+the log, who spoke last says exactly that, so waiting is derived from events
+that already exist, with no flag and no event change (zg-8ex), and a
+thread's history reads as the exchange zg-tjz keeps. A new question in a
+thread of its own is waited on per question, by ID (zg-w93). Core cannot
+tell a question from an answer, so the rule lives in the descriptions and
+Claude judges what is new (zg-7zf).
+
+#### Alternatives Considered
+
+- Keep zg-3t0 as it stands: a new question stays a reply on its node, so
+  several questions share one reply and cannot be answered by ID.
+- Core refuses a Claude reply holding a question mark: cannot judge a
+  question from an answer, and moves judgment into code (zg-7zf).
+- A flag on ThreadOpened and NodeReplied marking that Claude got back:
+  precise, but changes two events and grows two tool descriptions, and
+  keeps the narration.
+- Waiting as every open thread whose last word is Claude's, narration
+  included: marks threads Claude is still working on.
+
+#### How it was decided
+
+The human, 2026-11-16: "ok" (to filing this replacement; earlier on the eval failures: "fix the failures").
 
 ## Superseded or withdrawn
 
